@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EUR/USD Sniper Dashboard</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    .price {
+      font-size: 40px;
+      text-align: center;
+      margin: 20px;
+    }
+
+    .card {
+      background: #222;
+      padding: 18px;
+      margin: 15px 0;
+      border-radius: 12px;
+    }
+
+    button {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      border: 0;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>EUR/USD Sniper Dashboard</h1>
+
+  <div class="card">
+    <h2>Live Price</h2>
+    <div class="price" id="price">Loading...</div>
+  </div>
+
+  <div class="card">
+    <h2>1H Market Structure</h2>
+    <p id="trend">Waiting for data...</p>
+  </div>
+
+  <div class="card">
+    <h2>30M Confirmation</h2>
+    <p>Waiting for analysis...</p>
+  </div>
+
+  <div class="card">
+    <h2>5M Entry</h2>
+    <p>Waiting for sniper setup...</p>
+  </div>
+
+  <div class="card">
+    <h2>Trade Plan</h2>
+    <p>BUY Entry: —</p>
+    <p>SELL Entry: —</p>
+    <p>Stop Loss: —</p>
+    <p>Take Profit: —</p>
+  </div>
+
+  <div class="card">
+    <h2>News</h2>
+    <p>Economic news check: —</p>
+  </div>
+
+  <button onclick="refreshDashboard()">
+    REFRESH DASHBOARD
+  </button>
+
+  <script>
+    function refreshDashboard() {
+      document.getElementById("price").innerText = "Checking...";
+      document.getElementById("trend").innerText =
+        "Dashboard refreshed. Live data connection will be added next.";
+    }
+  </script>
+
+</body>
+</html>
