@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EUR/USD Sniper Dashboard v2</title>
+  <title>EUR/USD Sniper Dashboard</title>
 
   <style>
     body {
@@ -85,8 +85,13 @@
     .level {
       display: flex;
       justify-content: space-between;
-      padding: 8px 0;
+      gap: 10px;
+      padding: 10px 0;
       border-bottom: 1px solid #333;
+    }
+
+    .level span:last-child {
+      text-align: right;
     }
 
     .muted {
@@ -94,6 +99,21 @@
     }
 
     .wait {
+      color: #ffc107;
+      font-weight: bold;
+    }
+
+    .bullish {
+      color: #4caf50;
+      font-weight: bold;
+    }
+
+    .bearish {
+      color: #f44336;
+      font-weight: bold;
+    }
+
+    .neutral {
       color: #ffc107;
       font-weight: bold;
     }
@@ -107,6 +127,11 @@
       background: #333;
       color: white;
       margin-top: 10px;
+    }
+
+    .small {
+      color: #888;
+      font-size: 13px;
     }
 
     @media (max-width: 600px) {
@@ -124,10 +149,16 @@
 <body>
 
   <h1>EUR/USD Sniper Dashboard</h1>
-  <div class="subtitle">Live Market Analysis</div>
+
+  <div class="subtitle">
+    Live Market Analysis • A+ Setup Engine
+  </div>
+
 
   <!-- LIVE PRICE -->
+
   <div class="card">
+
     <h2>Live Price</h2>
 
     <div class="price" id="price">
@@ -137,14 +168,21 @@
     <div class="status" id="trend">
       Connecting to market data...
     </div>
+
   </div>
 
+
   <!-- LIVE CHART -->
+
   <div class="card">
 
     <h2>Live EUR/USD Chart</h2>
 
     <div class="timeframes">
+
+      <button id="btn5" onclick="changeChart('5')">
+        M5
+      </button>
 
       <button id="btn15" onclick="changeChart('15')">
         M15
@@ -154,17 +192,13 @@
         H1
       </button>
 
-      <button id="btn240" onclick="changeChart('240')">
-        H4
-      </button>
-
     </div>
 
     <div class="chart-container">
 
       <iframe
         id="tradingChart"
-        src="https://www.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=FXCM%3AEURUSD&interval=60&hidesidetoolbar=1&hidetoptoolbar=0&symboledit=1&saveimage=0&toolbarbg=f1f3f6&theme=dark&style=1&timezone=Asia%2FKolkata&withdateranges=1&hideideas=1&locale=en"
+        src="https://www.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=FX%3AEURUSD&interval=60&hidesidetoolbar=1&hidetoptoolbar=0&symboledit=1&saveimage=0&toolbarbg=f1f3f6&theme=dark&style=1&timezone=Asia%2FKolkata&withdateranges=1&hideideas=1&studies=%5B%5D&overrides=%7B%7D&locale=en"
         allowtransparency="true"
         scrolling="no">
       </iframe>
@@ -173,175 +207,52 @@
 
   </div>
 
+
   <!-- MARKET STRUCTURE -->
+
   <div class="card">
 
     <h2>Market Structure</h2>
 
     <div class="level">
       <span>H1 Trend</span>
-      <span class="muted">Calculating...</span>
+      <span id="h1Trend" class="muted">Waiting...</span>
     </div>
 
     <div class="level">
       <span>M15 Structure</span>
-      <span class="muted">Calculating...</span>
+      <span id="m15Structure" class="muted">Waiting...</span>
     </div>
 
     <div class="level">
       <span>M5 Structure</span>
-      <span class="muted">Calculating...</span>
+      <span id="m5Structure" class="muted">Waiting...</span>
     </div>
 
   </div>
 
+
   <!-- SUPPORT / RESISTANCE -->
+
   <div class="card">
 
     <h2>Support & Resistance</h2>
 
     <div class="level">
       <span>Resistance 1</span>
-      <span class="muted">—</span>
+      <span id="resistance1" class="muted">—</span>
     </div>
 
     <div class="level">
       <span>Resistance 2</span>
-      <span class="muted">—</span>
+      <span id="resistance2" class="muted">—</span>
     </div>
 
     <div class="level">
       <span>Support 1</span>
-      <span class="muted">—</span>
+      <span id="support1" class="muted">—</span>
     </div>
 
     <div class="level">
       <span>Support 2</span>
-      <span class="muted">—</span>
-    </div>
-
-  </div>
-
-  <!-- INDICATORS -->
-  <div class="card">
-
-    <h2>Indicators</h2>
-
-    <div class="level">
-      <span>H1 RSI</span>
-      <span class="muted">—</span>
-    </div>
-
-    <div class="level">
-      <span>M15 RSI</span>
-      <span class="muted">—</span>
-    </div>
-
-    <div class="level">
-      <span>M5 RSI</span>
-      <span class="muted">—</span>
-    </div>
-
-    <div class="level">
-      <span>EMA Structure</span>
-      <span class="muted">—</span>
-    </div>
-
-  </div>
-
-  <!-- SNIPER SETUP -->
-  <div class="card">
-
-    <h2>🎯 Sniper Setup</h2>
-
-    <p class="wait">
-      WAIT — Analysis engine coming next
-    </p>
-
-    <p>Direction: —</p>
-    <p>Entry: —</p>
-    <p>Stop Loss: —</p>
-    <p>TP1: —</p>
-    <p>TP2: —</p>
-    <p>TP3: —</p>
-    <p>Risk / Reward: —</p>
-    <p>Validity: —</p>
-    <p>Trigger: —</p>
-    <p>Invalidation: —</p>
-
-  </div>
-
-  <!-- PRO VERDICT -->
-  <div class="card">
-
-    <h2>PRO VERDICT</h2>
-
-    <p class="wait">
-      WAIT — No A+ setup calculated yet.
-    </p>
-
-  </div>
-
-  <!-- NEWS -->
-  <div class="card">
-
-    <h2>📰 News Filter</h2>
-
-    <p>EUR high-impact news: —</p>
-    <p>USD high-impact news: —</p>
-    <p>Next important event: —</p>
-    <p>Trading risk: —</p>
-
-  </div>
-
-  <!-- REFRESH -->
-  <button class="refresh" onclick="refreshDashboard()">
-    REFRESH DASHBOARD
-  </button>
-
-  <!-- WORKING TWELVE DATA PRICE SCRIPT -->
-  <script src="script.js"></script>
-
-  <script>
-
-    function changeChart(interval) {
-
-      const chart = document.getElementById("tradingChart");
-
-      chart.src =
-        "https://www.tradingview.com/widgetembed/?" +
-        "frameElementId=tradingview_chart" +
-        "&symbol=FXCM%3AEURUSD" +
-        "&interval=" + interval +
-        "&hidesidetoolbar=1" +
-        "&hidetoptoolbar=0" +
-        "&symboledit=1" +
-        "&saveimage=0" +
-        "&theme=dark" +
-        "&style=1" +
-        "&timezone=Asia%2FKolkata" +
-        "&withdateranges=1" +
-        "&hideideas=1" +
-        "&locale=en";
-
-      document.getElementById("btn15").classList.remove("active");
-      document.getElementById("btn60").classList.remove("active");
-      document.getElementById("btn240").classList.remove("active");
-
-      if (interval === "15") {
-        document.getElementById("btn15").classList.add("active");
-      }
-
-      if (interval === "60") {
-        document.getElementById("btn60").classList.add("active");
-      }
-
-      if (interval === "240") {
-        document.getElementById("btn240").classList.add("active");
-      }
-    }
-
-  </script>
-
-</body>
-</html>
+      <span id="
