@@ -50,13 +50,13 @@
 
     .timeframes {
       display: flex;
-      gap: 8px;
+      gap: 7px;
       margin-bottom: 12px;
     }
 
     .timeframes button {
       flex: 1;
-      padding: 12px 5px;
+      padding: 12px 4px;
       background: #333;
       color: white;
       border: 0;
@@ -92,6 +92,7 @@
 
     .level span:last-child {
       text-align: right;
+      max-width: 65%;
     }
 
     .muted {
@@ -100,16 +101,6 @@
 
     .wait {
       color: #ffc107;
-      font-weight: bold;
-    }
-
-    .bullish {
-      color: #4caf50;
-      font-weight: bold;
-    }
-
-    .bearish {
-      color: #f44336;
       font-weight: bold;
     }
 
@@ -124,18 +115,27 @@
       margin-top: 10px;
     }
 
-    .small {
-      color: #888;
-      font-size: 13px;
+    .section-note {
+      color: #aaa;
+      font-size: 14px;
+    }
+
+    .important {
+      font-weight: bold;
     }
 
     @media (max-width: 600px) {
+
       .chart-container {
         height: 420px;
       }
 
       .price {
         font-size: 34px;
+      }
+
+      .level span:last-child {
+        max-width: 60%;
       }
     }
   </style>
@@ -146,11 +146,11 @@
   <h1>EUR/USD Sniper Dashboard</h1>
 
   <div class="subtitle">
-    Live Market Analysis • A+ Setup Engine
+    H4 → H1 → M15 → M5 • A+ Sniper Engine
   </div>
 
 
-  <!-- LIVE PRICE -->
+  <!-- ================= LIVE PRICE ================= -->
 
   <div class="card">
 
@@ -167,7 +167,7 @@
   </div>
 
 
-  <!-- LIVE CHART -->
+  <!-- ================= LIVE CHART ================= -->
 
   <div class="card">
 
@@ -175,19 +175,33 @@
 
     <div class="timeframes">
 
-      <button id="btn5" onclick="changeChart('5')">
+      <button
+        id="btn5"
+        onclick="changeChart('5')">
         M5
       </button>
 
-      <button id="btn15" onclick="changeChart('15')">
+      <button
+        id="btn15"
+        onclick="changeChart('15')">
         M15
       </button>
 
-      <button id="btn60" class="active" onclick="changeChart('60')">
+      <button
+        id="btn60"
+        class="active"
+        onclick="changeChart('60')">
         H1
       </button>
 
+      <button
+        id="btn240"
+        onclick="changeChart('240')">
+        H4
+      </button>
+
     </div>
+
 
     <div class="chart-container">
 
@@ -203,31 +217,36 @@
   </div>
 
 
-  <!-- MARKET STRUCTURE -->
+  <!-- ================= MARKET STRUCTURE ================= -->
 
   <div class="card">
 
     <h2>Market Structure</h2>
 
     <div class="level">
+      <span>H4 Trend</span>
+      <span class="muted">Calculating...</span>
+    </div>
+
+    <div class="level">
       <span>H1 Trend</span>
-      <span id="h1Trend" class="muted">Waiting...</span>
+      <span class="muted">Calculating...</span>
     </div>
 
     <div class="level">
       <span>M15 Structure</span>
-      <span id="m15Structure" class="muted">Waiting...</span>
+      <span class="muted">Calculating...</span>
     </div>
 
     <div class="level">
       <span>M5 Structure</span>
-      <span id="m5Structure" class="muted">Waiting...</span>
+      <span class="muted">Calculating...</span>
     </div>
 
   </div>
 
 
-  <!-- SUPPORT / RESISTANCE -->
+  <!-- ================= SUPPORT / RESISTANCE ================= -->
 
   <div class="card">
 
@@ -235,138 +254,143 @@
 
     <div class="level">
       <span>Resistance 1</span>
-      <span id="resistance1" class="muted">—</span>
+      <span class="muted">—</span>
     </div>
 
     <div class="level">
       <span>Resistance 2</span>
-      <span id="resistance2" class="muted">—</span>
+      <span class="muted">—</span>
     </div>
 
     <div class="level">
       <span>Support 1</span>
-      <span id="support1" class="muted">—</span>
+      <span class="muted">—</span>
     </div>
 
     <div class="level">
       <span>Support 2</span>
-      <span id="support2" class="muted">—</span>
+      <span class="muted">—</span>
     </div>
 
   </div>
 
 
-  <!-- INDICATORS -->
+  <!-- ================= INDICATORS ================= -->
 
   <div class="card">
 
     <h2>Indicators</h2>
 
     <div class="level">
+      <span>H4 RSI</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
       <span>H1 RSI</span>
-      <span id="h1Rsi">—</span>
+      <span class="muted">—</span>
     </div>
 
     <div class="level">
       <span>M15 RSI</span>
-      <span id="m15Rsi">—</span>
+      <span class="muted">—</span>
     </div>
 
     <div class="level">
       <span>M5 RSI</span>
-      <span id="m5Rsi">—</span>
+      <span class="muted">—</span>
     </div>
 
     <div class="level">
       <span>EMA Structure</span>
-      <span id="emaStructure">—</span>
+      <span class="muted">—</span>
     </div>
 
   </div>
 
 
-  <!-- SNIPER SETUP -->
+  <!-- ================= SNIPER SETUP ================= -->
 
   <div class="card">
 
     <h2>🎯 Sniper Setup</h2>
 
-    <p id="setupStatus" class="wait">
-      WAIT — Analysis engine starting...
+    <p class="wait">
+      WAIT — Calculating...
     </p>
 
     <div class="level">
       <span>Direction</span>
-      <span id="direction">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>Entry</span>
-      <span id="entry">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>Stop Loss</span>
-      <span id="stopLoss">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>TP1</span>
-      <span id="tp1">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>TP2</span>
-      <span id="tp2">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>TP3</span>
-      <span id="tp3">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>Risk / Reward</span>
-      <span id="riskReward">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>Validity</span>
-      <span id="validity">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>Trigger</span>
-      <span id="trigger">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>Invalidation</span>
-      <span id="invalidation">—</span>
+      <span>—</span>
     </div>
 
   </div>
 
 
-  <!-- PRO VERDICT -->
+  <!-- ================= PRO VERDICT ================= -->
 
   <div class="card">
 
     <h2>PRO VERDICT</h2>
 
-    <p id="proVerdict" class="wait">
-      WAIT — Waiting for complete market analysis.
+    <p class="wait">
+      WAIT — Calculating multi-timeframe alignment...
     </p>
 
-    <p class="small">
-      The engine will only display a setup when the
-      required conditions are confirmed.
+    <p class="section-note">
+      H4 and H1 establish direction. M15 confirms the setup.
+      M5 provides the sniper trigger.
     </p>
 
   </div>
 
 
-  <!-- NEWS -->
+  <!-- ================= NEWS ================= -->
 
   <div class="card">
 
@@ -374,28 +398,28 @@
 
     <div class="level">
       <span>EUR High-Impact News</span>
-      <span id="eurNews">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>USD High-Impact News</span>
-      <span id="usdNews">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>Next Important Event</span>
-      <span id="nextEvent">—</span>
+      <span>—</span>
     </div>
 
     <div class="level">
       <span>Trading Risk</span>
-      <span id="newsRisk">—</span>
+      <span>—</span>
     </div>
 
   </div>
 
 
-  <!-- REFRESH -->
+  <!-- ================= REFRESH ================= -->
 
   <button
     class="refresh"
@@ -404,12 +428,12 @@
   </button>
 
 
-  <!-- SCRIPT.JS -->
+  <!-- ================= SCRIPT ================= -->
 
   <script src="script.js"></script>
 
 
-  <!-- CHART CONTROLS -->
+  <!-- ================= CHART CONTROLS ================= -->
 
   <script>
 
@@ -417,6 +441,7 @@
 
       const chart =
         document.getElementById("tradingChart");
+
 
       chart.src =
         "https://www.tradingview.com/widgetembed/?" +
@@ -437,21 +462,59 @@
         "&overrides=%7B%7D" +
         "&locale=en";
 
-      document.getElementById("btn5").classList.remove("active");
-      document.getElementById("btn15").classList.remove("active");
-      document.getElementById("btn60").classList.remove("active");
+
+      document
+        .getElementById("btn5")
+        .classList.remove("active");
+
+      document
+        .getElementById("btn15")
+        .classList.remove("active");
+
+      document
+        .getElementById("btn60")
+        .classList.remove("active");
+
+      document
+        .getElementById("btn240")
+        .classList.remove("active");
+
 
       if (interval === "5") {
-        document.getElementById("btn5").classList.add("active");
+
+        document
+          .getElementById("btn5")
+          .classList.add("active");
+
       }
+
 
       if (interval === "15") {
-        document.getElementById("btn15").classList.add("active");
+
+        document
+          .getElementById("btn15")
+          .classList.add("active");
+
       }
 
+
       if (interval === "60") {
-        document.getElementById("btn60").classList.add("active");
+
+        document
+          .getElementById("btn60")
+          .classList.add("active");
+
       }
+
+
+      if (interval === "240") {
+
+        document
+          .getElementById("btn240")
+          .classList.add("active");
+
+      }
+
     }
 
   </script>
