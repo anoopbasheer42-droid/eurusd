@@ -5,7 +5,7 @@ const REFRESH_MS = 60000;
 
 
 // =====================================================
-// MAIN REFRESH
+// MAIN DASHBOARD
 // =====================================================
 
 async function refreshDashboard() {
@@ -15,10 +15,12 @@ async function refreshDashboard() {
 
     try {
 
-        trendElement.innerText = "Updating market data...";
+        trendElement.innerText = "Loading market analysis...";
 
-
+        // -------------------------------------------------
         // LIVE PRICE
+        // -------------------------------------------------
+
         const priceResponse = await fetch(
             `https://api.twelvedata.com/price?symbol=${encodeURIComponent(SYMBOL)}&apikey=${API_KEY}`
         );
@@ -38,58 +40,109 @@ async function refreshDashboard() {
         priceElement.innerText = price.toFixed(5);
 
 
-        // GET CANDLE DATA
-        const h1 = await getCandles("1h", 120);
-        const m15 = await getCandles("15min", 120);
-        const m5 = await getCandles("5min", 120);
+        // -------------------------------------------------
+        // GET MULTI-TIMEFRAME DATA
+        // -------------------------------------------------
+
+        const h1 = await getCandles("1h", 150);
+        const m15 = await getCandles("15min", 150);
+        const m5 = await getCandles("5min", 150);
 
 
-        // ANALYSIS
-        const h1Data = analyse(h1);
-        const m15Data = analyse(m15);
-        const m5Data = analyse(m5);
+        // -------------------------------------------------
+        // ANALYSE
+        // -------------------------------------------------
+
+        const h1Analysis = analyseTimeframe(h1);
+        const m15Analysis = analyseTimeframe(m15);
+        const m5Analysis = analyseTimeframe(m5);
 
 
+        // -------------------------------------------------
         // MARKET STRUCTURE
-        setText("h1Trend", h1Data.trend);
-        setText("m15Structure", m15Data.structure);
-        setText("m5Structure", m5Data.structure);
+        // -------------------------------------------------
+
+        setText("h1Trend", h1Analysis.trend);
+        setText("m15Structure", m15Analysis.structure);
+        setText("m5Structure", m5Analysis.structure);
 
 
+        // -------------------------------------------------
         // SUPPORT / RESISTANCE
-        const sr = findLevels(h1, price);
+        // -------------------------------------------------
 
-        setText("resistance1", formatPrice(sr.resistance1));
-        setText("resistance2", formatPrice(sr.resistance2));
-        setText("support1", formatPrice(sr.support1));
-        setText("support2", formatPrice(sr.support2));
+        const levels = findSupportResistance(h1, price);
+
+        setText(
+            "resistance1",
+            formatPrice(levels.resistance1)
+        );
+
+        setText(
+            "resistance2",
+            formatPrice(levels.resistance2)
+        );
+
+        setText(
+            "support1",
+            formatPrice(levels.support1)
+        );
+
+        setText(
+            "support2",
+            formatPrice(levels.support2)
+        );
 
 
+        // -------------------------------------------------
         // RSI
-        setText("h1Rsi", formatNumber(h1Data.rsi, 2));
-        setText("m15Rsi", formatNumber(m15Data.rsi, 2));
-        setText("m5Rsi", formatNumber(m5Data.rsi, 2));
+        // -------------------------------------------------
+
+        setText(
+            "h1Rsi",
+            formatNumber(h1Analysis.rsi, 2)
+        );
+
+        setText(
+            "m15Rsi",
+            formatNumber(m15Analysis.rsi, 2)
+        );
+
+        setText(
+            "m5Rsi",
+            formatNumber(m5Analysis.rsi, 2)
+        );
 
 
-        // EMA
+        // -------------------------------------------------
+        // EMA STRUCTURE
+        // -------------------------------------------------
+
         setText(
             "emaStructure",
-            "H1 EMA20 " +
-            formatPrice(h1Data.ema20) +
-            " | EMA50 " +
-            formatPrice(h1Data.ema50)
+            "H1: " +
+            formatPrice(h1Analysis.ema20) +
+            " / " +
+            formatPrice(h1Analysis.ema50)
         );
 
 
+        // -------------------------------------------------
         // SNIPER ENGINE
-        buildSniperPlan(
+        // -------------------------------------------------
+
+        buildSniperSetup(
             price,
-            h1Data,
-            m15Data,
-            m5Data,
-            sr
+            h1Analysis,
+            m15Analysis,
+            m5Analysis,
+            levels
         );
 
+
+        // -------------------------------------------------
+        // STATUS
+        // -------------------------------------------------
 
         trendElement.innerText =
             "Twelve Data connected • Updated: " +
@@ -102,13 +155,13 @@ async function refreshDashboard() {
         console.error("Dashboard error:", error);
 
         trendElement.innerText =
-            "Data error: " + error.message;
+            "Analysis error: " + error.message;
     }
 }
 
 
 // =====================================================
-// CANDLE DATA
+// GET CANDLES
 // =====================================================
 
 async function getCandles(interval, outputsize) {
@@ -130,25 +183,25 @@ async function getCandles(interval, outputsize) {
         );
     }
 
-    if (!data.values || data.values.length < 30) {
+    if (!data.values || data.values.length < 60) {
         throw new Error(
-            interval + ": insufficient candle data"
+            interval + ": not enough candle data"
         );
     }
 
     return data.values
-        .map(c => ({
-            datetime: c.datetime,
-            open: Number(c.open),
-            high: Number(c.high),
-            low: Number(c.low),
-            close: Number(c.close)
+        .map(candle => ({
+            datetime: candle.datetime,
+            open: Number(candle.open),
+            high: Number(candle.high),
+            low: Number(candle.low),
+            close: Number(candle.close)
         }))
-        .filter(c =>
-            Number.isFinite(c.open) &&
-            Number.isFinite(c.high) &&
-            Number.isFinite(c.low) &&
-            Number.isFinite(c.close)
+        .filter(candle =>
+            Number.isFinite(candle.open) &&
+            Number.isFinite(candle.high) &&
+            Number.isFinite(candle.low) &&
+            Number.isFinite(candle.close)
         )
         .reverse();
 }
@@ -158,46 +211,46 @@ async function getCandles(interval, outputsize) {
 // TIMEFRAME ANALYSIS
 // =====================================================
 
-function analyse(candles) {
+function analyseTimeframe(candles) {
 
     const closes =
-        candles.map(c => c.close);
+        candles.map(candle => candle.close);
 
-    const ema20 =
+    const ema20Array =
         calculateEMA(closes, 20);
 
-    const ema50 =
+    const ema50Array =
         calculateEMA(closes, 50);
 
-    const rsi =
+    const rsiArray =
         calculateRSI(closes, 14);
 
     const last =
         candles[candles.length - 1];
 
-    const e20 =
-        ema20[ema20.length - 1];
+    const ema20 =
+        ema20Array[ema20Array.length - 1];
 
-    const e50 =
-        ema50[ema50.length - 1];
+    const ema50 =
+        ema50Array[ema50Array.length - 1];
 
-    const currentRSI =
-        rsi[rsi.length - 1];
+    const rsi =
+        rsiArray[rsiArray.length - 1];
 
 
     let trend = "NEUTRAL";
 
 
     if (
-        last.close > e20 &&
-        e20 > e50
+        last.close > ema20 &&
+        ema20 > ema50
     ) {
         trend = "BULLISH";
     }
 
     else if (
-        last.close < e20 &&
-        e20 < e50
+        last.close < ema20 &&
+        ema20 < ema50
     ) {
         trend = "BEARISH";
     }
@@ -206,12 +259,17 @@ function analyse(candles) {
     return {
 
         close: last.close,
-        ema20: e20,
-        ema50: e50,
-        rsi: currentRSI,
-        trend: trend,
-        structure: marketStructure(candles)
 
+        ema20: ema20,
+
+        ema50: ema50,
+
+        rsi: rsi,
+
+        trend: trend,
+
+        structure:
+            getMarketStructure(candles)
     };
 }
 
@@ -231,13 +289,15 @@ function calculateEMA(values, period) {
 
     let ema = 0;
 
-
-    for (let i = 0; i < period; i++) {
+    for (
+        let i = 0;
+        i < period;
+        i++
+    ) {
         ema += values[i];
     }
 
     ema /= period;
-
 
     const result =
         new Array(period - 1).fill(null);
@@ -252,13 +312,14 @@ function calculateEMA(values, period) {
     ) {
 
         ema =
-            (values[i] - ema) *
+            (
+                values[i] - ema
+            ) *
             multiplier +
             ema;
 
         result.push(ema);
     }
-
 
     return result;
 }
@@ -273,7 +334,6 @@ function calculateRSI(values, period) {
     if (values.length <= period) {
         return [];
     }
-
 
     let gains = 0;
     let losses = 0;
@@ -291,7 +351,6 @@ function calculateRSI(values, period) {
         if (change > 0) {
             gains += change;
         }
-
         else {
             losses += Math.abs(change);
         }
@@ -345,7 +404,9 @@ function calculateRSI(values, period) {
 
 
         if (averageLoss === 0) {
+
             result.push(100);
+
         }
 
         else {
@@ -361,7 +422,6 @@ function calculateRSI(values, period) {
         }
     }
 
-
     return result;
 }
 
@@ -370,10 +430,10 @@ function calculateRSI(values, period) {
 // MARKET STRUCTURE
 // =====================================================
 
-function marketStructure(candles) {
+function getMarketStructure(candles) {
 
     const recent =
-        candles.slice(-40);
+        candles.slice(-50);
 
     const highs = [];
     const lows = [];
@@ -385,62 +445,73 @@ function marketStructure(candles) {
         i++
     ) {
 
+        const current =
+            recent[i];
+
+
         if (
-            recent[i].high >
+            current.high >
             recent[i - 1].high &&
-            recent[i].high >
+            current.high >
             recent[i - 2].high &&
-            recent[i].high >
+            current.high >
             recent[i + 1].high &&
-            recent[i].high >
+            current.high >
             recent[i + 2].high
         ) {
-            highs.push(recent[i].high);
+
+            highs.push(current.high);
         }
 
 
         if (
-            recent[i].low <
+            current.low <
             recent[i - 1].low &&
-            recent[i].low <
+            current.low <
             recent[i - 2].low &&
-            recent[i].low <
+            current.low <
             recent[i + 1].low &&
-            recent[i].low <
+            current.low <
             recent[i + 2].low
         ) {
-            lows.push(recent[i].low);
+
+            lows.push(current.low);
         }
     }
 
 
-    if (highs.length >= 2 && lows.length >= 2) {
+    if (
+        highs.length >= 2 &&
+        lows.length >= 2
+    ) {
 
-        const lastHigh =
+        const h1 =
             highs[highs.length - 1];
 
-        const previousHigh =
+        const h2 =
             highs[highs.length - 2];
 
-        const lastLow =
+        const l1 =
             lows[lows.length - 1];
 
-        const previousLow =
+        const l2 =
             lows[lows.length - 2];
 
 
         if (
-            lastHigh > previousHigh &&
-            lastLow > previousLow
+            h1 > h2 &&
+            l1 > l2
         ) {
+
             return "BULLISH HH / HL";
         }
 
 
         if (
-            lastHigh < previousHigh &&
-            lastLow < previousLow
+            h1 < h2 &&
+            l1 < l2
         ) {
+
             return "BEARISH LH / LL";
         }
     }
@@ -451,16 +522,16 @@ function marketStructure(candles) {
 
 
 // =====================================================
-// SUPPORT / RESISTANCE
+// SUPPORT & RESISTANCE
 // =====================================================
 
-function findLevels(candles, price) {
+function findSupportResistance(candles, price) {
 
     const recent =
-        candles.slice(-80);
+        candles.slice(-100);
 
-    const highs = [];
-    const lows = [];
+    const resistanceCandidates = [];
+    const supportCandidates = [];
 
 
     for (
@@ -469,196 +540,495 @@ function findLevels(candles, price) {
         i++
     ) {
 
+        const candle =
+            recent[i];
+
+
+        // LOCAL HIGH
+
         if (
-            recent[i].high >
+            candle.high >
             recent[i - 1].high &&
-            recent[i].high >
+            candle.high >
             recent[i - 2].high &&
-            recent[i].high >
+            candle.high >
             recent[i + 1].high &&
-            recent[i].high >
+            candle.high >
             recent[i + 2].high
         ) {
-            highs.push(recent[i].high);
+
+            if (candle.high > price) {
+                resistanceCandidates.push(
+                    candle.high
+                );
+            }
         }
 
 
+        // LOCAL LOW
+
         if (
-            recent[i].low <
+            candle.low <
             recent[i - 1].low &&
-            recent[i].low <
+            candle.low <
             recent[i - 2].low &&
-            recent[i].low <
+            candle.low <
             recent[i + 1].low &&
-            recent[i].low <
+            candle.low <
             recent[i + 2].low
         ) {
-            lows.push(recent[i].low);
+
+            if (candle.low < price) {
+                supportCandidates.push(
+                    candle.low
+                );
+            }
         }
     }
 
 
-    const resistance =
-        highs
-            .filter(x => x > price)
-            .sort((a, b) => a - b);
+    resistanceCandidates.sort(
+        (a, b) => a - b
+    );
 
-
-    const support =
-        lows
-            .filter(x => x < price)
-            .sort((a, b) => b - a);
+    supportCandidates.sort(
+        (a, b) => b - a
+    );
 
 
     return {
 
         resistance1:
-            resistance[0] ?? null,
+            resistanceCandidates[0] ?? null,
 
         resistance2:
-            resistance[1] ?? null,
+            resistanceCandidates[1] ?? null,
 
         support1:
-            support[0] ?? null,
+            supportCandidates[0] ?? null,
 
         support2:
-            support[1] ?? null
+            supportCandidates[1] ?? null
     };
 }
 
 
 // =====================================================
-// SNIPER SETUP
+// SNIPER SETUP ENGINE
 // =====================================================
 
-function buildSniperPlan(
+function buildSniperSetup(
     price,
     h1,
     m15,
     m5,
-    sr
+    levels
 ) {
 
-    const setupStatus =
+    const status =
         document.getElementById("setupStatus");
 
 
+    // -------------------------------------------------
+    // RESET
+    // -------------------------------------------------
+
+    setText("direction", "WAIT");
+    setText("entry", "—");
+    setText("stopLoss", "—");
+    setText("tp1", "—");
+    setText("tp2", "—");
+    setText("tp3", "—");
+    setText("riskReward", "—");
+    setText("validity", "—");
+    setText("trigger", "—");
+    setText("invalidation", "—");
+
+
+    // -------------------------------------------------
+    // SCORE
+    // -------------------------------------------------
+
+    let buyScore = 0;
+    let sellScore = 0;
+
+
+    // H1 TREND
+
+    if (h1.trend === "BULLISH") {
+        buyScore += 3;
+    }
+
+    if (h1.trend === "BEARISH") {
+        sellScore += 3;
+    }
+
+
+    // M15 TREND
+
+    if (m15.trend === "BULLISH") {
+        buyScore += 2;
+    }
+
+    if (m15.trend === "BEARISH") {
+        sellScore += 2;
+    }
+
+
+    // M5 TREND
+
+    if (m5.trend === "BULLISH") {
+        buyScore += 2;
+    }
+
+    if (m5.trend === "BEARISH") {
+        sellScore += 2;
+    }
+
+
+    // RSI CONFIRMATION
+
+    if (
+        h1.rsi > 50 &&
+        m15.rsi > 50
+    ) {
+        buyScore += 1;
+    }
+
+    if (
+        h1.rsi < 50 &&
+        m15.rsi < 50
+    ) {
+        sellScore += 1;
+    }
+
+
+    // AVOID EXTREME RSI CHASES
+
+    if (
+        m5.rsi > 70
+    ) {
+        buyScore -= 1;
+    }
+
+    if (
+        m5.rsi < 30
+    ) {
+        sellScore -= 1;
+    }
+
+
+    // -------------------------------------------------
+    // DETERMINE BIAS
+    // -------------------------------------------------
+
     let direction = "WAIT";
 
-
-    if (
-        h1.trend === "BEARISH" &&
-        m15.trend === "BEARISH" &&
-        m5.trend === "BEARISH"
-    ) {
-        direction = "SELL";
-    }
+    let score = 0;
 
 
     if (
-        h1.trend === "BULLISH" &&
-        m15.trend === "BULLISH" &&
-        m5.trend === "BULLISH"
+        buyScore >= 7 &&
+        buyScore > sellScore
     ) {
+
         direction = "BUY";
+        score = buyScore;
+
     }
 
+    else if (
+        sellScore >= 7 &&
+        sellScore > buyScore
+    ) {
+
+        direction = "SELL";
+        score = sellScore;
+    }
+
+
+    // -------------------------------------------------
+    // WAIT
+    // -------------------------------------------------
 
     if (direction === "WAIT") {
 
-        setupStatus.innerText =
+        status.innerText =
             "WAIT — No A+ multi-timeframe alignment.";
 
-        setupStatus.className =
+        status.className =
             "wait";
-
-
-        setText("direction", "WAIT");
-        setText("entry", "—");
-        setText("stopLoss", "—");
-        setText("tp1", "—");
-        setText("tp2", "—");
-        setText("tp3", "—");
-        setText("riskReward", "—");
-        setText("validity", "—");
-        setText("trigger", "Wait for confirmation");
-        setText("invalidation", "—");
 
 
         setText(
             "proVerdict",
-            "WAIT — No A+ setup."
+            "STAY OUT — No A+ setup."
         );
-
 
         return;
     }
 
 
-    setupStatus.innerText =
-        direction +
-        " bias detected — confirmation required.";
+    // -------------------------------------------------
+    // DETERMINE ENTRY / SL / TARGETS
+    // -------------------------------------------------
 
-    setupStatus.className =
-        direction === "BUY"
-            ? "bullish"
-            : "bearish";
+    let entry;
+    let stopLoss;
+    let tp1;
+    let tp2;
+    let tp3;
 
+
+    const pip =
+        0.0001;
+
+
+    // -------------------------------------------------
+    // BUY SETUP
+    // -------------------------------------------------
+
+    if (direction === "BUY") {
+
+        entry =
+            levels.support1 &&
+            levels.support1 < price
+                ? levels.support1
+                : price;
+
+
+        stopLoss =
+            entry - (10 * pip);
+
+
+        tp1 =
+            entry + (10 * pip);
+
+
+        tp2 =
+            entry + (20 * pip);
+
+
+        tp3 =
+            entry + (30 * pip);
+
+
+        // If resistance is closer,
+        // use it as a realistic target.
+
+        if (
+            levels.resistance1 &&
+            levels.resistance1 > entry
+        ) {
+
+            if (
+                levels.resistance1 <
+                tp3
+            ) {
+                tp3 =
+                    levels.resistance1;
+            }
+
+            if (
+                levels.resistance1 <
+                tp2
+            ) {
+                tp2 =
+                    levels.resistance1;
+            }
+        }
+    }
+
+
+    // -------------------------------------------------
+    // SELL SETUP
+    // -------------------------------------------------
+
+    if (direction === "SELL") {
+
+        entry =
+            levels.resistance1 &&
+            levels.resistance1 > price
+                ? levels.resistance1
+                : price;
+
+
+        stopLoss =
+            entry + (10 * pip);
+
+
+        tp1 =
+            entry - (10 * pip);
+
+
+        tp2 =
+            entry - (20 * pip);
+
+
+        tp3 =
+            entry - (30 * pip);
+
+
+        // Use support as realistic target
+
+        if (
+            levels.support1 &&
+            levels.support1 < entry
+        ) {
+
+            if (
+                levels.support1 >
+                tp1
+            ) {
+                tp1 =
+                    levels.support1;
+            }
+
+            if (
+                levels.support1 >
+                tp2
+            ) {
+                tp2 =
+                    levels.support1;
+            }
+
+            if (
+                levels.support1 >
+                tp3
+            ) {
+                tp3 =
+                    levels.support1;
+            }
+        }
+    }
+
+
+    // -------------------------------------------------
+    // RISK / REWARD
+    // -------------------------------------------------
+
+    const risk =
+        Math.abs(entry - stopLoss);
+
+
+    const reward =
+        Math.abs(tp2 - entry);
+
+
+    const rr =
+        risk > 0
+            ? reward / risk
+            : 0;
+
+
+    // -------------------------------------------------
+    // DON'T CALL IT A+ IF RR IS BAD
+    // -------------------------------------------------
+
+    if (rr < 2) {
+
+        status.innerText =
+            "WAIT — Technical bias exists, but RR < 1:2.";
+
+        status.className =
+            "wait";
+
+
+        setText(
+            "proVerdict",
+            "STAY OUT — Risk/reward is not A+."
+        );
+
+        return;
+    }
+
+
+    // -------------------------------------------------
+    // OUTPUT
+    // -------------------------------------------------
 
     setText(
         "direction",
         direction
     );
 
+
     setText(
         "entry",
-        formatPrice(price)
+        formatPrice(entry)
     );
+
 
     setText(
         "stopLoss",
-        "Awaiting POI"
+        formatPrice(stopLoss)
     );
+
 
     setText(
         "tp1",
-        "Awaiting structure"
+        formatPrice(tp1)
     );
+
 
     setText(
         "tp2",
-        "Awaiting structure"
+        formatPrice(tp2)
     );
+
 
     setText(
         "tp3",
-        "Awaiting structure"
+        formatPrice(tp3)
     );
+
 
     setText(
         "riskReward",
-        "Minimum target: 1:2"
+        "1:" + rr.toFixed(1)
     );
+
 
     setText(
         "validity",
-        "Intraday"
+        direction === "BUY"
+            ? "Next 2–4 hours"
+            : "Next 2–4 hours"
     );
+
 
     setText(
         "trigger",
-        "M5 confirmation required"
+        direction === "BUY"
+            ? "M5 bullish confirmation + hold above support"
+            : "M5 bearish confirmation + rejection at resistance"
     );
+
 
     setText(
         "invalidation",
-        "Structure invalidation"
+        direction === "BUY"
+            ? "M15 close below support / SL"
+            : "M15 close above resistance / SL"
     );
+
+
+    status.innerText =
+        direction +
+        " — Technical A+ candidate (" +
+        score +
+        "/10)";
+
+    status.className =
+        direction === "BUY"
+            ? "bullish"
+            : "bearish";
+
 
     setText(
         "proVerdict",
         direction +
-        " bias — WAIT for A+ confirmation."
+        " setup detected — WAIT for the M5 trigger before execution."
     );
 }
 
@@ -673,8 +1043,7 @@ function setText(id, value) {
         document.getElementById(id);
 
     if (element) {
-        element.innerText =
-            value;
+        element.innerText = value;
     }
 }
 
