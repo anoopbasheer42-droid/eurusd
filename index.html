@@ -120,10 +120,6 @@
       font-size: 14px;
     }
 
-    .important {
-      font-weight: bold;
-    }
-
     @media (max-width: 600px) {
 
       .chart-container {
@@ -196,7 +192,7 @@
 
       <button
         id="btn240"
-        onclick="changeChart('240')">
+        onclick="changeChart('4H')">
         H4
       </button>
 
@@ -315,7 +311,7 @@
 
     <h2>🎯 Sniper Setup</h2>
 
-    <p class="wait">
+    <p class="wait" id="sniperVerdict">
       WAIT — Calculating...
     </p>
 
@@ -378,12 +374,13 @@
 
     <h2>PRO VERDICT</h2>
 
-    <p class="wait">
+    <p class="wait" id="proVerdict">
       WAIT — Calculating multi-timeframe alignment...
     </p>
 
     <p class="section-note">
-      H4 and H1 establish direction. M15 confirms the setup.
+      H4 and H1 establish direction.
+      M15 confirms the setup.
       M5 provides the sniper trigger.
     </p>
 
@@ -428,7 +425,7 @@
   </button>
 
 
-  <!-- ================= SCRIPT ================= -->
+  <!-- ================= YOUR SCRIPT ================= -->
 
   <script src="script.js"></script>
 
@@ -443,11 +440,28 @@
         document.getElementById("tradingChart");
 
 
+      let tradingViewInterval = interval;
+
+
+      /*
+       * TradingView:
+       *
+       * 5   = M5
+       * 15  = M15
+       * 60  = H1
+       * 240 = H4
+       */
+
+      if (interval === "4H") {
+        tradingViewInterval = "240";
+      }
+
+
       chart.src =
         "https://www.tradingview.com/widgetembed/?" +
         "frameElementId=tradingview_chart" +
         "&symbol=FX%3AEURUSD" +
-        "&interval=" + interval +
+        "&interval=" + tradingViewInterval +
         "&hidesidetoolbar=1" +
         "&hidetoptoolbar=0" +
         "&symboledit=1" +
@@ -462,6 +476,10 @@
         "&overrides=%7B%7D" +
         "&locale=en";
 
+
+      /*
+       * Remove active state
+       */
 
       document
         .getElementById("btn5")
@@ -479,6 +497,10 @@
         .getElementById("btn240")
         .classList.remove("active");
 
+
+      /*
+       * Add active state
+       */
 
       if (interval === "5") {
 
@@ -507,7 +529,7 @@
       }
 
 
-      if (interval === "240") {
+      if (interval === "4H") {
 
         document
           .getElementById("btn240")
