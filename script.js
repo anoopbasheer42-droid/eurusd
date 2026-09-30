@@ -1,5 +1,6 @@
 /* =========================================================
    EUR/USD SNIPER DASHBOARD
+   FIXED VERSION
    H4 → H1 → M15 → M5
 
    PRICE ACTION
@@ -9,8 +10,6 @@
    RSI
    BUY / SELL SNIPER ENGINE
    NEWS SAFETY GATE
-
-   VERSION: STABLE DASHBOARD
    ========================================================= */
 
 
@@ -22,48 +21,20 @@ const API_KEY = "8908432b6c784bc49aad6ccf64845991";
 
 const SYMBOL = "EUR/USD";
 
-/*
-   Refresh every 15 minutes.
-
-   4 API requests per refresh:
-   H4
-   H1
-   M15
-   M5
-
-   96 refreshes/day = 384 requests/day.
-*/
-const REFRESH_MS = 900000;
-
+const REFRESH_MS = 900000; // 15 minutes
 
 /*
    IMPORTANT
 
-   false = sniper trades blocked
-   true  = technical setup can become active
-
-   Keep FALSE until we connect/check the news filter.
+   News filter remains CLOSED until we add
+   a real economic-calendar data source.
 */
 const NEWS_CLEAR = false;
 
-
-/*
-   Minimum technical score.
-
-   Maximum = 11
-*/
 const MIN_SETUP_SCORE = 8;
 
-
-/*
-   Maximum risk = 30 pips
-*/
 const MAX_RISK = 0.0030;
 
-
-/*
-   SL buffer = 1.5 pips
-*/
 const SL_BUFFER = 0.00015;
 
 
@@ -85,7 +56,6 @@ let marketData = {
     apiError: null
 
 };
-
 
 window.__dashboardLoading = false;
 
@@ -124,8 +94,7 @@ function setTextAny(ids, value) {
 
 function num(value) {
 
-    const n =
-        Number(value);
+    const n = Number(value);
 
     return Number.isFinite(n)
         ? n
@@ -144,8 +113,7 @@ function roundPrice(value) {
         return "—";
     }
 
-    return Number(value)
-        .toFixed(5);
+    return Number(value).toFixed(5);
 }
 
 
@@ -160,8 +128,7 @@ function roundRSI(value) {
         return "—";
     }
 
-    return Number(value)
-        .toFixed(1);
+    return Number(value).toFixed(1);
 }
 
 
@@ -378,8 +345,7 @@ function calculateRSI(
 
         } else {
 
-            losses +=
-                Math.abs(change);
+            losses += Math.abs(change);
         }
     }
 
@@ -734,7 +700,6 @@ function clusterLevels(
                 found =
                     cluster;
 
-
                 break;
             }
         }
@@ -845,81 +810,19 @@ function calculateSupportResistance(
             );
 
 
-    /*
-       Fallback resistance.
-    */
-
-    if (
-        resistances.length === 0
-    ) {
-
-        const recentHigh =
-            Math.max(
-                ...candles
-                    .slice(-40)
-                    .map(
-                        c => c.high
-                    )
-            );
-
-
-        if (
-            recentHigh > current
-        ) {
-
-            resistances.push(
-                recentHigh
-            );
-        }
-    }
-
-
-    /*
-       Fallback support.
-    */
-
-    if (
-        supports.length === 0
-    ) {
-
-        const recentLow =
-            Math.min(
-                ...candles
-                    .slice(-40)
-                    .map(
-                        c => c.low
-                    )
-            );
-
-
-        if (
-            recentLow < current
-        ) {
-
-            supports.push(
-                recentLow
-            );
-        }
-    }
-
-
     return {
 
         resistance1:
-            resistances[0] ??
-            null,
+            resistances[0] ?? null,
 
         resistance2:
-            resistances[1] ??
-            null,
+            resistances[1] ?? null,
 
         support1:
-            supports[0] ??
-            null,
+            supports[0] ?? null,
 
         support2:
-            supports[1] ??
-            null
+            supports[1] ?? null
 
     };
 }
@@ -1073,7 +976,6 @@ function getEMAAnalysis(
 
         text =
             "BULLISH";
-
     }
 
 
@@ -1232,7 +1134,7 @@ function buildAnalysis() {
 
 
 /* =========================================================
-   CANDLE CONFIRMATIONS
+   CANDLE CONFIRMATION
    ========================================================= */
 
 function bullishCandleConfirmation(
@@ -1319,9 +1221,7 @@ function bearishCandleConfirmation(
    BUY SCORE
    ========================================================= */
 
-function calculateBuyScore(
-    a
-) {
+function calculateBuyScore(a) {
 
     let score = 0;
 
@@ -1329,66 +1229,45 @@ function calculateBuyScore(
     if (
         a.H4.structure ===
         "BULLISH"
-    ) {
-
-        score += 2;
-    }
+    ) score += 2;
 
 
     if (
         a.H1.structure ===
         "BULLISH"
-    ) {
-
-        score += 2;
-    }
+    ) score += 2;
 
 
     if (
         a.M15.structure ===
         "BULLISH"
-    ) {
-
-        score += 2;
-    }
+    ) score += 2;
 
 
     if (
         a.M5.structure ===
         "BULLISH"
-    ) {
-
-        score += 1;
-    }
+    ) score += 1;
 
 
     if (
         bullishCandleConfirmation(
             marketData.m5
         )
-    ) {
-
-        score += 2;
-    }
+    ) score += 2;
 
 
     if (
         a.M5.rsi !== null &&
         a.M5.rsi >= 45 &&
         a.M5.rsi <= 70
-    ) {
-
-        score += 1;
-    }
+    ) score += 1;
 
 
     if (
         a.M15.ema.text ===
         "BULLISH"
-    ) {
-
-        score += 1;
-    }
+    ) score += 1;
 
 
     return score;
@@ -1399,9 +1278,7 @@ function calculateBuyScore(
    SELL SCORE
    ========================================================= */
 
-function calculateSellScore(
-    a
-) {
+function calculateSellScore(a) {
 
     let score = 0;
 
@@ -1409,66 +1286,45 @@ function calculateSellScore(
     if (
         a.H4.structure ===
         "BEARISH"
-    ) {
-
-        score += 2;
-    }
+    ) score += 2;
 
 
     if (
         a.H1.structure ===
         "BEARISH"
-    ) {
-
-        score += 2;
-    }
+    ) score += 2;
 
 
     if (
         a.M15.structure ===
         "BEARISH"
-    ) {
-
-        score += 2;
-    }
+    ) score += 2;
 
 
     if (
         a.M5.structure ===
         "BEARISH"
-    ) {
-
-        score += 1;
-    }
+    ) score += 1;
 
 
     if (
         bearishCandleConfirmation(
             marketData.m5
         )
-    ) {
-
-        score += 2;
-    }
+    ) score += 2;
 
 
     if (
         a.M5.rsi !== null &&
         a.M5.rsi >= 30 &&
         a.M5.rsi <= 55
-    ) {
-
-        score += 1;
-    }
+    ) score += 1;
 
 
     if (
         a.M15.ema.text ===
         "BEARISH"
-    ) {
-
-        score += 1;
-    }
+    ) score += 1;
 
 
     return score;
@@ -1476,7 +1332,7 @@ function calculateSellScore(
 
 
 /* =========================================================
-   CREATE BUY SETUP
+   BUY SETUP
    ========================================================= */
 
 function calculateBuySetup(
@@ -1489,66 +1345,33 @@ function calculateBuySetup(
 
 
     if (
-        score <
-        MIN_SETUP_SCORE
-    ) {
-
-        return null;
-    }
+        score < MIN_SETUP_SCORE
+    ) return null;
 
 
     if (
-        a.H4.structure !==
-        "BULLISH" ||
-
-        a.H1.structure !==
-        "BULLISH"
-    ) {
-
-        return null;
-    }
-
-
-    if (
-        a.M15.structure !==
-        "BULLISH"
-    ) {
-
-        return null;
-    }
-
-
-    if (
-        a.M5.structure !==
-        "BULLISH"
-    ) {
-
-        return null;
-    }
+        a.H4.structure !== "BULLISH" ||
+        a.H1.structure !== "BULLISH" ||
+        a.M15.structure !== "BULLISH" ||
+        a.M5.structure !== "BULLISH"
+    ) return null;
 
 
     if (
         !bullishCandleConfirmation(
             marketData.m5
         )
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
     if (
         a.M5.rsi === null ||
         a.M5.rsi < 45 ||
         a.M5.rsi > 70
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
-    const entry =
-        price;
+    const entry = price;
 
 
     let structuralSL =
@@ -1580,17 +1403,13 @@ function calculateBuySetup(
 
 
     const risk =
-        entry -
-        sl;
+        entry - sl;
 
 
     if (
         risk <= 0 ||
         risk > MAX_RISK
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
     return {
@@ -1614,7 +1433,7 @@ function calculateBuySetup(
         score,
 
         rr:
-            "1:3 potential",
+            "1:3",
 
         validity:
             "Valid while H4/H1 bullish structure remains intact",
@@ -1633,7 +1452,7 @@ function calculateBuySetup(
 
 
 /* =========================================================
-   CREATE SELL SETUP
+   SELL SETUP
    ========================================================= */
 
 function calculateSellSetup(
@@ -1646,66 +1465,33 @@ function calculateSellSetup(
 
 
     if (
-        score <
-        MIN_SETUP_SCORE
-    ) {
-
-        return null;
-    }
+        score < MIN_SETUP_SCORE
+    ) return null;
 
 
     if (
-        a.H4.structure !==
-        "BEARISH" ||
-
-        a.H1.structure !==
-        "BEARISH"
-    ) {
-
-        return null;
-    }
-
-
-    if (
-        a.M15.structure !==
-        "BEARISH"
-    ) {
-
-        return null;
-    }
-
-
-    if (
-        a.M5.structure !==
-        "BEARISH"
-    ) {
-
-        return null;
-    }
+        a.H4.structure !== "BEARISH" ||
+        a.H1.structure !== "BEARISH" ||
+        a.M15.structure !== "BEARISH" ||
+        a.M5.structure !== "BEARISH"
+    ) return null;
 
 
     if (
         !bearishCandleConfirmation(
             marketData.m5
         )
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
     if (
         a.M5.rsi === null ||
         a.M5.rsi < 30 ||
         a.M5.rsi > 55
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
-    const entry =
-        price;
+    const entry = price;
 
 
     let structuralSL =
@@ -1737,17 +1523,13 @@ function calculateSellSetup(
 
 
     const risk =
-        sl -
-        entry;
+        sl - entry;
 
 
     if (
         risk <= 0 ||
         risk > MAX_RISK
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
     return {
@@ -1771,7 +1553,7 @@ function calculateSellSetup(
         score,
 
         rr:
-            "1:3 potential",
+            "1:3",
 
         validity:
             "Valid while H4/H1 bearish structure remains intact",
@@ -1798,10 +1580,6 @@ function calculateSniperSetup(
     price
 ) {
 
-    /*
-       NEWS GATE FIRST.
-    */
-
     if (!NEWS_CLEAR) {
 
         return {
@@ -1815,11 +1593,12 @@ function calculateSniperSetup(
             tp2: null,
             tp3: null,
 
-            rr:
-                null,
+            rr: null,
 
-            score:
-                0,
+            score: Math.max(
+                calculateBuyScore(analysis),
+                calculateSellScore(analysis)
+            ),
 
             validity:
                 "Trading blocked until news is checked",
@@ -1862,14 +1641,9 @@ function calculateSniperSetup(
     }
 
 
-    if (buy) {
-        return buy;
-    }
+    if (buy) return buy;
 
-
-    if (sell) {
-        return sell;
-    }
+    if (sell) return sell;
 
 
     return {
@@ -1883,8 +1657,7 @@ function calculateSniperSetup(
         tp2: null,
         tp3: null,
 
-        rr:
-            null,
+        rr: null,
 
         score:
             Math.max(
@@ -1912,13 +1685,7 @@ function calculateSniperSetup(
    UPDATE PRICE
    ========================================================= */
 
-function updatePriceUI(
-    price
-) {
-
-    const formatted =
-        roundPrice(price);
-
+function updatePriceUI(price) {
 
     setTextAny(
         [
@@ -1927,17 +1694,24 @@ function updatePriceUI(
             "currentPrice",
             "live-price"
         ],
-        formatted
+        roundPrice(price)
     );
 
 
+    /*
+       IMPORTANT:
+       Your HTML uses id="trend"
+       for the status line.
+    */
+
     setTextAny(
         [
+            "trend",
             "priceStatus",
             "status",
             "marketStatus"
         ],
-        "LIVE MARKET DATA"
+        "MARKET DATA LOADED"
     );
 }
 
@@ -1946,116 +1720,49 @@ function updatePriceUI(
    UPDATE STRUCTURE
    ========================================================= */
 
-function updateStructureUI(
-    a
-) {
+function updateStructureUI(a) {
+
+    /*
+       These IDs match the corrected HTML.
+    */
 
     setTextAny(
-        [
-            "h4Trend",
-            "h4Structure",
-            "h4-structure"
-        ],
+        "h4Trend",
         a.H4.structure
     );
 
 
     setTextAny(
-        [
-            "h1Trend",
-            "h1Structure",
-            "h1-structure"
-        ],
+        "h1Trend",
         a.H1.structure
     );
 
 
     setTextAny(
-        [
-            "m15Structure",
-            "m15-structure"
-        ],
+        "m15Structure",
         a.M15.structure
     );
 
 
     setTextAny(
-        [
-            "m5Structure",
-            "m5-structure"
-        ],
+        "m5Structure",
         a.M5.structure
     );
 }
 
 
 /* =========================================================
-   UPDATE CANDLES
+   UPDATE SUPPORT / RESISTANCE
    ========================================================= */
 
-function updateCandleUI(
-    a
-) {
-
-    setTextAny(
-        [
-            "h4Candle",
-            "h4-candle"
-        ],
-        a.H4.candle
-    );
-
-
-    setTextAny(
-        [
-            "h1Candle",
-            "h1-candle"
-        ],
-        a.H1.candle
-    );
-
-
-    setTextAny(
-        [
-            "m15Candle",
-            "m15-candle"
-        ],
-        a.M15.candle
-    );
-
-
-    setTextAny(
-        [
-            "m5Candle",
-            "m5-candle"
-        ],
-        a.M5.candle
-    );
-}
-
-
-/* =========================================================
-   UPDATE S/R
-   ========================================================= */
-
-function updateSRUI(
-    a
-) {
-
-    /*
-       H1 is the main intraday S/R timeframe.
-    */
+function updateSRUI(a) {
 
     const sr =
         a.H1.sr;
 
 
     setTextAny(
-        [
-            "resistance1",
-            "r1",
-            "R1"
-        ],
+        "resistance1",
         roundPrice(
             sr.resistance1
         )
@@ -2063,11 +1770,7 @@ function updateSRUI(
 
 
     setTextAny(
-        [
-            "resistance2",
-            "r2",
-            "R2"
-        ],
+        "resistance2",
         roundPrice(
             sr.resistance2
         )
@@ -2075,11 +1778,7 @@ function updateSRUI(
 
 
     setTextAny(
-        [
-            "support1",
-            "s1",
-            "S1"
-        ],
+        "support1",
         roundPrice(
             sr.support1
         )
@@ -2087,11 +1786,7 @@ function updateSRUI(
 
 
     setTextAny(
-        [
-            "support2",
-            "s2",
-            "S2"
-        ],
+        "support2",
         roundPrice(
             sr.support2
         )
@@ -2100,18 +1795,13 @@ function updateSRUI(
 
 
 /* =========================================================
-   UPDATE RSI / EMA
+   UPDATE INDICATORS
    ========================================================= */
 
-function updateIndicatorsUI(
-    a
-) {
+function updateIndicatorsUI(a) {
 
     setTextAny(
-        [
-            "h4Rsi",
-            "h4RSI"
-        ],
+        "h4Rsi",
         roundRSI(
             a.H4.rsi
         )
@@ -2119,10 +1809,7 @@ function updateIndicatorsUI(
 
 
     setTextAny(
-        [
-            "h1Rsi",
-            "h1RSI"
-        ],
+        "h1Rsi",
         roundRSI(
             a.H1.rsi
         )
@@ -2130,10 +1817,7 @@ function updateIndicatorsUI(
 
 
     setTextAny(
-        [
-            "m15Rsi",
-            "m15RSI"
-        ],
+        "m15Rsi",
         roundRSI(
             a.M15.rsi
         )
@@ -2141,10 +1825,7 @@ function updateIndicatorsUI(
 
 
     setTextAny(
-        [
-            "m5Rsi",
-            "m5RSI"
-        ],
+        "m5Rsi",
         roundRSI(
             a.M5.rsi
         )
@@ -2152,11 +1833,7 @@ function updateIndicatorsUI(
 
 
     setTextAny(
-        [
-            "emaStructure",
-            "ema",
-            "emaStatus"
-        ],
+        "emaStructure",
         a.H1.ema.text
     );
 }
@@ -2168,56 +1845,59 @@ function updateIndicatorsUI(
 
 function updateNewsUI() {
 
-    const text =
-        NEWS_CLEAR
-            ? "NEWS CLEAR — TRADE GATE OPEN"
-            : "NEWS CHECK REQUIRED — TRADING BLOCKED";
+    /*
+       We deliberately DO NOT pretend
+       we have a real economic calendar.
+
+       Until a news API is connected,
+       the trade gate stays closed.
+    */
+
+    setTextAny(
+        "eurNews",
+        "NOT CONNECTED"
+    );
 
 
     setTextAny(
-        [
-            "newsFilter",
-            "newsStatus",
-            "news",
-            "newsGate"
-        ],
-        text
+        "usdNews",
+        "NOT CONNECTED"
+    );
+
+
+    setTextAny(
+        "nextEvent",
+        "Economic calendar required"
+    );
+
+
+    setTextAny(
+        "tradingRisk",
+        "HIGH — NEWS FILTER CLOSED"
     );
 }
 
 
 /* =========================================================
-   UPDATE SNIPER SETUP
+   UPDATE SNIPER
    ========================================================= */
 
-function updateSniperUI(
-    setup
-) {
+function updateSniperUI(setup) {
 
     setTextAny(
-        [
-            "sniperStatus",
-            "setupStatus",
-            "sniperSetup"
-        ],
+        "sniperVerdict",
         setup.verdict
     );
 
 
     setTextAny(
-        [
-            "direction",
-            "tradeDirection"
-        ],
+        "direction",
         setup.direction
     );
 
 
     setTextAny(
-        [
-            "entry",
-            "entryPrice"
-        ],
+        "entry",
         roundPrice(
             setup.entry
         )
@@ -2225,11 +1905,7 @@ function updateSniperUI(
 
 
     setTextAny(
-        [
-            "stopLoss",
-            "sl",
-            "stop-loss"
-        ],
+        "stopLoss",
         roundPrice(
             setup.sl
         )
@@ -2237,10 +1913,7 @@ function updateSniperUI(
 
 
     setTextAny(
-        [
-            "tp1",
-            "takeProfit1"
-        ],
+        "tp1",
         roundPrice(
             setup.tp1
         )
@@ -2248,10 +1921,7 @@ function updateSniperUI(
 
 
     setTextAny(
-        [
-            "tp2",
-            "takeProfit2"
-        ],
+        "tp2",
         roundPrice(
             setup.tp2
         )
@@ -2259,10 +1929,7 @@ function updateSniperUI(
 
 
     setTextAny(
-        [
-            "tp3",
-            "takeProfit3"
-        ],
+        "tp3",
         roundPrice(
             setup.tp3
         )
@@ -2270,45 +1937,26 @@ function updateSniperUI(
 
 
     setTextAny(
-        [
-            "riskReward",
-            "rr",
-            "risk-reward"
-        ],
+        "riskReward",
         setup.rr || "—"
     );
 
 
     setTextAny(
-        [
-            "validity"
-        ],
+        "validity",
         setup.validity
     );
 
 
     setTextAny(
-        [
-            "trigger"
-        ],
+        "trigger",
         setup.trigger
     );
 
 
     setTextAny(
-        [
-            "invalidation"
-        ],
+        "invalidation",
         setup.invalidation
-    );
-
-
-    setTextAny(
-        [
-            "setupScore",
-            "score"
-        ],
-        `${setup.score}/11`
     );
 }
 
@@ -2317,20 +1965,12 @@ function updateSniperUI(
    UPDATE PRO VERDICT
    ========================================================= */
 
-function updateProVerdictUI(
-    setup
-) {
+function updateProVerdictUI(setup) {
 
     setTextAny(
-        [
-            "proVerdict",
-            "proStatus"
-        ],
+        "proVerdict",
         setup.verdict
     );
-
-
-    let explanation;
 
 
     if (
@@ -2338,8 +1978,10 @@ function updateProVerdictUI(
         "BUY"
     ) {
 
-        explanation =
-            "BUY: H4 + H1 bullish structure, M15 confirmation and M5 bullish trigger.";
+        setTextAny(
+            "proExplanation",
+            "BUY: H4 + H1 bullish structure, M15 confirmation and M5 bullish trigger."
+        );
 
     }
 
@@ -2349,8 +1991,10 @@ function updateProVerdictUI(
         "SELL"
     ) {
 
-        explanation =
-            "SELL: H4 + H1 bearish structure, M15 confirmation and M5 bearish trigger.";
+        setTextAny(
+            "proExplanation",
+            "SELL: H4 + H1 bearish structure, M15 confirmation and M5 bearish trigger."
+        );
 
     }
 
@@ -2359,84 +2003,21 @@ function updateProVerdictUI(
         !NEWS_CLEAR
     ) {
 
-        explanation =
-            "Technical analysis is running, but trading remains blocked until the news filter is confirmed.";
+        setTextAny(
+            "proExplanation",
+            "Technical analysis is running, but trading remains blocked until the economic news filter is connected."
+        );
 
     }
 
 
     else {
 
-        explanation =
-            "No A+ multi-timeframe alignment. Stay out and wait.";
-
-    }
-
-
-    setTextAny(
-        [
+        setTextAny(
             "proExplanation",
-            "proText"
-        ],
-        explanation
-    );
-}
-
-
-/* =========================================================
-   UPDATE SCORE DETAILS
-   ========================================================= */
-
-function updateScoreDetails(
-    a
-) {
-
-    const buyScore =
-        calculateBuyScore(a);
-
-
-    const sellScore =
-        calculateSellScore(a);
-
-
-    setTextAny(
-        [
-            "buyScore"
-        ],
-        `BUY ${buyScore}/11`
-    );
-
-
-    setTextAny(
-        [
-            "sellScore"
-        ],
-        `SELL ${sellScore}/11`
-    );
-
-
-    setTextAny(
-        [
-            "buyCandle"
-        ],
-        bullishCandleConfirmation(
-            marketData.m5
-        )
-            ? "YES"
-            : "NO"
-    );
-
-
-    setTextAny(
-        [
-            "sellCandle"
-        ],
-        bearishCandleConfirmation(
-            marketData.m5
-        )
-            ? "YES"
-            : "NO"
-    );
+            "No A+ multi-timeframe alignment. Stay out and wait."
+        );
+    }
 }
 
 
@@ -2495,9 +2076,7 @@ function updateTimestamp() {
    ERROR HANDLER
    ========================================================= */
 
-function showDashboardError(
-    error
-) {
+function showDashboardError(error) {
 
     console.error(
         "EUR/USD DASHBOARD ERROR:",
@@ -2514,6 +2093,7 @@ function showDashboardError(
 
     setTextAny(
         [
+            "trend",
             "priceStatus",
             "status",
             "marketStatus"
@@ -2523,51 +2103,19 @@ function showDashboardError(
 
 
     setTextAny(
-        [
-            "sniperStatus",
-            "setupStatus",
-            "sniperSetup"
-        ],
+        "sniperVerdict",
         "WAIT — MARKET DATA ERROR"
     );
 
 
     setTextAny(
-        [
-            "direction"
-        ],
-        "WAIT"
-    );
-
-
-    setTextAny(
-        [
-            "proVerdict",
-            "proStatus"
-        ],
+        "proVerdict",
         "WAIT — DATA ERROR"
     );
 
 
     setTextAny(
-        [
-            "proExplanation",
-            "proText"
-        ],
-        message
-    );
-
-
-    /*
-       Show error on the page if an error box exists.
-    */
-
-    setTextAny(
-        [
-            "errorMessage",
-            "apiError",
-            "debug"
-        ],
+        "proExplanation",
         message
     );
 }
@@ -2583,10 +2131,6 @@ async function loadMarketData() {
         window.__dashboardLoading
     ) {
 
-        console.log(
-            "Previous update still running..."
-        );
-
         return;
     }
 
@@ -2595,20 +2139,23 @@ async function loadMarketData() {
         true;
 
 
-    try {
+    setTextAny(
+        [
+            "trend",
+            "priceStatus",
+            "status",
+            "marketStatus"
+        ],
+        "CONNECTING TO MARKET DATA..."
+    );
 
-        console.log(
-            "================================="
-        );
+
+    try {
 
         console.log(
             "EUR/USD DASHBOARD UPDATE START"
         );
 
-
-        /*
-           H4
-        */
 
         const h4 =
             await getCandles(
@@ -2617,20 +2164,12 @@ async function loadMarketData() {
             );
 
 
-        /*
-           H1
-        */
-
         const h1 =
             await getCandles(
                 "1h",
                 100
             );
 
-
-        /*
-           M15
-        */
 
         const m15 =
             await getCandles(
@@ -2639,20 +2178,12 @@ async function loadMarketData() {
             );
 
 
-        /*
-           M5
-        */
-
         const m5 =
             await getCandles(
                 "5min",
                 100
             );
 
-
-        /*
-           Save data.
-        */
 
         marketData.h4 =
             h4;
@@ -2671,7 +2202,7 @@ async function loadMarketData() {
 
 
         /*
-           Live price from latest M5 candle.
+           Latest M5 candle close.
         */
 
         marketData.price =
@@ -2685,14 +2216,10 @@ async function loadMarketData() {
 
 
         console.log(
-            "LIVE PRICE:",
+            "PRICE:",
             marketData.price
         );
 
-
-        /*
-           Build analysis.
-        */
 
         const analysis =
             buildAnalysis();
@@ -2704,10 +2231,6 @@ async function loadMarketData() {
         );
 
 
-        /*
-           Build sniper setup.
-        */
-
         const setup =
             calculateSniperSetup(
                 analysis,
@@ -2716,14 +2239,10 @@ async function loadMarketData() {
 
 
         console.log(
-            "SNIPER SETUP:",
+            "SETUP:",
             setup
         );
 
-
-        /*
-           Update everything.
-        */
 
         updatePriceUI(
             marketData.price
@@ -2731,11 +2250,6 @@ async function loadMarketData() {
 
 
         updateStructureUI(
-            analysis
-        );
-
-
-        updateCandleUI(
             analysis
         );
 
@@ -2763,20 +2277,12 @@ async function loadMarketData() {
         );
 
 
-        updateScoreDetails(
-            analysis
-        );
-
-
         updateTimestamp();
 
 
-        /*
-           Successful status.
-        */
-
         setTextAny(
             [
+                "trend",
                 "priceStatus",
                 "status",
                 "marketStatus"
@@ -2789,11 +2295,6 @@ async function loadMarketData() {
             "EUR/USD DASHBOARD UPDATE COMPLETE"
         );
 
-
-        console.log(
-            "================================="
-        );
-
     }
 
 
@@ -2804,17 +2305,6 @@ async function loadMarketData() {
 
 
         showDashboardError(
-            error
-        );
-
-
-        /*
-           This is deliberately visible
-           during testing.
-        */
-
-        console.error(
-            "FULL DASHBOARD ERROR:",
             error
         );
 
@@ -2840,16 +2330,8 @@ function startDashboard() {
     );
 
 
-    /*
-       Initial load.
-    */
-
     loadMarketData();
 
-
-    /*
-       Repeat every 15 minutes.
-    */
 
     setInterval(
         loadMarketData,
