@@ -1307,18 +1307,14 @@ async function refreshDashboard() {
 
     } catch (error) {
 
-        console.error(
-            "DASHBOARD ERROR:",
-            error
-        );
+    console.error("DASHBOARD ERROR:", error);
 
+    setText(
+        "trend",
+        "ERROR: " + error.message
+    );
 
-        setText(
-            "trend",
-            "Candle data error — check console"
-        );
-
-    }
+}
 }
 
 
