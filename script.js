@@ -1,693 +1,491 @@
-const API_KEY = "8908432b6c784bc49aad6ccf64845991";
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EUR/USD Sniper Dashboard v3</title>
 
-const SYMBOL = "EUR/USD";
-
-let marketData = {
-    h1: null,
-    m15: null,
-    m5: null
-};
-
-
-// =====================================================
-// MAIN DASHBOARD REFRESH
-// =====================================================
-
-async function refreshDashboard() {
-
-    const priceElement = document.getElementById("price");
-    const trendElement = document.getElementById("trend");
-
-    try {
-
-        priceElement.innerText = "Loading...";
-
-        // Get live price
-        const priceResponse = await fetch(
-            `https://api.twelvedata.com/price?symbol=${SYMBOL}&apikey=${API_KEY}`
-        );
-
-        const priceData = await priceResponse.json();
-
-        if (priceData.status === "error") {
-            throw new Error(priceData.message);
-        }
-
-        const price = Number(priceData.price);
-
-        if (!Number.isFinite(price)) {
-            throw new Error("Invalid price received");
-        }
-
-        priceElement.innerText = price.toFixed(5);
-
-        trendElement.innerText =
-            "Twelve Data connected • Updated: " +
-            new Date().toLocaleTimeString();
-
-
-        // =================================================
-        // GET MULTI-TIMEFRAME CANDLES
-        // =================================================
-
-        const [h1, m15, m5] = await Promise.all([
-            getCandles("1h", 200),
-            getCandles("15min", 200),
-            getCandles("5min", 200)
-        ]);
-
-        marketData.h1 = h1;
-        marketData.m15 = m15;
-        marketData.m5 = m5;
-
-
-        // =================================================
-        // ANALYSE EACH TIMEFRAME
-        // =================================================
-
-        const h1Analysis = analyseTimeframe(h1);
-        const m15Analysis = analyseTimeframe(m15);
-        const m5Analysis = analyseTimeframe(m5);
-
-
-        // =================================================
-        // UPDATE MARKET STRUCTURE
-        // =================================================
-
-        updateMarketStructure(
-            h1Analysis,
-            m15Analysis,
-            m5Analysis
-        );
-
-
-        // =================================================
-        // SUPPORT / RESISTANCE
-        // =================================================
-
-        updateSupportResistance(
-            h1Analysis,
-            price
-        );
-
-
-        // =================================================
-        // INDICATORS
-        // =================================================
-
-        updateIndicators(
-            h1Analysis,
-            m15Analysis,
-            m5Analysis
-        );
-
-
-        console.log("Dashboard updated", {
-            price,
-            h1: h1Analysis,
-            m15: m15Analysis,
-            m5: m5Analysis
-        });
-
-    } catch (error) {
-
-        console.error("Dashboard error:", error);
-
-        priceElement.innerText = "Unavailable";
-
-        trendElement.innerText =
-            "Market data error: " + error.message;
-    }
-}
-
-
-// =====================================================
-// GET CANDLE DATA FROM TWELVE DATA
-// =====================================================
-
-async function getCandles(interval, outputsize) {
-
-    const url =
-        `https://api.twelvedata.com/time_series` +
-        `?symbol=${SYMBOL}` +
-        `&interval=${interval}` +
-        `&outputsize=${outputsize}` +
-        `&apikey=${API_KEY}`;
-
-    const response = await fetch(url);
-
-    const data = await response.json();
-
-    if (data.status === "error") {
-        throw new Error(
-            `${interval}: ${data.message}`
-        );
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      margin: 0;
+      padding: 15px;
     }
 
-    if (!data.values || data.values.length < 50) {
-        throw new Error(
-            `${interval}: Not enough candle data`
-        );
+    h1 {
+      text-align: center;
+      margin-bottom: 5px;
     }
 
-    // Twelve Data returns newest first.
-    // Reverse so calculations run oldest -> newest.
-    return data.values
-        .map(candle => ({
-            datetime: candle.datetime,
-            open: Number(candle.open),
-            high: Number(candle.high),
-            low: Number(candle.low),
-            close: Number(candle.close),
-            volume: Number(candle.volume || 0)
-        }))
-        .filter(candle =>
-            Number.isFinite(candle.open) &&
-            Number.isFinite(candle.high) &&
-            Number.isFinite(candle.low) &&
-            Number.isFinite(candle.close)
-        )
-        .reverse();
-}
-
-
-// =====================================================
-// TIMEFRAME ANALYSIS
-// =====================================================
-
-function analyseTimeframe(candles) {
-
-    const closes = candles.map(c => c.close);
-
-    const ema20 = calculateEMA(closes, 20);
-    const ema50 = calculateEMA(closes, 50);
-    const ema200 = calculateEMA(closes, 200);
-
-    const rsi = calculateRSI(closes, 14);
-
-    const last = candles[candles.length - 1];
-
-    const previous = candles[candles.length - 2];
-
-    const lastClose = last.close;
-
-    const lastEMA20 = ema20[ema20.length - 1];
-    const lastEMA50 = ema50[ema50.length - 1];
-    const lastEMA200 = ema200[ema200.length - 1];
-
-    const lastRSI = rsi[rsi.length - 1];
-
-    const supportResistance =
-        findSupportResistance(candles, lastClose);
-
-    const structure =
-        detectMarketStructure(candles);
-
-
-    let trend = "NEUTRAL";
-
-    if (
-        lastClose > lastEMA20 &&
-        lastEMA20 > lastEMA50
-    ) {
-        trend = "BULLISH";
+    .subtitle {
+      text-align: center;
+      color: #aaa;
+      margin-bottom: 20px;
     }
 
-    else if (
-        lastClose < lastEMA20 &&
-        lastEMA20 < lastEMA50
-    ) {
-        trend = "BEARISH";
+    .price {
+      font-size: 40px;
+      font-weight: bold;
+      text-align: center;
+      margin: 15px;
     }
 
-    return {
-
-        candles,
-
-        close: lastClose,
-
-        previousClose: previous.close,
-
-        ema20: lastEMA20,
-
-        ema50: lastEMA50,
-
-        ema200: lastEMA200,
-
-        rsi: lastRSI,
-
-        trend,
-
-        structure,
-
-        support1: supportResistance.support1,
-
-        support2: supportResistance.support2,
-
-        resistance1: supportResistance.resistance1,
-
-        resistance2: supportResistance.resistance2
-    };
-}
-
-
-// =====================================================
-// EMA
-// =====================================================
-
-function calculateEMA(values, period) {
-
-    if (values.length < period) {
-        return [];
+    .card {
+      background: #222;
+      padding: 18px;
+      margin: 15px 0;
+      border-radius: 12px;
     }
 
-    const multiplier = 2 / (period + 1);
-
-    const result = [];
-
-    let ema = 0;
-
-    // Initial SMA
-    for (let i = 0; i < period; i++) {
-        ema += values[i];
+    .card h2 {
+      margin-top: 0;
     }
 
-    ema = ema / period;
-
-    result.push(ema);
-
-    for (let i = period; i < values.length; i++) {
-
-        ema =
-            (values[i] - ema) * multiplier +
-            ema;
-
-        result.push(ema);
+    .status {
+      text-align: center;
+      color: #aaa;
+      margin-bottom: 10px;
     }
 
-    // Pad beginning so indexes line up
-    const padding =
-        new Array(period - 1).fill(null);
-
-    return padding.concat(result);
-}
-
-
-// =====================================================
-// RSI
-// =====================================================
-
-function calculateRSI(values, period = 14) {
-
-    if (values.length <= period) {
-        return [];
+    .timeframes {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
     }
 
-    const rsi = [];
-
-    let gains = 0;
-    let losses = 0;
-
-    for (let i = 1; i <= period; i++) {
-
-        const change =
-            values[i] - values[i - 1];
-
-        if (change >= 0) {
-            gains += change;
-        } else {
-            losses += Math.abs(change);
-        }
+    .timeframes button {
+      flex: 1;
+      padding: 12px 5px;
+      background: #333;
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      font-weight: bold;
     }
 
-    let averageGain = gains / period;
-    let averageLoss = losses / period;
-
-    let rs =
-        averageLoss === 0
-            ? 100
-            : averageGain / averageLoss;
-
-    let firstRSI =
-        averageLoss === 0
-            ? 100
-            : 100 - (100 / (1 + rs));
-
-    const padding =
-        new Array(period).fill(null);
-
-    rsi.push(firstRSI);
-
-    for (let i = period + 1; i < values.length; i++) {
-
-        const change =
-            values[i] - values[i - 1];
-
-        const gain =
-            change > 0 ? change : 0;
-
-        const loss =
-            change < 0 ? Math.abs(change) : 0;
-
-        averageGain =
-            ((averageGain * (period - 1)) + gain)
-            / period;
-
-        averageLoss =
-            ((averageLoss * (period - 1)) + loss)
-            / period;
-
-        if (averageLoss === 0) {
-            rsi.push(100);
-            continue;
-        }
-
-        rs = averageGain / averageLoss;
-
-        const currentRSI =
-            100 - (100 / (1 + rs));
-
-        rsi.push(currentRSI);
+    .timeframes button.active {
+      background: #555;
     }
 
-    return padding.concat(rsi);
-}
-
-
-// =====================================================
-// SUPPORT / RESISTANCE
-// =====================================================
-
-function findSupportResistance(candles, currentPrice) {
-
-    const lookback =
-        candles.slice(-100);
-
-    const swingHighs = [];
-    const swingLows = [];
-
-    for (let i = 2; i < lookback.length - 2; i++) {
-
-        const candle = lookback[i];
-
-        const isSwingHigh =
-            candle.high > lookback[i - 1].high &&
-            candle.high > lookback[i - 2].high &&
-            candle.high > lookback[i + 1].high &&
-            candle.high > lookback[i + 2].high;
-
-        const isSwingLow =
-            candle.low < lookback[i - 1].low &&
-            candle.low < lookback[i - 2].low &&
-            candle.low < lookback[i + 1].low &&
-            candle.low < lookback[i + 2].low;
-
-        if (isSwingHigh) {
-            swingHighs.push(candle.high);
-        }
-
-        if (isSwingLow) {
-            swingLows.push(candle.low);
-        }
+    .chart-container {
+      width: 100%;
+      height: 500px;
+      overflow: hidden;
+      border-radius: 10px;
+      background: #111;
     }
 
-
-    const resistances =
-        swingHighs
-            .filter(level => level > currentPrice)
-            .sort((a, b) => a - b);
-
-    const supports =
-        swingLows
-            .filter(level => level < currentPrice)
-            .sort((a, b) => b - a);
-
-
-    return {
-
-        resistance1:
-            resistances.length
-                ? resistances[0]
-                : null,
-
-        resistance2:
-            resistances.length > 1
-                ? resistances[1]
-                : null,
-
-        support1:
-            supports.length
-                ? supports[0]
-                : null,
-
-        support2:
-            supports.length > 1
-                ? supports[1]
-                : null
-    };
-}
-
-
-// =====================================================
-// MARKET STRUCTURE
-// =====================================================
-
-function detectMarketStructure(candles) {
-
-    const recent =
-        candles.slice(-30);
-
-    const highs =
-        [];
-
-    const lows =
-        [];
-
-    for (let i = 2; i < recent.length - 2; i++) {
-
-        if (
-            recent[i].high > recent[i - 1].high &&
-            recent[i].high > recent[i - 2].high &&
-            recent[i].high > recent[i + 1].high &&
-            recent[i].high > recent[i + 2].high
-        ) {
-            highs.push(recent[i].high);
-        }
-
-        if (
-            recent[i].low < recent[i - 1].low &&
-            recent[i].low < recent[i - 2].low &&
-            recent[i].low < recent[i + 1].low &&
-            recent[i].low < recent[i + 2].low
-        ) {
-            lows.push(recent[i].low);
-        }
+    .chart-container iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
     }
 
-
-    if (highs.length < 2 || lows.length < 2) {
-        return "NEUTRAL";
+    .level {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #333;
     }
 
-
-    const lastHigh =
-        highs[highs.length - 1];
-
-    const previousHigh =
-        highs[highs.length - 2];
-
-    const lastLow =
-        lows[lows.length - 1];
-
-    const previousLow =
-        lows[lows.length - 2];
-
-
-    if (
-        lastHigh > previousHigh &&
-        lastLow > previousLow
-    ) {
-        return "HIGHER HIGH / HIGHER LOW";
+    .level span:last-child {
+      text-align: right;
     }
 
-
-    if (
-        lastHigh < previousHigh &&
-        lastLow < previousLow
-    ) {
-        return "LOWER HIGH / LOWER LOW";
+    .muted {
+      color: #999;
     }
 
-
-    return "RANGE / TRANSITION";
-}
-
-
-// =====================================================
-// UPDATE MARKET STRUCTURE DISPLAY
-// =====================================================
-
-function updateMarketStructure(
-    h1,
-    m15,
-    m5
-) {
-
-    const card =
-        findCard("Market Structure");
-
-    if (!card) return;
-
-    const rows =
-        card.querySelectorAll(".level");
-
-    if (rows.length >= 3) {
-
-        rows[0].children[1].innerText =
-            h1.trend;
-
-        rows[1].children[1].innerText =
-            m15.structure;
-
-        rows[2].children[1].innerText =
-            m5.structure;
-    }
-}
-
-
-// =====================================================
-// UPDATE SUPPORT / RESISTANCE
-// =====================================================
-
-function updateSupportResistance(
-    analysis,
-    currentPrice
-) {
-
-    const card =
-        findCard("Support & Resistance");
-
-    if (!card) return;
-
-    const rows =
-        card.querySelectorAll(".level");
-
-    if (rows.length >= 4) {
-
-        rows[0].children[1].innerText =
-            formatPrice(analysis.resistance1);
-
-        rows[1].children[1].innerText =
-            formatPrice(analysis.resistance2);
-
-        rows[2].children[1].innerText =
-            formatPrice(analysis.support1);
-
-        rows[3].children[1].innerText =
-            formatPrice(analysis.support2);
-    }
-}
-
-
-// =====================================================
-// UPDATE INDICATORS
-// =====================================================
-
-function updateIndicators(
-    h1,
-    m15,
-    m5
-) {
-
-    const card =
-        findCard("Indicators");
-
-    if (!card) return;
-
-    const rows =
-        card.querySelectorAll(".level");
-
-    if (rows.length >= 4) {
-
-        rows[0].children[1].innerText =
-            formatRSI(h1.rsi);
-
-        rows[1].children[1].innerText =
-            formatRSI(m15.rsi);
-
-        rows[2].children[1].innerText =
-            formatRSI(m5.rsi);
-
-        rows[3].children[1].innerText =
-            "H1 EMA20 " +
-            formatPrice(h1.ema20) +
-            " | EMA50 " +
-            formatPrice(h1.ema50);
-    }
-}
-
-
-// =====================================================
-// FIND CARD BY TITLE
-// =====================================================
-
-function findCard(title) {
-
-    const cards =
-        document.querySelectorAll(".card");
-
-    for (const card of cards) {
-
-        const heading =
-            card.querySelector("h2");
-
-        if (
-            heading &&
-            heading.innerText
-                .toLowerCase()
-                .includes(title.toLowerCase())
-        ) {
-            return card;
-        }
+    .wait {
+      color: #ffc107;
+      font-weight: bold;
     }
 
-    return null;
-}
-
-
-// =====================================================
-// FORMATTING
-// =====================================================
-
-function formatPrice(value) {
-
-    if (!Number.isFinite(value)) {
-        return "—";
+    .refresh {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      border: 0;
+      border-radius: 8px;
+      background: #333;
+      color: white;
+      margin-top: 10px;
     }
 
-    return value.toFixed(5);
-}
-
-
-function formatRSI(value) {
-
-    if (!Number.isFinite(value)) {
-        return "—";
+    .section-note {
+      color: #aaa;
+      font-size: 14px;
     }
 
-    return value.toFixed(2);
-}
+    @media (max-width: 600px) {
+      .chart-container {
+        height: 420px;
+      }
+
+      .price {
+        font-size: 34px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>EUR/USD Sniper Dashboard</h1>
+
+  <div class="subtitle">
+    Live Market Analysis • A+ Setup Engine
+  </div>
 
 
-// =====================================================
-// START DASHBOARD
-// =====================================================
+  <!-- ================= LIVE PRICE ================= -->
 
-refreshDashboard();
+  <div class="card">
+
+    <h2>Live Price</h2>
+
+    <div class="price" id="price">
+      Loading...
+    </div>
+
+    <div class="status" id="trend">
+      Connecting to market data...
+    </div>
+
+  </div>
 
 
-// Refresh every 30 seconds
-setInterval(
-    refreshDashboard,
-    30000
-);
+  <!-- ================= LIVE CHART ================= -->
+
+  <div class="card">
+
+    <h2>Live EUR/USD Chart</h2>
+
+    <div class="timeframes">
+
+      <button
+        id="btn5"
+        onclick="changeChart('5')">
+        M5
+      </button>
+
+      <button
+        id="btn15"
+        onclick="changeChart('15')">
+        M15
+      </button>
+
+      <button
+        id="btn60"
+        class="active"
+        onclick="changeChart('60')">
+        H1
+      </button>
+
+    </div>
+
+
+    <div class="chart-container">
+
+      <iframe
+        id="tradingChart"
+        src="https://www.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=FX%3AEURUSD&interval=60&hidesidetoolbar=1&hidetoptoolbar=0&symboledit=1&saveimage=0&toolbarbg=f1f3f6&theme=dark&style=1&timezone=Asia%2FKolkata&withdateranges=1&hideideas=1&studies=%5B%5D&overrides=%7B%7D&locale=en"
+        allowtransparency="true"
+        scrolling="no">
+      </iframe>
+
+    </div>
+
+  </div>
+
+
+  <!-- ================= MARKET STRUCTURE ================= -->
+
+  <div class="card">
+
+    <h2>Market Structure</h2>
+
+    <div class="level">
+      <span>H1 Trend</span>
+      <span class="muted">Calculating...</span>
+    </div>
+
+    <div class="level">
+      <span>M15 Structure</span>
+      <span class="muted">Calculating...</span>
+    </div>
+
+    <div class="level">
+      <span>M5 Structure</span>
+      <span class="muted">Calculating...</span>
+    </div>
+
+  </div>
+
+
+  <!-- ================= SUPPORT / RESISTANCE ================= -->
+
+  <div class="card">
+
+    <h2>Support & Resistance</h2>
+
+    <div class="level">
+      <span>Resistance 1</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>Resistance 2</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>Support 1</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>Support 2</span>
+      <span class="muted">—</span>
+    </div>
+
+  </div>
+
+
+  <!-- ================= INDICATORS ================= -->
+
+  <div class="card">
+
+    <h2>Indicators</h2>
+
+    <div class="level">
+      <span>H1 RSI</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>M15 RSI</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>M5 RSI</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>EMA Structure</span>
+      <span class="muted">—</span>
+    </div>
+
+  </div>
+
+
+  <!-- ================= SNIPER SETUP ================= -->
+
+  <div class="card">
+
+    <h2>🎯 Sniper Setup</h2>
+
+    <p class="wait">
+      WAIT — Analysis engine coming next
+    </p>
+
+    <div class="level">
+      <span>Direction</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>Entry</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>Stop Loss</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>TP1</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>TP2</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>TP3</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>Risk / Reward</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>Validity</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>Trigger</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>Invalidation</span>
+      <span>—</span>
+    </div>
+
+  </div>
+
+
+  <!-- ================= PRO VERDICT ================= -->
+
+  <div class="card">
+
+    <h2>PRO VERDICT</h2>
+
+    <p class="wait">
+      WAIT — No A+ setup calculated yet.
+    </p>
+
+    <p class="section-note">
+      The engine will only issue a setup when the required
+      conditions are confirmed.
+    </p>
+
+  </div>
+
+
+  <!-- ================= NEWS ================= -->
+
+  <div class="card">
+
+    <h2>📰 News Filter</h2>
+
+    <div class="level">
+      <span>EUR High-Impact News</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>USD High-Impact News</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>Next Important Event</span>
+      <span>—</span>
+    </div>
+
+    <div class="level">
+      <span>Trading Risk</span>
+      <span>—</span>
+    </div>
+
+  </div>
+
+
+  <!-- ================= REFRESH ================= -->
+
+  <button
+    class="refresh"
+    onclick="refreshDashboard()">
+    REFRESH DASHBOARD
+  </button>
+
+
+  <!-- ================= TWELVE DATA SCRIPT ================= -->
+
+  <script src="script.js"></script>
+
+
+  <!-- ================= CHART CONTROLS ================= -->
+
+  <script>
+
+    function changeChart(interval) {
+
+      const chart =
+        document.getElementById("tradingChart");
+
+
+      /*
+       * IMPORTANT:
+       * Keep FX:EURUSD.
+       * This is the symbol that was working
+       * on your dashboard.
+       */
+
+      chart.src =
+        "https://www.tradingview.com/widgetembed/?" +
+        "frameElementId=tradingview_chart" +
+        "&symbol=FX%3AEURUSD" +
+        "&interval=" + interval +
+        "&hidesidetoolbar=1" +
+        "&hidetoptoolbar=0" +
+        "&symboledit=1" +
+        "&saveimage=0" +
+        "&toolbarbg=f1f3f6" +
+        "&theme=dark" +
+        "&style=1" +
+        "&timezone=Asia%2FKolkata" +
+        "&withdateranges=1" +
+        "&hideideas=1" +
+        "&studies=%5B%5D" +
+        "&overrides=%7B%7D" +
+        "&locale=en";
+
+
+      document
+        .getElementById("btn5")
+        .classList.remove("active");
+
+      document
+        .getElementById("btn15")
+        .classList.remove("active");
+
+      document
+        .getElementById("btn60")
+        .classList.remove("active");
+
+
+      if (interval === "5") {
+
+        document
+          .getElementById("btn5")
+          .classList.add("active");
+
+      }
+
+
+      if (interval === "15") {
+
+        document
+          .getElementById("btn15")
+          .classList.add("active");
+
+      }
+
+
+      if (interval === "60") {
+
+        document
+          .getElementById("btn60")
+          .classList.add("active");
+
+      }
+
+    }
+
+  </script>
+
+</body>
+</html>
