@@ -10,17 +10,25 @@
       background: #111;
       color: white;
       margin: 0;
-      padding: 20px;
+      padding: 15px;
     }
 
     h1 {
       text-align: center;
+      margin-bottom: 5px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #aaa;
+      margin-bottom: 20px;
     }
 
     .price {
       font-size: 40px;
+      font-weight: bold;
       text-align: center;
-      margin: 20px;
+      margin: 15px;
     }
 
     .card {
@@ -30,12 +38,84 @@
       border-radius: 12px;
     }
 
-    button {
+    .card h2 {
+      margin-top: 0;
+    }
+
+    .status {
+      text-align: center;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+
+    .timeframes {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .timeframes button {
+      flex: 1;
+      padding: 12px 5px;
+      background: #333;
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+
+    .timeframes button.active {
+      background: #555;
+    }
+
+    .chart-container {
+      width: 100%;
+      height: 500px;
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    .chart-container iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+    }
+
+    .level {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #333;
+    }
+
+    .muted {
+      color: #999;
+    }
+
+    .wait {
+      color: #ffc107;
+      font-weight: bold;
+    }
+
+    .refresh {
       width: 100%;
       padding: 15px;
       font-size: 18px;
       border: 0;
       border-radius: 8px;
+      background: #333;
+      color: white;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .chart-container {
+        height: 420px;
+      }
+
+      .price {
+        font-size: 34px;
+      }
     }
   </style>
 </head>
@@ -43,51 +123,180 @@
 <body>
 
   <h1>EUR/USD Sniper Dashboard</h1>
+  <div class="subtitle">Live Market Analysis</div>
 
+  <!-- LIVE PRICE -->
   <div class="card">
     <h2>Live Price</h2>
-    <div class="price" id="price">Loading...</div>
+
+    <div class="price" id="price">
+      Loading...
+    </div>
+
+    <div class="status" id="trend">
+      Connecting to market data...
+    </div>
   </div>
 
+  <!-- LIVE CHART -->
   <div class="card">
-    <h2>1H Market Structure</h2>
-    <p id="trend">Waiting for data...</p>
+
+    <h2>Live EUR/USD Chart</h2>
+
+    <div class="timeframes">
+      <button id="btn15" onclick="changeChart('15')">
+        M15
+      </button>
+
+      <button id="btn60" class="active" onclick="changeChart('60')">
+        H1
+      </button>
+
+      <button id="btn240" onclick="changeChart('240')">
+        H4
+      </button>
+    </div>
+
+    <div class="chart-container">
+      <iframe
+        id="tradingChart"
+        src="https://www.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=FXCM%3AEURUSD&interval=60&hidesidetoolbar=1&hidetoptoolbar=0&symboledit=1&saveimage=0&toolbarbg=f1f3f6&studies=%5B%5D&theme=dark&style=1&timezone=Asia%2FKolkata&withdateranges=1&hideideas=1&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en"
+        allowtransparency="true"
+        scrolling="no">
+      </iframe>
+    </div>
+
   </div>
 
+  <!-- MARKET STRUCTURE -->
   <div class="card">
-    <h2>30M Confirmation</h2>
-    <p>Waiting for analysis...</p>
+
+    <h2>Market Structure</h2>
+
+    <div class="level">
+      <span>H1 Trend</span>
+      <span class="muted">Calculating...</span>
+    </div>
+
+    <div class="level">
+      <span>M15 Structure</span>
+      <span class="muted">Calculating...</span>
+    </div>
+
+    <div class="level">
+      <span>M5 Structure</span>
+      <span class="muted">Calculating...</span>
+    </div>
+
   </div>
 
+  <!-- SUPPORT / RESISTANCE -->
   <div class="card">
-    <h2>5M Entry</h2>
-    <p>Waiting for sniper setup...</p>
+
+    <h2>Support & Resistance</h2>
+
+    <div class="level">
+      <span>Resistance 1</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>Resistance 2</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>Support 1</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>Support 2</span>
+      <span class="muted">—</span>
+    </div>
+
   </div>
 
+  <!-- INDICATORS -->
   <div class="card">
-    <h2>Trade Plan</h2>
-    <p>BUY Entry: —</p>
-    <p>SELL Entry: —</p>
+
+    <h2>Indicators</h2>
+
+    <div class="level">
+      <span>H1 RSI</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>M15 RSI</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>M5 RSI</span>
+      <span class="muted">—</span>
+    </div>
+
+    <div class="level">
+      <span>EMA Structure</span>
+      <span class="muted">—</span>
+    </div>
+
+  </div>
+
+  <!-- SNIPER SETUP -->
+  <div class="card">
+
+    <h2>🎯 Sniper Setup</h2>
+
+    <p class="wait">
+      WAIT — Analysis engine coming next
+    </p>
+
+    <p>Direction: —</p>
+    <p>Entry: —</p>
     <p>Stop Loss: —</p>
-    <p>Take Profit: —</p>
+    <p>TP1: —</p>
+    <p>TP2: —</p>
+    <p>TP3: —</p>
+    <p>Risk / Reward: —</p>
+    <p>Validity: —</p>
+    <p>Trigger: —</p>
+    <p>Invalidation: —</p>
+
   </div>
 
+  <!-- PRO VERDICT -->
   <div class="card">
-    <h2>News</h2>
-    <p>Economic news check: —</p>
+
+    <h2>PRO VERDICT</h2>
+
+    <p class="wait">
+      WAIT — No A+ setup calculated yet.
+    </p>
+
   </div>
 
-  <button onclick="refreshDashboard()">
+  <!-- NEWS -->
+  <div class="card">
+
+    <h2>📰 News Filter</h2>
+
+    <p>EUR high-impact news: —</p>
+    <p>USD high-impact news: —</p>
+    <p>Next important event: —</p>
+    <p>Trading risk: —</p>
+
+  </div>
+
+  <!-- REFRESH -->
+  <button class="refresh" onclick="refreshDashboard()">
     REFRESH DASHBOARD
-  </button><script src="script.js"></script>
+  </button>
+
+  <!-- KEEP OUR WORKING PRICE SCRIPT -->
+  <script src="script.js"></script>
 
   <script>
-    function refreshDashboard() {
-      document.getElementById("price").innerText = "Checking...";
-      document.getElementById("trend").innerText =
-        "Dashboard refreshed. Live data connection will be added next.";
-    }
-  </script>
 
-</body>
-</html>
+    function change
