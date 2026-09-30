@@ -113,11 +113,6 @@
       font-weight: bold;
     }
 
-    .neutral {
-      color: #ffc107;
-      font-weight: bold;
-    }
-
     .refresh {
       width: 100%;
       padding: 15px;
@@ -255,4 +250,211 @@
 
     <div class="level">
       <span>Support 2</span>
-      <span id="
+      <span id="support2" class="muted">—</span>
+    </div>
+
+  </div>
+
+
+  <!-- INDICATORS -->
+
+  <div class="card">
+
+    <h2>Indicators</h2>
+
+    <div class="level">
+      <span>H1 RSI</span>
+      <span id="h1Rsi">—</span>
+    </div>
+
+    <div class="level">
+      <span>M15 RSI</span>
+      <span id="m15Rsi">—</span>
+    </div>
+
+    <div class="level">
+      <span>M5 RSI</span>
+      <span id="m5Rsi">—</span>
+    </div>
+
+    <div class="level">
+      <span>EMA Structure</span>
+      <span id="emaStructure">—</span>
+    </div>
+
+  </div>
+
+
+  <!-- SNIPER SETUP -->
+
+  <div class="card">
+
+    <h2>🎯 Sniper Setup</h2>
+
+    <p id="setupStatus" class="wait">
+      WAIT — Analysis engine starting...
+    </p>
+
+    <div class="level">
+      <span>Direction</span>
+      <span id="direction">—</span>
+    </div>
+
+    <div class="level">
+      <span>Entry</span>
+      <span id="entry">—</span>
+    </div>
+
+    <div class="level">
+      <span>Stop Loss</span>
+      <span id="stopLoss">—</span>
+    </div>
+
+    <div class="level">
+      <span>TP1</span>
+      <span id="tp1">—</span>
+    </div>
+
+    <div class="level">
+      <span>TP2</span>
+      <span id="tp2">—</span>
+    </div>
+
+    <div class="level">
+      <span>TP3</span>
+      <span id="tp3">—</span>
+    </div>
+
+    <div class="level">
+      <span>Risk / Reward</span>
+      <span id="riskReward">—</span>
+    </div>
+
+    <div class="level">
+      <span>Validity</span>
+      <span id="validity">—</span>
+    </div>
+
+    <div class="level">
+      <span>Trigger</span>
+      <span id="trigger">—</span>
+    </div>
+
+    <div class="level">
+      <span>Invalidation</span>
+      <span id="invalidation">—</span>
+    </div>
+
+  </div>
+
+
+  <!-- PRO VERDICT -->
+
+  <div class="card">
+
+    <h2>PRO VERDICT</h2>
+
+    <p id="proVerdict" class="wait">
+      WAIT — Waiting for complete market analysis.
+    </p>
+
+    <p class="small">
+      The engine will only display a setup when the
+      required conditions are confirmed.
+    </p>
+
+  </div>
+
+
+  <!-- NEWS -->
+
+  <div class="card">
+
+    <h2>📰 News Filter</h2>
+
+    <div class="level">
+      <span>EUR High-Impact News</span>
+      <span id="eurNews">—</span>
+    </div>
+
+    <div class="level">
+      <span>USD High-Impact News</span>
+      <span id="usdNews">—</span>
+    </div>
+
+    <div class="level">
+      <span>Next Important Event</span>
+      <span id="nextEvent">—</span>
+    </div>
+
+    <div class="level">
+      <span>Trading Risk</span>
+      <span id="newsRisk">—</span>
+    </div>
+
+  </div>
+
+
+  <!-- REFRESH -->
+
+  <button
+    class="refresh"
+    onclick="refreshDashboard()">
+    REFRESH DASHBOARD
+  </button>
+
+
+  <!-- SCRIPT.JS -->
+
+  <script src="script.js"></script>
+
+
+  <!-- CHART CONTROLS -->
+
+  <script>
+
+    function changeChart(interval) {
+
+      const chart =
+        document.getElementById("tradingChart");
+
+      chart.src =
+        "https://www.tradingview.com/widgetembed/?" +
+        "frameElementId=tradingview_chart" +
+        "&symbol=FX%3AEURUSD" +
+        "&interval=" + interval +
+        "&hidesidetoolbar=1" +
+        "&hidetoptoolbar=0" +
+        "&symboledit=1" +
+        "&saveimage=0" +
+        "&toolbarbg=f1f3f6" +
+        "&theme=dark" +
+        "&style=1" +
+        "&timezone=Asia%2FKolkata" +
+        "&withdateranges=1" +
+        "&hideideas=1" +
+        "&studies=%5B%5D" +
+        "&overrides=%7B%7D" +
+        "&locale=en";
+
+      document.getElementById("btn5").classList.remove("active");
+      document.getElementById("btn15").classList.remove("active");
+      document.getElementById("btn60").classList.remove("active");
+
+      if (interval === "5") {
+        document.getElementById("btn5").classList.add("active");
+      }
+
+      if (interval === "15") {
+        document.getElementById("btn15").classList.add("active");
+      }
+
+      if (interval === "60") {
+        document.getElementById("btn60").classList.add("active");
+      }
+    }
+
+  </script>
+
+</body>
+</html>
