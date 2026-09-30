@@ -8,7 +8,7 @@ async function refreshDashboard() {
         priceElement.innerText = "Loading...";
 
         const response = await fetch(
-            `https://api.twelvedata.com/exchange_rate?symbol=EUR/USD&apikey=${API_KEY}`
+            `https://api.twelvedata.com/price?symbol=EUR/USD&apikey=${API_KEY}`
         );
 
         const data = await response.json();
@@ -17,7 +17,11 @@ async function refreshDashboard() {
             throw new Error(data.message);
         }
 
-        const price = Number(data.rate);
+        const price = Number(data.price);
+
+        if (!Number.isFinite(price)) {
+            throw new Error("Invalid price received");
+        }
 
         priceElement.innerText = price.toFixed(5);
 
@@ -26,7 +30,8 @@ async function refreshDashboard() {
             new Date().toLocaleTimeString();
 
     } catch (error) {
-        console.error(error);
+        console.error("Twelve Data error:", error);
+
         priceElement.innerText = "Unavailable";
         trendElement.innerText = "API connection error";
     }
