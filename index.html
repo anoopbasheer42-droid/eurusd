@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EUR/USD Sniper Dashboard</title>
+  <title>EUR/USD Sniper Dashboard v2</title>
 
   <style>
     body {
@@ -299,4 +299,44 @@
 
   <script>
 
-    function change
+    function changeChart(interval) {
+
+      const chart = document.getElementById("tradingChart");
+
+      chart.src =
+        "https://www.tradingview.com/widgetembed/?" +
+        "frameElementId=tradingview_chart" +
+        "&symbol=FXCM%3AEURUSD" +
+        "&interval=" + interval +
+        "&hidesidetoolbar=1" +
+        "&hidetoptoolbar=0" +
+        "&symboledit=1" +
+        "&saveimage=0" +
+        "&theme=dark" +
+        "&style=1" +
+        "&timezone=Asia%2FKolkata" +
+        "&withdateranges=1" +
+        "&hideideas=1" +
+        "&locale=en";
+
+      document.getElementById("btn15").classList.remove("active");
+      document.getElementById("btn60").classList.remove("active");
+      document.getElementById("btn240").classList.remove("active");
+
+      if (interval === "15") {
+        document.getElementById("btn15").classList.add("active");
+      }
+
+      if (interval === "60") {
+        document.getElementById("btn60").classList.add("active");
+      }
+
+      if (interval === "240") {
+        document.getElementById("btn240").classList.add("active");
+      }
+    }
+
+  </script>
+
+</body>
+</html>
