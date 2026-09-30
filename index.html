@@ -93,6 +93,7 @@
     .level span:last-child {
       text-align: right;
       max-width: 65%;
+      word-break: break-word;
     }
 
     .muted {
@@ -156,7 +157,7 @@
       Loading...
     </div>
 
-    <div class="status" id="trend">
+    <div class="status" id="priceStatus">
       Connecting to market data...
     </div>
 
@@ -198,7 +199,6 @@
 
     </div>
 
-
     <div class="chart-container">
 
       <iframe
@@ -221,22 +221,22 @@
 
     <div class="level">
       <span>H4 Trend</span>
-      <span class="muted">Calculating...</span>
+      <span id="h4Trend" class="muted">Calculating...</span>
     </div>
 
     <div class="level">
       <span>H1 Trend</span>
-      <span class="muted">Calculating...</span>
+      <span id="h1Trend" class="muted">Calculating...</span>
     </div>
 
     <div class="level">
       <span>M15 Structure</span>
-      <span class="muted">Calculating...</span>
+      <span id="m15Structure" class="muted">Calculating...</span>
     </div>
 
     <div class="level">
       <span>M5 Structure</span>
-      <span class="muted">Calculating...</span>
+      <span id="m5Structure" class="muted">Calculating...</span>
     </div>
 
   </div>
@@ -250,22 +250,22 @@
 
     <div class="level">
       <span>Resistance 1</span>
-      <span class="muted">—</span>
+      <span id="resistance1" class="muted">—</span>
     </div>
 
     <div class="level">
       <span>Resistance 2</span>
-      <span class="muted">—</span>
+      <span id="resistance2" class="muted">—</span>
     </div>
 
     <div class="level">
       <span>Support 1</span>
-      <span class="muted">—</span>
+      <span id="support1" class="muted">—</span>
     </div>
 
     <div class="level">
       <span>Support 2</span>
-      <span class="muted">—</span>
+      <span id="support2" class="muted">—</span>
     </div>
 
   </div>
@@ -279,27 +279,27 @@
 
     <div class="level">
       <span>H4 RSI</span>
-      <span class="muted">—</span>
+      <span id="h4Rsi" class="muted">—</span>
     </div>
 
     <div class="level">
       <span>H1 RSI</span>
-      <span class="muted">—</span>
+      <span id="h1Rsi" class="muted">—</span>
     </div>
 
     <div class="level">
       <span>M15 RSI</span>
-      <span class="muted">—</span>
+      <span id="m15Rsi" class="muted">—</span>
     </div>
 
     <div class="level">
       <span>M5 RSI</span>
-      <span class="muted">—</span>
+      <span id="m5Rsi" class="muted">—</span>
     </div>
 
     <div class="level">
       <span>EMA Structure</span>
-      <span class="muted">—</span>
+      <span id="emaStructure" class="muted">—</span>
     </div>
 
   </div>
@@ -311,58 +311,63 @@
 
     <h2>🎯 Sniper Setup</h2>
 
-    <p class="wait" id="sniperVerdict">
+    <p class="wait" id="sniperStatus">
       WAIT — Calculating...
     </p>
 
     <div class="level">
       <span>Direction</span>
-      <span>—</span>
+      <span id="direction">—</span>
     </div>
 
     <div class="level">
       <span>Entry</span>
-      <span>—</span>
+      <span id="entry">—</span>
     </div>
 
     <div class="level">
       <span>Stop Loss</span>
-      <span>—</span>
+      <span id="stopLoss">—</span>
     </div>
 
     <div class="level">
       <span>TP1</span>
-      <span>—</span>
+      <span id="tp1">—</span>
     </div>
 
     <div class="level">
       <span>TP2</span>
-      <span>—</span>
+      <span id="tp2">—</span>
     </div>
 
     <div class="level">
       <span>TP3</span>
-      <span>—</span>
+      <span id="tp3">—</span>
     </div>
 
     <div class="level">
       <span>Risk / Reward</span>
-      <span>—</span>
+      <span id="riskReward">—</span>
     </div>
 
     <div class="level">
       <span>Validity</span>
-      <span>—</span>
+      <span id="validity">—</span>
     </div>
 
     <div class="level">
       <span>Trigger</span>
-      <span>—</span>
+      <span id="trigger">—</span>
     </div>
 
     <div class="level">
       <span>Invalidation</span>
-      <span>—</span>
+      <span id="invalidation">—</span>
+    </div>
+
+    <div class="level">
+      <span>Setup Score</span>
+      <span id="setupScore">—</span>
     </div>
 
   </div>
@@ -378,7 +383,7 @@
       WAIT — Calculating multi-timeframe alignment...
     </p>
 
-    <p class="section-note">
+    <p class="section-note" id="proExplanation">
       H4 and H1 establish direction.
       M15 confirms the setup.
       M5 provides the sniper trigger.
@@ -395,151 +400,24 @@
 
     <div class="level">
       <span>EUR High-Impact News</span>
-      <span>—</span>
+      <span id="eurNews">NOT CHECKED</span>
     </div>
 
     <div class="level">
       <span>USD High-Impact News</span>
-      <span>—</span>
+      <span id="usdNews">NOT CHECKED</span>
+    </div>
+
+    <div class="level">
+      <span>Impact News</span>
+      <span id="newsFilter">NEWS CHECK REQUIRED</span>
     </div>
 
     <div class="level">
       <span>Next Important Event</span>
-      <span>—</span>
+      <span id="nextEvent">—</span>
     </div>
 
     <div class="level">
       <span>Trading Risk</span>
-      <span>—</span>
-    </div>
-
-  </div>
-
-
-  <!-- ================= REFRESH ================= -->
-
-  <button
-    class="refresh"
-    onclick="refreshDashboard()">
-    REFRESH DASHBOARD
-  </button>
-
-
-  <!-- ================= YOUR SCRIPT ================= -->
-
-  <script src="script.js"></script>
-
-
-  <!-- ================= CHART CONTROLS ================= -->
-
-  <script>
-
-    function changeChart(interval) {
-
-      const chart =
-        document.getElementById("tradingChart");
-
-
-      let tradingViewInterval = interval;
-
-
-      /*
-       * TradingView:
-       *
-       * 5   = M5
-       * 15  = M15
-       * 60  = H1
-       * 240 = H4
-       */
-
-      if (interval === "4H") {
-        tradingViewInterval = "240";
-      }
-
-
-      chart.src =
-        "https://www.tradingview.com/widgetembed/?" +
-        "frameElementId=tradingview_chart" +
-        "&symbol=FX%3AEURUSD" +
-        "&interval=" + tradingViewInterval +
-        "&hidesidetoolbar=1" +
-        "&hidetoptoolbar=0" +
-        "&symboledit=1" +
-        "&saveimage=0" +
-        "&toolbarbg=f1f3f6" +
-        "&theme=dark" +
-        "&style=1" +
-        "&timezone=Asia%2FKolkata" +
-        "&withdateranges=1" +
-        "&hideideas=1" +
-        "&studies=%5B%5D" +
-        "&overrides=%7B%7D" +
-        "&locale=en";
-
-
-      /*
-       * Remove active state
-       */
-
-      document
-        .getElementById("btn5")
-        .classList.remove("active");
-
-      document
-        .getElementById("btn15")
-        .classList.remove("active");
-
-      document
-        .getElementById("btn60")
-        .classList.remove("active");
-
-      document
-        .getElementById("btn240")
-        .classList.remove("active");
-
-
-      /*
-       * Add active state
-       */
-
-      if (interval === "5") {
-
-        document
-          .getElementById("btn5")
-          .classList.add("active");
-
-      }
-
-
-      if (interval === "15") {
-
-        document
-          .getElementById("btn15")
-          .classList.add("active");
-
-      }
-
-
-      if (interval === "60") {
-
-        document
-          .getElementById("btn60")
-          .classList.add("active");
-
-      }
-
-
-      if (interval === "4H") {
-
-        document
-          .getElementById("btn240")
-          .classList.add("active");
-
-      }
-
-    }
-
-  </script>
-
-</body>
-</html>
+      <span id="tradingRisk">HIGH —
