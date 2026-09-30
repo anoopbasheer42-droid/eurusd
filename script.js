@@ -1,4 +1,4 @@
-const API_KEY = "64353934aaac4dff96dc06f66c4cef85";
+const API_KEY = "8908432b6c784bc49aad6ccf64845991";
 
 async function refreshDashboard() {
     const priceElement = document.getElementById("price");
