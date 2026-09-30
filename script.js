@@ -500,12 +500,11 @@ function clusterLevels(
    PRO SUPPORT / RESISTANCE
    ========================================================= */
 
-function calculateSupportResistance(
-    candles
-) {
+function calculateSupportResistance(candles) {
 
-    if (!candles || candles.length < 30) {
+    const current = marketData.price;
 
+    if (!current || !candles || candles.length < 10) {
         return {
             resistance1: null,
             resistance2: null,
@@ -514,198 +513,122 @@ function calculateSupportResistance(
         };
     }
 
+    const data = candles.slice(-80);
 
-    const current =
-        candles[candles.length - 1].close;
+    const resistanceCandidates = [];
+    const supportCandidates = [];
 
+    for (let i = 2; i < data.length - 2; i++) {
 
-    const swings =
-        getSwingLevels(candles);
+        const c = data[i];
 
+        // Swing High
+        if (
+            c.high > data[i - 1].high &&
+            c.high > data[i - 2].high &&
+            c.high >= data[i + 1].high &&
+            c.high >= data[i + 2].high
+        ) {
+            if (c.high > current) {
+                resistanceCandidates.push(c.high);
+            }
+        }
 
-    /*
-     * Cluster swing highs/lows.
-     * This prevents one random wick from
-     * becoming a major level.
-     */
+        // Swing Low
+        if (
+            c.low < data[i - 1].low &&
+            c.low < data[i - 2].low &&
+            c.low <= data[i + 1].low &&
+            c.low <= data[i + 2].low
+        ) {
+            if (c.low < current) {
+                supportCandidates.push(c.low);
+            }
+        }
+    }
 
-    let resistanceLevels =
-        clusterLevels(
-            swings.highs,
-            0.00035
+    function clusterLevels(levels, tolerance = 0.00020) {
+
+        const sorted =
+            [...levels].sort((a, b) => a - b);
+
+        const clusters = [];
+
+        for (const level of sorted) {
+
+            if (!clusters.length) {
+                clusters.push([level]);
+                continue;
+            }
+
+            const lastCluster =
+                clusters[clusters.length - 1];
+
+            const average =
+                lastCluster.reduce(
+                    (sum, value) => sum + value,
+                    0
+                ) / lastCluster.length;
+
+            if (
+                Math.abs(level - average) <= tolerance
+            ) {
+                lastCluster.push(level);
+            } else {
+                clusters.push([level]);
+            }
+        }
+
+        return clusters.map(cluster =>
+            cluster.reduce(
+                (sum, value) => sum + value,
+                0
+            ) / cluster.length
         );
+    }
 
+    const resistanceLevels =
+        clusterLevels(resistanceCandidates);
 
-    let supportLevels =
-        clusterLevels(
-            swings.lows,
-            0.00035
-        );
+    const supportLevels =
+        clusterLevels(supportCandidates);
 
-
-    /*
-     * Only keep levels on the correct
-     * side of current price.
-     */
-
-    resistanceLevels =
+    const resistanceAbove =
         resistanceLevels
-            .filter(
-                level =>
-                    level > current
-            )
-            .sort(
-                (a, b) => a - b
-            );
+            .filter(level => level > current)
+            .sort((a, b) => a - b);
 
-
-    supportLevels =
+    const supportBelow =
         supportLevels
-            .filter(
-                level =>
-                    level < current
-            )
-            .sort(
-                (a, b) => b - a
-            );
-
-
-    /*
-     * Fallback to recent extreme levels.
-     */
-
-    const recent =
-        candles.slice(-80);
-
-
-    const recentHigh =
-        Math.max(
-            ...recent.map(
-                c => c.high
-            )
-        );
-
-
-    const recentLow =
-        Math.min(
-            ...recent.map(
-                c => c.low
-            )
-        );
-
-
-    if (
-        resistanceLevels.length === 0 &&
-        recentHigh > current
-    ) {
-
-        resistanceLevels.push(
-            recentHigh
-        );
-    }
-
-
-    if (
-        supportLevels.length === 0 &&
-        recentLow < current
-    ) {
-
-        supportLevels.push(
-            recentLow
-        );
-    }
-
-
-    /*
-     * If only one level exists,
-     * search the wider range.
-     */
-
-    if (
-        resistanceLevels.length < 2
-    ) {
-
-        const extra =
-            recent
-                .map(c => c.high)
-                .filter(
-                    h =>
-                        h > current &&
-                        !resistanceLevels.some(
-                            r =>
-                                Math.abs(
-                                    r - h
-                                ) < 0.00020
-                        )
-                )
-                .sort(
-                    (a, b) => a - b
-                );
-
-
-        for (const level of extra) {
-
-            if (
-                resistanceLevels.length >= 2
-            ) {
-                break;
-            }
-
-            resistanceLevels.push(level);
-        }
-    }
-
-
-    if (
-        supportLevels.length < 2
-    ) {
-
-        const extra =
-            recent
-                .map(c => c.low)
-                .filter(
-                    l =>
-                        l < current &&
-                        !supportLevels.some(
-                            s =>
-                                Math.abs(
-                                    s - l
-                                ) < 0.00020
-                        )
-                )
-                .sort(
-                    (a, b) => b - a
-                );
-
-
-        for (const level of extra) {
-
-            if (
-                supportLevels.length >= 2
-            ) {
-                break;
-            }
-
-            supportLevels.push(level);
-        }
-    }
-
+            .filter(level => level < current)
+            .sort((a, b) => b - a);
 
     return {
-
         resistance1:
-            resistanceLevels[0] || null,
+            resistanceAbove.length > 0
+                ? resistanceAbove[0]
+                : null,
 
         resistance2:
-            resistanceLevels[1] || null,
+            resistanceAbove.length > 1
+                ? resistanceAbove[1]
+                : null,
 
         support1:
-            supportLevels[0] || null,
+            supportBelow.length > 0
+                ? supportBelow[0]
+                : null,
 
         support2:
-            supportLevels[1] || null
+            supportBelow.length > 1
+                ? supportBelow[1]
+                : null
     };
 }
+            
+            
+        
+
 
 
 /* =========================================================
