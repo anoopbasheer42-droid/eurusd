@@ -1,3 +1,4 @@
+const API_KEY = "64353934aaac4dff96dc06f66c4cef85";
 
 async function refreshDashboard() {
     const priceElement = document.getElementById("price");
@@ -7,28 +8,27 @@ async function refreshDashboard() {
         priceElement.innerText = "Loading...";
 
         const response = await fetch(
-            "https://api.frankfurter.dev/v1/latest?base=EUR&symbols=USD"
+            `https://api.twelvedata.com/price?symbol=EUR/USD&apikey=${API_KEY}`
         );
 
-        if (!response.ok) {
-            throw new Error("Price request failed");
+        const data = await response.json();
+
+        if (data.status === "error") {
+            throw new Error(data.message);
         }
 
-        const data = await response.json();
-        const price = Number(data.rates.USD);
+        const price = Number(data.price);
 
         priceElement.innerText = price.toFixed(5);
 
         trendElement.innerText =
-            "EUR/USD reference rate connected • Updated: " +
+            "Twelve Data connected • Updated: " +
             new Date().toLocaleTimeString();
 
     } catch (error) {
         console.error(error);
-
         priceElement.innerText = "Unavailable";
-        trendElement.innerText =
-            "Unable to load EUR/USD data";
+        trendElement.innerText = "API connection error";
     }
 }
 
