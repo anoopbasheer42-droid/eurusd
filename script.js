@@ -8,7 +8,7 @@ async function refreshDashboard() {
         priceElement.innerText = "Loading...";
 
         const response = await fetch(
-            `https://api.twelvedata.com/price?symbol=EUR/USD&apikey=${API_KEY}`
+            `https://api.twelvedata.com/exchange_rate?symbol=EUR/USD&apikey=${API_KEY}`
         );
 
         const data = await response.json();
@@ -17,7 +17,7 @@ async function refreshDashboard() {
             throw new Error(data.message);
         }
 
-        const price = Number(data.price);
+        const price = Number(data.rate);
 
         priceElement.innerText = price.toFixed(5);
 
