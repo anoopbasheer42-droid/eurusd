@@ -1,6 +1,7 @@
 // ============================================================
 // EUR/USD SNIPER DASHBOARD
-// Market Structure + S/R + Indicators + News + Sniper + Scalp
+// Elite Market Structure + S/R + Indicators + News
+// A+ Sniper Engine + Elite Scalping Engine
 // ============================================================
 
 const API_KEY = "8908432b6c784bc49aad6ccf64845991";
@@ -18,14 +19,50 @@ let marketData = {};
 let newsClear = false;
 
 // ============================================================
+// ELITE SCALP SETTINGS
+// ============================================================
+
+const SCALP_SETTINGS = {
+
+  // Scoring
+  A_PLUS_SCORE: 85,
+  VALID_SCORE: 75,
+
+  // Minimum RR
+  MIN_RR: 2.0,
+
+  // M5 RSI
+  RSI_BULLISH_LEVEL: 50,
+  RSI_BEARISH_LEVEL: 50,
+
+  // Maximum scalp stop in pips
+  // EUR/USD: 1 pip = 0.00010
+  MAX_STOP_PIPS: 12,
+
+  // Minimum useful stop
+  MIN_STOP_PIPS: 2,
+
+  // Avoid chasing
+  MAX_EXTENSION_PIPS: 15,
+
+  // News protection
+  NEWS_LOCK_MINUTES: 120
+};
+
+// ============================================================
 // MAIN LOAD
 // ============================================================
 
 async function loadMarketData() {
+
   try {
+
     newsClear = false;
 
-    setText("priceStatus", "LOADING MARKET DATA...");
+    setText(
+      "priceStatus",
+      "LOADING MARKET DATA..."
+    );
 
     await fetchPrice();
     await loadCandles();
@@ -35,11 +72,22 @@ async function loadMarketData() {
 
     updateTechnicalAnalysis();
 
-    setText("priceStatus", "MARKET DATA LOADED");
+    setText(
+      "priceStatus",
+      "MARKET DATA LOADED"
+    );
 
   } catch (error) {
-    console.error("Market data error:", error);
-    setText("priceStatus", "DATA ERROR — CHECK API");
+
+    console.error(
+      "Market data error:",
+      error
+    );
+
+    setText(
+      "priceStatus",
+      "DATA ERROR — CHECK API"
+    );
   }
 }
 
@@ -48,7 +96,9 @@ async function loadMarketData() {
 // ============================================================
 
 function setText(id, value) {
-  const el = document.getElementById(id);
+
+  const el =
+    document.getElementById(id);
 
   if (el) {
     el.textContent = value;
@@ -56,6 +106,7 @@ function setText(id, value) {
 }
 
 function formatPrice(value) {
+
   if (
     value === null ||
     value === undefined ||
@@ -67,23 +118,72 @@ function formatPrice(value) {
   return Number(value).toFixed(5);
 }
 
+function pipDistance(a, b) {
+
+  if (
+    !Number.isFinite(a) ||
+    !Number.isFinite(b)
+  ) {
+    return null;
+  }
+
+  return Math.abs(a - b) / 0.00010;
+}
+
+function getLastClosedCandle(candles) {
+
+  if (
+    !candles ||
+    candles.length < 2
+  ) {
+    return null;
+  }
+
+  return candles[
+    candles.length - 2
+  ];
+}
+
+function getPreviousClosedCandle(candles) {
+
+  if (
+    !candles ||
+    candles.length < 3
+  ) {
+    return null;
+  }
+
+  return candles[
+    candles.length - 3
+  ];
+}
+
 // ============================================================
 // LIVE PRICE
 // ============================================================
 
 async function fetchPrice() {
-  const response = await fetch(PRICE_URL);
-  const data = await response.json();
+
+  const response =
+    await fetch(PRICE_URL);
+
+  const data =
+    await response.json();
 
   if (!data.price) {
-    throw new Error("Price unavailable");
+    throw new Error(
+      "Price unavailable"
+    );
   }
 
-  marketData.price = Number(data.price);
+  marketData.price =
+    Number(data.price);
 
   setText(
     "price",
-    formatPrice(marketData.price)
+    formatPrice(
+      marketData.price
+    )
   );
 }
 
@@ -91,7 +191,10 @@ async function fetchPrice() {
 // CANDLE DATA
 // ============================================================
 
-async function getCandles(interval, outputsize = 100) {
+async function getCandles(
+  interval,
+  outputsize = 100
+) {
 
   const url =
     `${TIME_SERIES_URL}?symbol=EUR/USD` +
@@ -99,48 +202,98 @@ async function getCandles(interval, outputsize = 100) {
     `&outputsize=${outputsize}` +
     `&apikey=${API_KEY}`;
 
-  const response = await fetch(url);
-  const data = await response.json();
+  const response =
+    await fetch(url);
+
+  const data =
+    await response.json();
 
   if (
     !data.values ||
     !Array.isArray(data.values)
   ) {
-    console.error("Candle API error:", data);
+
+    console.error(
+      "Candle API error:",
+      data
+    );
+
     return [];
   }
 
   return data.values
     .map(c => ({
-      datetime: c.datetime,
-      open: Number(c.open),
-      high: Number(c.high),
-      low: Number(c.low),
-      close: Number(c.close)
+
+      datetime:
+        c.datetime,
+
+      open:
+        Number(c.open),
+
+      high:
+        Number(c.high),
+
+      low:
+        Number(c.low),
+
+      close:
+        Number(c.close)
+
     }))
     .filter(c =>
+
       Number.isFinite(c.open) &&
       Number.isFinite(c.high) &&
       Number.isFinite(c.low) &&
       Number.isFinite(c.close)
+
     )
     .reverse();
 }
 
 async function loadCandles() {
 
-  const [h4, h1, m15, m5] =
+  const [
+    h4,
+    h1,
+    m15,
+    m5
+  ] =
     await Promise.all([
-      getCandles("4h", 100),
-      getCandles("1h", 100),
-      getCandles("15min", 100),
-      getCandles("5min", 100)
+
+      getCandles(
+        "4h",
+        100
+      ),
+
+      getCandles(
+        "1h",
+        100
+      ),
+
+      getCandles(
+        "15min",
+        100
+      ),
+
+      getCandles(
+        "5min",
+        100
+      )
+
     ]);
 
-  marketData.h4 = h4;
-  marketData.h1 = h1;
-  marketData.m15 = m15;
-  marketData.m5 = m5;
+  marketData.h4 =
+    h4;
+
+  marketData.h1 =
+    h1;
+
+  marketData.m15 =
+    m15;
+
+  marketData.m5 =
+    m5;
 
   if (
     !h4.length ||
@@ -148,6 +301,7 @@ async function loadCandles() {
     !m15.length ||
     !m5.length
   ) {
+
     throw new Error(
       "Insufficient candle data"
     );
@@ -155,7 +309,7 @@ async function loadCandles() {
 }
 
 // ============================================================
-// SWING HIGH DETECTION
+// SWING HIGH
 // ============================================================
 
 function getSwingHighs(
@@ -185,15 +339,21 @@ function getSwingHighs(
         candles[i].high <=
           candles[i + j].high
       ) {
+
         isSwing = false;
         break;
       }
     }
 
     if (isSwing) {
+
       swings.push({
+
         index: i,
-        price: candles[i].high
+
+        price:
+          candles[i].high
+
       });
     }
   }
@@ -202,7 +362,7 @@ function getSwingHighs(
 }
 
 // ============================================================
-// SWING LOW DETECTION
+// SWING LOW
 // ============================================================
 
 function getSwingLows(
@@ -232,15 +392,21 @@ function getSwingLows(
         candles[i].low >=
           candles[i + j].low
       ) {
+
         isSwing = false;
         break;
       }
     }
 
     if (isSwing) {
+
       swings.push({
+
         index: i,
-        price: candles[i].low
+
+        price:
+          candles[i].low
+
       });
     }
   }
@@ -265,16 +431,16 @@ function getStructure(candles) {
     candles.slice(-60);
 
   const swingHighs =
-    getSwingHighs(recent, 2);
+    getSwingHighs(
+      recent,
+      2
+    );
 
   const swingLows =
-    getSwingLows(recent, 2);
-
-  // ----------------------------------------------------------
-  // PRIMARY STRUCTURE
-  // Higher High + Higher Low = BULLISH
-  // Lower High + Lower Low = BEARISH
-  // ----------------------------------------------------------
+    getSwingLows(
+      recent,
+      2
+    );
 
   if (
     swingHighs.length >= 2 &&
@@ -305,6 +471,7 @@ function getStructure(candles) {
       latestHigh > previousHigh &&
       latestLow > previousLow
     ) {
+
       return "BULLISH";
     }
 
@@ -312,12 +479,13 @@ function getStructure(candles) {
       latestHigh < previousHigh &&
       latestLow < previousLow
     ) {
+
       return "BEARISH";
     }
   }
 
   // ----------------------------------------------------------
-  // CONSERVATIVE PRICE-MOVEMENT FALLBACK
+  // CONSERVATIVE FALLBACK
   // ----------------------------------------------------------
 
   const firstIndex =
@@ -327,7 +495,9 @@ function getStructure(candles) {
     );
 
   const firstClose =
-    recent[firstIndex].close;
+    recent[
+      firstIndex
+    ].close;
 
   const lastClose =
     recent[
@@ -335,22 +505,30 @@ function getStructure(candles) {
     ].close;
 
   const priceChange =
-    lastClose - firstClose;
+    lastClose -
+    firstClose;
 
   const rangeHigh =
     Math.max(
-      ...recent.map(c => c.high)
+      ...recent.map(
+        c => c.high
+      )
     );
 
   const rangeLow =
     Math.min(
-      ...recent.map(c => c.low)
+      ...recent.map(
+        c => c.low
+      )
     );
 
   const totalRange =
-    rangeHigh - rangeLow;
+    rangeHigh -
+    rangeLow;
 
-  if (totalRange <= 0) {
+  if (
+    totalRange <= 0
+  ) {
     return "RANGE";
   }
 
@@ -358,13 +536,19 @@ function getStructure(candles) {
     Math.abs(priceChange) /
     totalRange;
 
-  if (movementRatio >= 0.35) {
+  if (
+    movementRatio >= 0.35
+  ) {
 
-    if (priceChange > 0) {
+    if (
+      priceChange > 0
+    ) {
       return "BULLISH";
     }
 
-    if (priceChange < 0) {
+    if (
+      priceChange < 0
+    ) {
       return "BEARISH";
     }
   }
@@ -373,7 +557,7 @@ function getStructure(candles) {
 }
 
 // ============================================================
-// REMOVE CLUSTERED LEVELS
+// UNIQUE LEVELS
 // ============================================================
 
 function uniqueLevels(
@@ -383,17 +567,24 @@ function uniqueLevels(
 
   const result = [];
 
-  for (const level of levels) {
+  for (
+    const level of levels
+  ) {
 
     if (
       !result.some(
         existing =>
           Math.abs(
-            existing - level
-          ) < minimumDistance
+            existing -
+            level
+          ) <
+          minimumDistance
       )
     ) {
-      result.push(level);
+
+      result.push(
+        level
+      );
     }
   }
 
@@ -413,16 +604,18 @@ function calculateLevels(
     !candles ||
     candles.length < 10
   ) {
+
     return {
+
       resistance1: null,
       resistance2: null,
+
       support1: null,
       support2: null
+
     };
   }
 
-  // Use a larger historical window
-  // so we can find second-level S/R.
   const recent =
     candles.slice(-100);
 
@@ -430,50 +623,52 @@ function calculateLevels(
     getSwingHighs(
       recent,
       2
-    ).map(x => x.price);
+    ).map(
+      x => x.price
+    );
 
   const swingLows =
     getSwingLows(
       recent,
       2
-    ).map(x => x.price);
-
-  // ----------------------------------------------------------
-  // RESISTANCE
-  // Nearest above price first.
-  // ----------------------------------------------------------
+    ).map(
+      x => x.price
+    );
 
   let resistances =
     swingHighs
       .filter(
-        level => level > price
+        level =>
+          level > price
       )
       .sort(
-        (a, b) => a - b
+        (a, b) =>
+          a - b
       );
 
   resistances =
-    uniqueLevels(resistances);
-
-  // ----------------------------------------------------------
-  // SUPPORT
-  // Nearest below price first.
-  // ----------------------------------------------------------
+    uniqueLevels(
+      resistances
+    );
 
   let supports =
     swingLows
       .filter(
-        level => level < price
+        level =>
+          level < price
       )
       .sort(
-        (a, b) => b - a
+        (a, b) =>
+          b - a
       );
 
   supports =
-    uniqueLevels(supports);
+    uniqueLevels(
+      supports
+    );
 
   // ----------------------------------------------------------
-  // FALLBACK RESISTANCE
+  // RESISTANCE FALLBACK
   // ----------------------------------------------------------
 
   if (
@@ -482,12 +677,16 @@ function calculateLevels(
 
     const historicalHighs =
       recent
-        .map(c => c.high)
+        .map(
+          c => c.high
+        )
         .filter(
-          level => level > price
+          level =>
+            level > price
         )
         .sort(
-          (a, b) => a - b
+          (a, b) =>
+            a - b
         );
 
     for (
@@ -502,7 +701,10 @@ function calculateLevels(
             ) < 0.00025
         )
       ) {
-        resistances.push(level);
+
+        resistances.push(
+          level
+        );
       }
 
       if (
@@ -517,13 +719,14 @@ function calculateLevels(
     resistances =
       uniqueLevels(
         resistances.sort(
-          (a, b) => a - b
+          (a, b) =>
+            a - b
         )
       );
   }
 
   // ----------------------------------------------------------
-  // FALLBACK SUPPORT
+  // SUPPORT FALLBACK
   // ----------------------------------------------------------
 
   if (
@@ -532,12 +735,16 @@ function calculateLevels(
 
     const historicalLows =
       recent
-        .map(c => c.low)
+        .map(
+          c => c.low
+        )
         .filter(
-          level => level < price
+          level =>
+            level < price
         )
         .sort(
-          (a, b) => b - a
+          (a, b) =>
+            b - a
         );
 
     for (
@@ -552,7 +759,10 @@ function calculateLevels(
             ) < 0.00025
         )
       ) {
-        supports.push(level);
+
+        supports.push(
+          level
+        );
       }
 
       if (
@@ -567,23 +777,30 @@ function calculateLevels(
     supports =
       uniqueLevels(
         supports.sort(
-          (a, b) => b - a
+          (a, b) =>
+            b - a
         )
       );
   }
 
   return {
+
     resistance1:
-      resistances[0] || null,
+      resistances[0] ||
+      null,
 
     resistance2:
-      resistances[1] || null,
+      resistances[1] ||
+      null,
 
     support1:
-      supports[0] || null,
+      supports[0] ||
+      null,
 
     support2:
-      supports[1] || null
+      supports[1] ||
+      null
+
   };
 }
 
@@ -616,10 +833,18 @@ function calculateRSI(
       candles[i].close -
       candles[i - 1].close;
 
-    if (change >= 0) {
+    if (
+      change >= 0
+    ) {
+
       gains += change;
+
     } else {
-      losses += Math.abs(change);
+
+      losses +=
+        Math.abs(
+          change
+        );
     }
   }
 
@@ -654,14 +879,16 @@ function calculateRSI(
         averageGain *
         (period - 1) +
         gain
-      ) / period;
+      ) /
+      period;
 
     averageLoss =
       (
         averageLoss *
         (period - 1) +
         loss
-      ) / period;
+      ) /
+      period;
   }
 
   if (
@@ -676,7 +903,8 @@ function calculateRSI(
 
   return (
     100 -
-    100 / (1 + rs)
+    100 /
+      (1 + rs)
   );
 }
 
@@ -697,16 +925,21 @@ function calculateEMA(
   }
 
   const multiplier =
-    2 / (period + 1);
+    2 /
+    (period + 1);
 
   let ema =
     candles
-      .slice(0, period)
+      .slice(
+        0,
+        period
+      )
       .reduce(
         (sum, c) =>
           sum + c.close,
         0
-      ) / period;
+      ) /
+    period;
 
   for (
     let i = period;
@@ -766,6 +999,66 @@ function getEMAStructure(
   }
 
   return "RANGE";
+}
+
+// ============================================================
+// EMA DETAILS
+// ============================================================
+
+function getEMADetails(
+  candles
+) {
+
+  const ema20 =
+    calculateEMA(
+      candles,
+      20
+    );
+
+  const ema50 =
+    calculateEMA(
+      candles,
+      50
+    );
+
+  const closed =
+    getLastClosedCandle(
+      candles
+    );
+
+  if (
+    ema20 === null ||
+    ema50 === null ||
+    !closed
+  ) {
+
+    return {
+
+      ema20: null,
+      ema50: null,
+      direction: "RANGE",
+      priceAbove20: false
+
+    };
+  }
+
+  return {
+
+    ema20,
+
+    ema50,
+
+    direction:
+      ema20 > ema50
+        ? "BULLISH"
+        : ema20 < ema50
+          ? "BEARISH"
+          : "RANGE",
+
+    priceAbove20:
+      closed.close > ema20
+
+  };
 }
 
 // ============================================================
@@ -934,7 +1227,9 @@ function updateTechnicalAnalysis() {
     levels;
 
   runSniperEngine();
-  runScalpingEngine();
+
+  runEliteScalpingEngine();
+
   runProEngine();
 }
 
@@ -971,11 +1266,9 @@ function runSniperEngine() {
   const m5Rsi =
     marketData.m5Rsi;
 
-  // ----------------------------------------------------------
-  // NEWS
-  // ----------------------------------------------------------
-
-  if (!newsClear) {
+  if (
+    !newsClear
+  ) {
 
     setText(
       "sniperStatus",
@@ -1006,10 +1299,6 @@ function runSniperEngine() {
 
     return;
   }
-
-  // ----------------------------------------------------------
-  // H4
-  // ----------------------------------------------------------
 
   if (
     h4 === "RANGE"
@@ -1045,10 +1334,6 @@ function runSniperEngine() {
     return;
   }
 
-  // ----------------------------------------------------------
-  // H4 / H1 CONFLICT
-  // ----------------------------------------------------------
-
   if (
     h4 !== h1
   ) {
@@ -1070,7 +1355,7 @@ function runSniperEngine() {
 
     setText(
       "trigger",
-      `Wait for H1 to align ${h4}`
+      `Wait for H1 to align with H4 ${h4}`
     );
 
     setText(
@@ -1138,7 +1423,9 @@ function runSniperEngine() {
     score += 10;
   }
 
-  if (newsClear) {
+  if (
+    newsClear
+  ) {
     score += 10;
   }
 
@@ -1198,7 +1485,8 @@ function runSniperEngine() {
       entry - 0.0010;
 
     const riskDistance =
-      entry - stopLoss;
+      entry -
+      stopLoss;
 
     if (
       riskDistance <= 0
@@ -1220,11 +1508,11 @@ function runSniperEngine() {
 
     tp2 =
       entry +
-      riskDistance * 2.0;
+      riskDistance * 2;
 
     tp3 =
       entry +
-      riskDistance * 3.0;
+      riskDistance * 3;
 
   } else {
 
@@ -1233,7 +1521,8 @@ function runSniperEngine() {
       entry + 0.0010;
 
     const riskDistance =
-      stopLoss - entry;
+      stopLoss -
+      entry;
 
     if (
       riskDistance <= 0
@@ -1255,21 +1544,23 @@ function runSniperEngine() {
 
     tp2 =
       entry -
-      riskDistance * 2.0;
+      riskDistance * 2;
 
     tp3 =
       entry -
-      riskDistance * 3.0;
+      riskDistance * 3;
   }
 
   const risk =
     Math.abs(
-      entry - stopLoss
+      entry -
+      stopLoss
     );
 
   const reward =
     Math.abs(
-      tp2 - entry
+      tp2 -
+      entry
     );
 
   const rr =
@@ -1378,16 +1669,31 @@ function clearTradeFields() {
 }
 
 // ============================================================
-// SCALPING ENGINE
+// ELITE SCALPING ENGINE
 // ============================================================
 
-function runScalpingEngine() {
+function runEliteScalpingEngine() {
 
   const h1 =
     marketData.h1Trend;
 
+  const m15 =
+    marketData.m15Structure;
+
   const m5 =
     marketData.m5Structure;
+
+  const h1Candles =
+    marketData.h1;
+
+  const m15Candles =
+    marketData.m15;
+
+  const m5Candles =
+    marketData.m5;
+
+  const h1Rsi =
+    marketData.h1Rsi;
 
   const m5Rsi =
     marketData.m5Rsi;
@@ -1398,120 +1704,94 @@ function runScalpingEngine() {
   const levels =
     marketData.levels;
 
-  // ----------------------------------------------------------
-  // NEWS
-  // ----------------------------------------------------------
+  // ==========================================================
+  // NEWS HARD GATE
+  // ==========================================================
 
-  if (!newsClear) {
+  if (
+    !newsClear
+  ) {
 
-    setText(
-      "scalpVerdict",
-      "WAIT — NEWS FILTER NOT CONFIRMED"
+    setScalpWait(
+      "WAIT — NEWS FILTER ACTIVE",
+      "WAIT",
+      "High-impact news protection is active.",
+      "Wait until the news window is clear.",
+      "No scalp during the protected news window.",
+      "—"
     );
-
-    setText(
-      "scalpDirection",
-      "WAIT"
-    );
-
-    setText(
-      "scalpValidity",
-      "High-impact news filter is not confirmed."
-    );
-
-    setText(
-      "scalpTrigger",
-      "No scalp before news confirmation"
-    );
-
-    setText(
-      "scalpInvalidation",
-      "News filter closed"
-    );
-
-    clearScalpFields();
 
     return;
   }
 
-  // ----------------------------------------------------------
-  // H1 RANGE
-  // ----------------------------------------------------------
+  // ==========================================================
+  // H1 RANGE HARD GATE
+  // ==========================================================
 
   if (
     h1 === "RANGE"
   ) {
 
-    setText(
-      "scalpVerdict",
-      "WAIT — H1 NO CLEAR DIRECTION"
+    setScalpWait(
+      "NO TRADE — H1 RANGE",
+      "WAIT",
+      "H1 does not provide a clean directional bias.",
+      "Wait for a confirmed H1 directional structure.",
+      "No scalp while H1 remains RANGE.",
+      "—"
     );
-
-    setText(
-      "scalpDirection",
-      "WAIT"
-    );
-
-    setText(
-      "scalpValidity",
-      "NEXT 2 HOURS — H1 IS RANGE"
-    );
-
-    setText(
-      "scalpTrigger",
-      "Wait for H1 directional structure"
-    );
-
-    setText(
-      "scalpInvalidation",
-      "No scalp while H1 remains RANGE"
-    );
-
-    clearScalpFields();
 
     return;
   }
 
-  // ----------------------------------------------------------
-  // IMPORTANT NEW CHECK
-  // H1 and M5 must agree before a scalp setup.
-  // ----------------------------------------------------------
+  // ==========================================================
+  // H1 EMA ALIGNMENT
+  // ==========================================================
+
+  const h1EMA =
+    getEMADetails(
+      h1Candles
+    );
+
+  const h1EmaAligned =
+    h1EMA.direction === h1;
+
+  // ==========================================================
+  // H1 / M15 HARD GATE
+  // ==========================================================
 
   if (
-    h1 !== m5
+    h1 !== m15
   ) {
 
-    setText(
-      "scalpVerdict",
-      "WAIT — H1/M5 CONFLICT"
+    setScalpWait(
+      "NO TRADE — H1/M15 CONFLICT",
+      "WAIT",
+      `H1 is ${h1}; M15 is ${m15}. The scalping bias is not aligned.`,
+      `Wait for M15 to confirm ${h1}.`,
+      "No scalp while H1 and M15 conflict.",
+      "—"
     );
 
-    setText(
-      "scalpDirection",
-      "WAIT"
-    );
+    return;
+  }
 
-    setText(
-      "scalpScore",
-      "30/100"
-    );
+  // ==========================================================
+  // M15 / M5 HARD GATE
+  // ==========================================================
 
-    setText(
-      "scalpValidity",
-      `H1 is ${h1}, while M5 is ${m5}.`
-    );
+  if (
+    m15 !== m5
+  ) {
 
-    setText(
-      "scalpTrigger",
-      `Wait for M5 to confirm ${h1}`
+    setScalpWait(
+      "NO TRADE — M15/M5 CONFLICT",
+      "WAIT",
+      `M15 is ${m15}; M5 is ${m5}. Entry timeframe is not aligned.`,
+      `Wait for M5 to confirm ${m15}.`,
+      "No scalp while M15 and M5 conflict.",
+      "—"
     );
-
-    setText(
-      "scalpInvalidation",
-      "No scalp entry while H1/M5 conflict remains"
-    );
-
-    clearScalpFields();
 
     return;
   }
@@ -1519,75 +1799,294 @@ function runScalpingEngine() {
   const direction =
     h1;
 
+  // ==========================================================
+  // CLOSED M5 CANDLE
+  // ==========================================================
+
+  const m5Last =
+    getLastClosedCandle(
+      m5Candles
+    );
+
+  const m5Previous =
+    getPreviousClosedCandle(
+      m5Candles
+    );
+
+  if (
+    !m5Last ||
+    !m5Previous
+  ) {
+
+    setScalpWait(
+      "NO TRADE — M5 DATA",
+      "WAIT",
+      "Not enough confirmed M5 candles.",
+      "Wait for a confirmed M5 candle.",
+      "M5 confirmation unavailable.",
+      "—"
+    );
+
+    return;
+  }
+
+  // ==========================================================
+  // M5 CANDLE CONFIRMATION
+  // ==========================================================
+
+  const bullishCandle =
+    m5Last.close >
+    m5Last.open;
+
+  const bearishCandle =
+    m5Last.close <
+    m5Last.open;
+
+  const bullishConfirmation =
+    direction === "BULLISH" &&
+    bullishCandle &&
+    m5Last.close >
+      m5Previous.high;
+
+  const bearishConfirmation =
+    direction === "BEARISH" &&
+    bearishCandle &&
+    m5Last.close <
+      m5Previous.low;
+
+  const m5Confirmation =
+    bullishConfirmation ||
+    bearishConfirmation;
+
+  // ==========================================================
+  // LIQUIDITY SWEEP
+  // ==========================================================
+
+  const bullishSweep =
+    direction === "BULLISH" &&
+    m5Last.low <
+      m5Previous.low &&
+    m5Last.close >
+      m5Previous.low;
+
+  const bearishSweep =
+    direction === "BEARISH" &&
+    m5Last.high >
+      m5Previous.high &&
+    m5Last.close <
+      m5Previous.high;
+
+  const liquiditySweep =
+    bullishSweep ||
+    bearishSweep;
+
+  // ==========================================================
+  // RSI CONFIRMATION
+  // ==========================================================
+
+  const rsiAligned =
+    direction === "BULLISH"
+      ? (
+          m5Rsi !== null &&
+          m5Rsi > 50
+        )
+      : (
+          m5Rsi !== null &&
+          m5Rsi < 50
+        );
+
+  // ==========================================================
+  // S/R LOCATION
+  // ==========================================================
+
+  let srLocation =
+    false;
+
+  if (
+    direction === "BULLISH"
+  ) {
+
+    if (
+      levels.support1 !== null
+    ) {
+
+      const distance =
+        pipDistance(
+          price,
+          levels.support1
+        );
+
+      srLocation =
+        distance !== null &&
+        distance <= 12;
+    }
+
+  } else {
+
+    if (
+      levels.resistance1 !== null
+    ) {
+
+      const distance =
+        pipDistance(
+          price,
+          levels.resistance1
+        );
+
+      srLocation =
+        distance !== null &&
+        distance <= 12;
+    }
+  }
+
+  // ==========================================================
+  // ANTI-CHASE
+  // ==========================================================
+
+  const recentM5 =
+    m5Candles.slice(-4);
+
+  const recentHigh =
+    Math.max(
+      ...recentM5.map(
+        c => c.high
+      )
+    );
+
+  const recentLow =
+    Math.min(
+      ...recentM5.map(
+        c => c.low
+      )
+    );
+
+  let extensionPips = 0;
+
+  if (
+    direction === "BULLISH"
+  ) {
+
+    extensionPips =
+      pipDistance(
+        price,
+        recentLow
+      );
+
+  } else {
+
+    extensionPips =
+      pipDistance(
+        price,
+        recentHigh
+      );
+  }
+
+  const notOverextended =
+    extensionPips !== null &&
+    extensionPips <=
+      SCALP_SETTINGS.MAX_EXTENSION_PIPS;
+
+  // ==========================================================
+  // SCORE
+  // ==========================================================
+
   let score = 0;
 
+  // H1 structure
+  score += 15;
+
+  // H1 EMA
+  if (
+    h1EmaAligned
+  ) {
+    score += 10;
+  }
+
+  // M15 structure
+  score += 15;
+
   // M5 structure
+  score += 15;
+
+  // M5 confirmation
   if (
-    m5 === direction
+    m5Confirmation
   ) {
-    score += 40;
+    score += 15;
   }
 
-  // M5 RSI
+  // S/R
   if (
-    direction === "BULLISH" &&
-    m5Rsi !== null &&
-    m5Rsi > 50
+    srLocation
   ) {
-    score += 30;
+    score += 10;
   }
 
+  // Liquidity
   if (
-    direction === "BEARISH" &&
-    m5Rsi !== null &&
-    m5Rsi < 50
+    liquiditySweep
   ) {
-    score += 30;
+    score += 5;
+  }
+
+  // RSI
+  if (
+    rsiAligned
+  ) {
+    score += 5;
   }
 
   // News
-  if (newsClear) {
-    score += 30;
-  }
+  score += 10;
 
   setText(
     "scalpScore",
     `${score}/100`
   );
 
+  // ==========================================================
+  // HARD GATE — EMA
+  // ==========================================================
+
   if (
-    score < 70
+    !h1EmaAligned
   ) {
 
-    setText(
-      "scalpVerdict",
-      `WAIT — SCALP SCORE ${score}/100`
+    setScalpWait(
+      "NO TRADE — H1 EMA CONFLICT",
+      "WAIT",
+      `H1 structure is ${direction}, but H1 EMA20/EMA50 is ${h1EMA.direction}.`,
+      `Wait for H1 EMA alignment with ${direction}.`,
+      "H1 structure and EMA direction disagree.",
+      `${score}/100`
     );
-
-    setText(
-      "scalpDirection",
-      direction
-    );
-
-    setText(
-      "scalpValidity",
-      "M5 confirmation is not strong enough."
-    );
-
-    setText(
-      "scalpTrigger",
-      `Wait for M5 ${direction} confirmation`
-    );
-
-    setText(
-      "scalpInvalidation",
-      "Scalp score below threshold"
-    );
-
-    clearScalpFields();
 
     return;
   }
+
+  // ==========================================================
+  // HARD GATE — M5 CONFIRMATION
+  // ==========================================================
+
+  if (
+    !m5Confirmation
+  ) {
+
+    setScalpWait(
+      "WAIT — M5 CONFIRMATION REQUIRED",
+      "WAIT",
+      `H1 + M15 + M5 structure are ${direction}, but the last closed M5 candle has not confirmed the entry.`,
+      `Wait for a closed M5 ${direction.toLowerCase()} confirmation candle.`,
+      "No entry without closed M5 confirmation.",
+      `${score}/100`
+    );
+
+    return;
+  }
+
+  // ==========================================================
+  // BUILD TRADE
+  // ==========================================================
 
   const entry =
     price;
@@ -1601,42 +2100,96 @@ function runScalpingEngine() {
   ) {
 
     sl =
-      levels.support1 ||
-      entry - 0.0006;
-
-    const riskDistance =
-      entry - sl;
+      levels.support1;
 
     if (
-      riskDistance <= 0
+      sl === null ||
+      sl >= entry
     ) {
-      clearScalpFields();
+
+      setScalpWait(
+        "NO TRADE — INVALID SUPPORT",
+        "WAIT",
+        "A valid support-based stop cannot be calculated.",
+        "Wait for a clean support structure.",
+        "Invalid long stop location.",
+        `${score}/100`
+      );
+
       return;
     }
-
-    tp1 =
-      entry +
-      riskDistance * 1.5;
-
-    tp2 =
-      entry +
-      riskDistance * 2.0;
 
   } else {
 
     sl =
-      levels.resistance1 ||
-      entry + 0.0006;
-
-    const riskDistance =
-      sl - entry;
+      levels.resistance1;
 
     if (
-      riskDistance <= 0
+      sl === null ||
+      sl <= entry
     ) {
-      clearScalpFields();
+
+      setScalpWait(
+        "NO TRADE — INVALID RESISTANCE",
+        "WAIT",
+        "A valid resistance-based stop cannot be calculated.",
+        "Wait for a clean resistance structure.",
+        "Invalid short stop location.",
+        `${score}/100`
+      );
+
       return;
     }
+  }
+
+  const riskDistance =
+    Math.abs(
+      entry - sl
+    );
+
+  const stopPips =
+    pipDistance(
+      entry,
+      sl
+    );
+
+  // ==========================================================
+  // STOP DISTANCE HARD GATE
+  // ==========================================================
+
+  if (
+    stopPips === null ||
+    stopPips <
+      SCALP_SETTINGS.MIN_STOP_PIPS ||
+    stopPips >
+      SCALP_SETTINGS.MAX_STOP_PIPS
+  ) {
+
+    setScalpWait(
+      "NO TRADE — STOP DISTANCE",
+      "WAIT",
+      `Calculated stop is ${stopPips !== null ? stopPips.toFixed(1) : "—"} pips. Elite scalp range is ${SCALP_SETTINGS.MIN_STOP_PIPS}–${SCALP_SETTINGS.MAX_STOP_PIPS} pips.`,
+      "Wait for a tighter, technically valid entry.",
+      "Stop distance outside scalp limits.",
+      `${score}/100`
+    );
+
+    return;
+  }
+
+  if (
+    direction === "BULLISH"
+  ) {
+
+    tp1 =
+      entry +
+      riskDistance * 1.5;
+
+    tp2 =
+      entry +
+      riskDistance * 2;
+
+  } else {
 
     tp1 =
       entry -
@@ -1644,7 +2197,7 @@ function runScalpingEngine() {
 
     tp2 =
       entry -
-      riskDistance * 2.0;
+      riskDistance * 2;
   }
 
   const risk =
@@ -1662,9 +2215,114 @@ function runScalpingEngine() {
       ? reward / risk
       : 0;
 
+  // ==========================================================
+  // RR HARD GATE
+  // ==========================================================
+
+  if (
+    rr <
+    SCALP_SETTINGS.MIN_RR
+  ) {
+
+    setScalpWait(
+      "NO TRADE — RR BELOW 1:2",
+      "WAIT",
+      `Available risk/reward is 1:${rr.toFixed(2)}.`,
+      "Wait for an entry with at least 1:2 RR.",
+      "Minimum scalp RR is 1:2.",
+      `${score}/100`
+    );
+
+    return;
+  }
+
+  // ==========================================================
+  // S/R HARD GATE
+  // ==========================================================
+
+  if (
+    !srLocation
+  ) {
+
+    setScalpWait(
+      "WAIT — WAIT FOR S/R LOCATION",
+      "WAIT",
+      direction === "BULLISH"
+        ? "Price is not sufficiently close to the identified support."
+        : "Price is not sufficiently close to the identified resistance.",
+      direction === "BULLISH"
+        ? "Wait for a pullback into support."
+        : "Wait for a retracement into resistance.",
+      "Do not chase price away from the level.",
+      `${score}/100`
+    );
+
+    return;
+  }
+
+  // ==========================================================
+  // ANTI-CHASE HARD GATE
+  // ==========================================================
+
+  if (
+    !notOverextended
+  ) {
+
+    setScalpWait(
+      "WAIT — PRICE EXTENDED",
+      "WAIT",
+      `Price is approximately ${extensionPips.toFixed(1)} pips from the recent M5 reference area.`,
+      "Wait for a pullback instead of chasing the move.",
+      "Entry too extended from the recent M5 structure.",
+      `${score}/100`
+    );
+
+    return;
+  }
+
+  // ==========================================================
+  // SCORE CLASSIFICATION
+  // ==========================================================
+
+  if (
+    score < SCALP_SETTINGS.VALID_SCORE
+  ) {
+
+    setScalpWait(
+      `NO TRADE — SCORE ${score}/100`,
+      "WAIT",
+      "The setup does not meet the minimum elite scalp quality threshold.",
+      `Need at least ${SCALP_SETTINGS.VALID_SCORE}/100.`,
+      "Setup quality below threshold.",
+      `${score}/100`
+    );
+
+    return;
+  }
+
+  if (
+    score < SCALP_SETTINGS.A_PLUS_SCORE
+  ) {
+
+    setScalpWait(
+      `WAIT — SETUP DEVELOPING ${score}/100`,
+      "WAIT",
+      `The setup has ${score}/100 but is below the A+ threshold of ${SCALP_SETTINGS.A_PLUS_SCORE}/100.`,
+      "Wait for additional confirmation before entry.",
+      "Not yet A+.",
+      `${score}/100`
+    );
+
+    return;
+  }
+
+  // ==========================================================
+  // A+ SCALP
+  // ==========================================================
+
   setText(
     "scalpVerdict",
-    `SCALP ${direction}`
+    `A+ SCALP — ${direction}`
   );
 
   setText(
@@ -1674,22 +2332,30 @@ function runScalpingEngine() {
 
   setText(
     "scalpEntry",
-    formatPrice(entry)
+    formatPrice(
+      entry
+    )
   );
 
   setText(
     "scalpSL",
-    formatPrice(sl)
+    formatPrice(
+      sl
+    )
   );
 
   setText(
     "scalpTP1",
-    formatPrice(tp1)
+    formatPrice(
+      tp1
+    )
   );
 
   setText(
     "scalpTP2",
-    formatPrice(tp2)
+    formatPrice(
+      tp2
+    )
   );
 
   setText(
@@ -1704,20 +2370,90 @@ function runScalpingEngine() {
 
   setText(
     "scalpValidity",
-    "NEXT 2 HOURS — H1/M5 aligned."
+    `NEXT 2 HOURS — A+ conditions aligned. H1 ${direction}, M15 ${direction}, M5 ${direction}.`
   );
 
   setText(
     "scalpTrigger",
-    `Wait for M5 ${direction} confirmation.`
+    liquiditySweep
+      ? `Liquidity sweep + M5 ${direction.toLowerCase()} confirmation. Entry only after closed M5 confirmation.`
+      : `M5 ${direction.toLowerCase()} confirmation closed. Execute only while structure remains valid.`
   );
 
   setText(
     "scalpInvalidation",
     direction === "BULLISH"
-      ? `Invalid below ${formatPrice(sl)}`
-      : `Invalid above ${formatPrice(sl)}`
+      ? `Invalid below ${formatPrice(sl)} or if H1/M15/M5 alignment breaks.`
+      : `Invalid above ${formatPrice(sl)} or if H1/M15/M5 alignment breaks.`
   );
+}
+
+// ============================================================
+// SCALP WAIT HELPER
+// ============================================================
+
+function setScalpWait(
+  verdict,
+  direction,
+  validity,
+  trigger,
+  invalidation,
+  score
+) {
+
+  setText(
+    "scalpVerdict",
+    verdict
+  );
+
+  setText(
+    "scalpDirection",
+    direction
+  );
+
+  setText(
+    "scalpEntry",
+    "—"
+  );
+
+  setText(
+    "scalpSL",
+    "—"
+  );
+
+  setText(
+    "scalpTP1",
+    "—"
+  );
+
+  setText(
+    "scalpTP2",
+    "—"
+  );
+
+  setText(
+    "scalpRR",
+    "—"
+  );
+
+  setText(
+    "scalpScore",
+    score
+  );
+
+  setText(
+    "scalpValidity",
+    validity
+  );
+
+  setText(
+    "scalpTrigger",
+    trigger
+  );
+
+  setText(
+    "scalpInvalidation",
+    invalidation
 }
 
 // ============================================================
@@ -1767,7 +2503,9 @@ function runProEngine() {
   const m15 =
     marketData.m15Structure;
 
-  if (!newsClear) {
+  if (
+    !newsClear
+  ) {
 
     setText(
       "proVerdict",
@@ -1863,7 +2601,9 @@ async function loadNews() {
     const data =
       await response.json();
 
-    processNews(data);
+    processNews(
+      data
+    );
 
   } catch (error) {
 
@@ -1893,7 +2633,9 @@ async function loadNews() {
 function processNews(data) {
 
   const events =
-    Array.isArray(data?.data)
+    Array.isArray(
+      data?.data
+    )
       ? data.data
       : [];
 
@@ -1901,56 +2643,68 @@ function processNews(data) {
     Date.now();
 
   const relevantEvents =
-    events.filter(event => {
+    events.filter(
+      event => {
 
-      const currency =
-        String(
-          event.currency ||
-          event.currency_code ||
-          ""
-        ).toUpperCase();
+        const currency =
+          String(
+            event.currency ||
+            event.currency_code ||
+            ""
+          ).toUpperCase();
 
-      const importance =
-        String(
-          event.importance ||
-          event.impact ||
-          ""
-        ).toLowerCase();
+        const importance =
+          String(
+            event.importance ||
+            event.impact ||
+            ""
+          ).toLowerCase();
 
-      return (
-        (
-          currency === "EUR" ||
-          currency === "USD"
-        ) &&
-        (
-          importance === "high" ||
-          importance === "3" ||
-          importance.includes("high")
-        )
-      );
-    });
+        return (
+
+          (
+            currency === "EUR" ||
+            currency === "USD"
+          )
+
+          &&
+
+          (
+            importance === "high" ||
+            importance === "3" ||
+            importance.includes("high")
+          )
+
+        );
+      }
+    );
 
   const upcoming =
     relevantEvents
-      .map(event => {
+      .map(
+        event => {
 
-        const dateValue =
-          event.datetime ||
-          event.date ||
-          event.time ||
-          event.releaseAt ||
-          event.release_at;
+          const dateValue =
+            event.datetime ||
+            event.date ||
+            event.time ||
+            event.releaseAt ||
+            event.release_at;
 
-        const timestamp =
-          Date.parse(
-            dateValue
-          );
+          const timestamp =
+            Date.parse(
+              dateValue
+            );
 
-        return {
-          ...event,
-          timestamp
-        };
-      })
+          return {
+
+            ...event,
+
+            timestamp
+
+          };
+        }
+      )
       .filter(
         event =>
           Number.isFinite(
@@ -1964,21 +2718,29 @@ function processNews(data) {
       );
 
   const eurEvents =
-    upcoming.filter(event =>
-      String(
-        event.currency ||
-        event.currency_code ||
-        ""
-      ).toUpperCase() === "EUR"
+    upcoming.filter(
+      event =>
+
+        String(
+          event.currency ||
+          event.currency_code ||
+          ""
+        ).toUpperCase()
+        ===
+        "EUR"
     );
 
   const usdEvents =
-    upcoming.filter(event =>
-      String(
-        event.currency ||
-        event.currency_code ||
-        ""
-      ).toUpperCase() === "USD"
+    upcoming.filter(
+      event =>
+
+        String(
+          event.currency ||
+          event.currency_code ||
+          ""
+        ).toUpperCase()
+        ===
+        "USD"
     );
 
   displayNewsEvents(
@@ -1997,7 +2759,9 @@ function processNews(data) {
         event.timestamp >= now
     );
 
-  if (!nextEvent) {
+  if (
+    !nextEvent
+  ) {
 
     newsClear = true;
 
@@ -2047,17 +2811,28 @@ function processNews(data) {
     eventDate.toLocaleString(
       "en-IN",
       {
+
         timeZone:
           "Asia/Kolkata",
 
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
+        day:
+          "2-digit",
 
-        hour: "2-digit",
-        minute: "2-digit",
+        month:
+          "short",
 
-        hour12: false
+        year:
+          "numeric",
+
+        hour:
+          "2-digit",
+
+        minute:
+          "2-digit",
+
+        hour12:
+          false
+
       }
     );
 
@@ -2067,19 +2842,17 @@ function processNews(data) {
   );
 
   // ----------------------------------------------------------
-  // NEWS LOCK
-  // 30 MINUTES BEFORE → 30 MINUTES AFTER
+  // NEWS PROTECTION
   // ----------------------------------------------------------
 
   const withinNewsWindow =
     minutesUntil >= -30 &&
     minutesUntil <= 30;
 
-  // Do not open a fresh setup
-  // if high-impact event is within 2 hours.
   const tooClose =
     minutesUntil >= 0 &&
-    minutesUntil <= 120;
+    minutesUntil <=
+      SCALP_SETTINGS.NEWS_LOCK_MINUTES;
 
   if (
     withinNewsWindow ||
@@ -2123,7 +2896,9 @@ function displayNewsEvents(
   events
 ) {
 
-  if (!events.length) {
+  if (
+    !events.length
+  ) {
 
     setText(
       id,
@@ -2155,17 +2930,28 @@ function displayNewsEvents(
     date.toLocaleString(
       "en-IN",
       {
+
         timeZone:
           "Asia/Kolkata",
 
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
+        day:
+          "2-digit",
 
-        hour: "2-digit",
-        minute: "2-digit",
+        month:
+          "short",
 
-        hour12: false
+        year:
+          "numeric",
+
+        hour:
+          "2-digit",
+
+        minute:
+          "2-digit",
+
+        hour12:
+          false
+
       }
     );
 
