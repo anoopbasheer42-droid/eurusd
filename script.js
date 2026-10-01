@@ -1,6 +1,6 @@
 /* =========================================================
    EUR/USD SNIPER DASHBOARD
-   LOW-REQUEST VERSION
+   LOW-REQUEST / STABLE VERSION
    ========================================================= */
 
 const API_KEY = "4ba3968e609544bf8990192fdf3ed970";
@@ -9,11 +9,9 @@ const SYMBOL = "EUR/USD";
 const TIME_SERIES_URL = "https://api.twelvedata.com/time_series";
 
 /*
-   IMPORTANT:
-   We deliberately refresh slowly to reduce Twelve Data
-   rate-limit problems.
+   Refresh every 5 minutes.
 */
-const REFRESH_INTERVAL = 300000; // 5 minutes
+const REFRESH_INTERVAL = 300000;
 
 let marketDataLoading = false;
 
@@ -32,6 +30,7 @@ let sniperSetupTime = null;
 let sniperSetupActive = false;
 
 function getISTTime() {
+
     return new Date().toLocaleTimeString("en-IN", {
         timeZone: "Asia/Kolkata",
         hour: "2-digit",
@@ -44,19 +43,28 @@ function getISTTime() {
 function startSniperSetup() {
 
     if (!sniperSetupActive) {
+
         sniperSetupTime = getISTTime();
+
         sniperSetupActive = true;
     }
 
-    setText("setupTime", sniperSetupTime);
+    setText(
+        "setupTime",
+        sniperSetupTime
+    );
 }
 
 function invalidateSniperSetup() {
 
     sniperSetupActive = false;
+
     sniperSetupTime = null;
 
-    setText("setupTime", "--");
+    setText(
+        "setupTime",
+        "--"
+    );
 }
 
 /* =========================================================
@@ -76,7 +84,9 @@ function num(value) {
 
     const n = parseFloat(value);
 
-    return Number.isFinite(n) ? n : null;
+    return Number.isFinite(n)
+        ? n
+        : null;
 }
 
 function pipSize() {
@@ -86,7 +96,11 @@ function pipSize() {
 
 function formatPrice(value) {
 
-    if (value === null || value === undefined || !Number.isFinite(value)) {
+    if (
+        value === null ||
+        value === undefined ||
+        !Number.isFinite(value)
+    ) {
         return "--";
     }
 
@@ -95,7 +109,11 @@ function formatPrice(value) {
 
 function formatNumber(value, decimals = 2) {
 
-    if (value === null || value === undefined || !Number.isFinite(value)) {
+    if (
+        value === null ||
+        value === undefined ||
+        !Number.isFinite(value)
+    ) {
         return "--";
     }
 
@@ -106,7 +124,10 @@ function formatNumber(value, decimals = 2) {
    TWELVE DATA
    ========================================================= */
 
-async function getCandles(interval, outputsize = 100) {
+async function getCandles(
+    interval,
+    outputsize = 100
+) {
 
     const url =
         `${TIME_SERIES_URL}?symbol=${encodeURIComponent(SYMBOL)}` +
@@ -114,45 +135,108 @@ async function getCandles(interval, outputsize = 100) {
         `&outputsize=${outputsize}` +
         `&apikey=${encodeURIComponent(API_KEY)}`;
 
-    const response = await fetch(url);
+    let response;
+
+    try {
+
+        response = await fetch(url);
+
+    } catch (networkError) {
+
+        throw new Error(
+            "Network error connecting to Twelve Data"
+        );
+    }
+
+    /*
+       Handle HTTP errors separately.
+    */
 
     if (!response.ok) {
+
+        if (response.status === 429) {
+
+            throw new Error(
+                "Twelve Data HTTP 429 - rate limit or API quota reached"
+            );
+        }
 
         throw new Error(
             `Twelve Data HTTP ${response.status}`
         );
     }
 
-    const data = await response.json();
+    let data;
 
-    if (data.status === "error") {
+    try {
+
+        data = await response.json();
+
+    } catch (jsonError) {
 
         throw new Error(
-            data.message || "Twelve Data API error"
+            "Invalid response from Twelve Data"
         );
     }
 
-    if (!data.values || !Array.isArray(data.values)) {
+    /*
+       Twelve Data can return an API error
+       inside a normal HTTP response.
+    */
+
+    if (data.status === "error") {
+
+        if (
+            data.code === 429 ||
+            String(data.message || "")
+                .toLowerCase()
+                .includes("rate")
+        ) {
+
+            throw new Error(
+                "Twelve Data rate limit or quota reached"
+            );
+        }
 
         throw new Error(
-            "No candle data returned"
+            data.message ||
+            "Twelve Data API error"
+        );
+    }
+
+    if (
+        !data.values ||
+        !Array.isArray(data.values)
+    ) {
+
+        throw new Error(
+            "No candle data returned by Twelve Data"
         );
     }
 
     return data.values
+
         .map(c => ({
+
             datetime: c.datetime,
+
             open: num(c.open),
+
             high: num(c.high),
+
             low: num(c.low),
+
             close: num(c.close)
+
         }))
+
         .filter(c =>
             c.open !== null &&
             c.high !== null &&
             c.low !== null &&
             c.close !== null
         )
+
         .sort(
             (a, b) =>
                 new Date(a.datetime) -
@@ -164,19 +248,34 @@ async function getCandles(interval, outputsize = 100) {
    TECHNICAL INDICATORS
    ========================================================= */
 
-function calculateEMA(candles, period) {
+function calculateEMA(
+    candles,
+    period
+) {
 
-    if (!candles || candles.length < period) {
+    if (
+        !candles ||
+        candles.length < period
+    ) {
         return null;
     }
 
-    const multiplier = 2 / (period + 1);
+    const multiplier =
+        2 / (period + 1);
 
-    let ema = candles
-        .slice(0, period)
-        .reduce((sum, c) => sum + c.close, 0) / period;
+    let ema =
+        candles
+            .slice(0, period)
+            .reduce(
+                (sum, c) => sum + c.close,
+                0
+            ) / period;
 
-    for (let i = period; i < candles.length; i++) {
+    for (
+        let i = period;
+        i < candles.length;
+        i++
+    ) {
 
         ema =
             (candles[i].close - ema) *
@@ -187,56 +286,87 @@ function calculateEMA(candles, period) {
     return ema;
 }
 
-function calculateRSI(candles, period = 14) {
+function calculateRSI(
+    candles,
+    period = 14
+) {
 
-    if (!candles || candles.length <= period) {
+    if (
+        !candles ||
+        candles.length <= period
+    ) {
         return null;
     }
 
     let gains = 0;
+
     let losses = 0;
 
-    for (let i = 1; i <= period; i++) {
+    for (
+        let i = 1;
+        i <= period;
+        i++
+    ) {
 
         const change =
             candles[i].close -
             candles[i - 1].close;
 
         if (change >= 0) {
+
             gains += change;
+
         } else {
+
             losses += Math.abs(change);
         }
     }
 
-    let avgGain = gains / period;
-    let avgLoss = losses / period;
+    let avgGain =
+        gains / period;
 
-    for (let i = period + 1; i < candles.length; i++) {
+    let avgLoss =
+        losses / period;
+
+    for (
+        let i = period + 1;
+        i < candles.length;
+        i++
+    ) {
 
         const change =
             candles[i].close -
             candles[i - 1].close;
 
-        const gain = Math.max(change, 0);
-        const loss = Math.max(-change, 0);
+        const gain =
+            Math.max(change, 0);
+
+        const loss =
+            Math.max(-change, 0);
 
         avgGain =
-            ((avgGain * (period - 1)) + gain) /
-            period;
+            (
+                (avgGain * (period - 1)) +
+                gain
+            ) / period;
 
         avgLoss =
-            ((avgLoss * (period - 1)) + loss) /
-            period;
+            (
+                (avgLoss * (period - 1)) +
+                loss
+            ) / period;
     }
 
     if (avgLoss === 0) {
+
         return 100;
     }
 
-    const rs = avgGain / avgLoss;
+    const rs =
+        avgGain / avgLoss;
 
-    return 100 - (100 / (1 + rs));
+    return 100 -
+        (100 / (1 + rs));
 }
 
 /* =========================================================
@@ -245,22 +375,33 @@ function calculateRSI(candles, period = 14) {
 
 function getTrend(candles) {
 
-    if (!candles || candles.length < 50) {
+    if (
+        !candles ||
+        candles.length < 50
+    ) {
         return "--";
     }
 
-    const ema20 = calculateEMA(candles, 20);
-    const ema50 = calculateEMA(candles, 50);
+    const ema20 =
+        calculateEMA(candles, 20);
 
-    if (ema20 === null || ema50 === null) {
+    const ema50 =
+        calculateEMA(candles, 50);
+
+    if (
+        ema20 === null ||
+        ema50 === null
+    ) {
         return "--";
     }
 
     if (ema20 > ema50) {
+
         return "BULLISH";
     }
 
     if (ema20 < ema50) {
+
         return "BEARISH";
     }
 
@@ -273,31 +414,47 @@ function getTrend(candles) {
 
 function getStructure(candles) {
 
-    if (!candles || candles.length < 10) {
+    if (
+        !candles ||
+        candles.length < 10
+    ) {
         return "--";
     }
 
-    const recent = candles.slice(-10);
+    const recent =
+        candles.slice(-10);
 
-    const highs = recent.map(c => c.high);
-    const lows = recent.map(c => c.low);
+    const highs =
+        recent.map(c => c.high);
+
+    const lows =
+        recent.map(c => c.low);
 
     const firstHigh =
-        Math.max(...highs.slice(0, 5));
+        Math.max(
+            ...highs.slice(0, 5)
+        );
 
     const lastHigh =
-        Math.max(...highs.slice(5));
+        Math.max(
+            ...highs.slice(5)
+        );
 
     const firstLow =
-        Math.min(...lows.slice(0, 5));
+        Math.min(
+            ...lows.slice(0, 5)
+        );
 
     const lastLow =
-        Math.min(...lows.slice(5));
+        Math.min(
+            ...lows.slice(5)
+        );
 
     if (
         lastHigh > firstHigh &&
         lastLow > firstLow
     ) {
+
         return "BULLISH";
     }
 
@@ -305,6 +462,7 @@ function getStructure(candles) {
         lastHigh < firstHigh &&
         lastLow < firstLow
     ) {
+
         return "BEARISH";
     }
 
@@ -317,36 +475,57 @@ function getStructure(candles) {
 
 function calculateSR(candles) {
 
-    if (!candles || candles.length < 20) {
+    if (
+        !candles ||
+        candles.length < 20
+    ) {
 
         return {
+
             r2: null,
+
             r1: null,
+
             s1: null,
+
             s2: null
         };
     }
 
-    const recent = candles.slice(-20);
+    const recent =
+        candles.slice(-20);
 
-    const highs = recent.map(c => c.high);
-    const lows = recent.map(c => c.low);
+    const highs =
+        recent.map(c => c.high);
+
+    const lows =
+        recent.map(c => c.low);
 
     const sortedHighs =
-        [...highs].sort((a, b) => b - a);
+        [...highs].sort(
+            (a, b) => b - a
+        );
 
     const sortedLows =
-        [...lows].sort((a, b) => a - b);
+        [...lows].sort(
+            (a, b) => a - b
+        );
 
     return {
 
-        r2: sortedHighs[1] || sortedHighs[0],
+        r2:
+            sortedHighs[1] ||
+            sortedHighs[0],
 
-        r1: sortedHighs[0],
+        r1:
+            sortedHighs[0],
 
-        s1: sortedLows[0],
+        s1:
+            sortedLows[0],
 
-        s2: sortedLows[1] || sortedLows[0]
+        s2:
+            sortedLows[1] ||
+            sortedLows[0]
     };
 }
 
@@ -356,28 +535,41 @@ function calculateSR(candles) {
 
 function getMomentum(candles) {
 
-    if (!candles || candles.length < 3) {
+    if (
+        !candles ||
+        candles.length < 3
+    ) {
         return "WAIT";
     }
 
-    const c1 = candles[candles.length - 2];
-    const c2 = candles[candles.length - 3];
+    const c1 =
+        candles[candles.length - 2];
 
-    const body = Math.abs(c1.close - c1.open);
+    const c2 =
+        candles[candles.length - 3];
 
-    const range = c1.high - c1.low;
+    const body =
+        Math.abs(
+            c1.close - c1.open
+        );
+
+    const range =
+        c1.high - c1.low;
 
     if (range === 0) {
+
         return "WAIT";
     }
 
-    const bodyRatio = body / range;
+    const bodyRatio =
+        body / range;
 
     if (
         c1.close < c1.open &&
         c1.close < c2.close &&
         bodyRatio >= 0.55
     ) {
+
         return "BEARISH";
     }
 
@@ -386,6 +578,7 @@ function getMomentum(candles) {
         c1.close > c2.close &&
         bodyRatio >= 0.55
     ) {
+
         return "BULLISH";
     }
 
@@ -399,14 +592,17 @@ function getMomentum(candles) {
 function rsiDirection(rsi) {
 
     if (rsi === null) {
+
         return "WAIT";
     }
 
     if (rsi >= 50) {
+
         return "BULLISH";
     }
 
     if (rsi < 50) {
+
         return "BEARISH";
     }
 
@@ -419,7 +615,10 @@ function rsiDirection(rsi) {
 
 function getEMADirection(candles) {
 
-    if (!candles || candles.length < 50) {
+    if (
+        !candles ||
+        candles.length < 50
+    ) {
         return "WAIT";
     }
 
@@ -429,15 +628,20 @@ function getEMADirection(candles) {
     const ema50 =
         calculateEMA(candles, 50);
 
-    if (ema20 === null || ema50 === null) {
+    if (
+        ema20 === null ||
+        ema50 === null
+    ) {
         return "WAIT";
     }
 
     if (ema20 > ema50) {
+
         return "BULLISH";
     }
 
     if (ema20 < ema50) {
+
         return "BEARISH";
     }
 
@@ -469,10 +673,15 @@ function getSession() {
        New York approximately:
        5:30 PM – 2:30 AM IST
 
-       DST can shift these by one hour.
+       Existing dashboard session logic
+       is intentionally preserved.
     */
 
-    if (hour >= 12 && hour < 22) {
+    if (
+        hour >= 12 &&
+        hour < 22
+    ) {
+
         return "ACTIVE";
     }
 
@@ -483,18 +692,20 @@ function getSession() {
    MARKET PRICE
    ========================================================= */
 
-function getLatestCompletedCandle(candles) {
+function getLatestCompletedCandle(
+    candles
+) {
 
-    if (!candles || candles.length < 2) {
+    if (
+        !candles ||
+        candles.length < 2
+    ) {
         return null;
     }
 
-    /*
-       Last candle can be the currently forming candle.
-       Therefore use the previous candle.
-    */
-
-    return candles[candles.length - 2];
+    return candles[
+        candles.length - 2
+    ];
 }
 
 function getMarketPrice(candles) {
@@ -503,6 +714,7 @@ function getMarketPrice(candles) {
         getLatestCompletedCandle(candles);
 
     if (!candle) {
+
         return null;
     }
 
@@ -521,8 +733,11 @@ function evaluateSniper(
     m5
 ) {
 
-    const h4Trend = getTrend(h4);
-    const h1Trend = getTrend(h1);
+    const h4Trend =
+        getTrend(h4);
+
+    const h1Trend =
+        getTrend(h1);
 
     const m15Structure =
         getStructure(m15);
@@ -577,24 +792,39 @@ function evaluateSniper(
         invalidateSniperSetup();
 
         return {
+
             status: "WAIT",
+
             direction: "--",
+
             entry: "--",
+
             sl: "--",
+
             tp1: "--",
+
             tp2: "--",
+
             tp3: "--",
+
             rr: "--",
+
             validity: "NO A+ SETUP",
+
             trigger: momentum,
-            invalidation: "Alignment or momentum missing",
+
+            invalidation:
+                "Alignment or momentum missing",
+
             score: 0
         };
     }
 
-    const entry = price;
+    const entry =
+        price;
 
-    const riskPips = 10;
+    const riskPips =
+        10;
 
     let sl;
     let tp1;
@@ -603,23 +833,39 @@ function evaluateSniper(
 
     if (direction === "SELL") {
 
-        sl = entry + riskPips * pipSize();
+        sl =
+            entry +
+            riskPips * pipSize();
 
-        tp1 = entry - riskPips * 2 * pipSize();
+        tp1 =
+            entry -
+            riskPips * 2 * pipSize();
 
-        tp2 = entry - riskPips * 3 * pipSize();
+        tp2 =
+            entry -
+            riskPips * 3 * pipSize();
 
-        tp3 = entry - riskPips * 4 * pipSize();
+        tp3 =
+            entry -
+            riskPips * 4 * pipSize();
 
     } else {
 
-        sl = entry - riskPips * pipSize();
+        sl =
+            entry -
+            riskPips * pipSize();
 
-        tp1 = entry + riskPips * 2 * pipSize();
+        tp1 =
+            entry +
+            riskPips * 2 * pipSize();
 
-        tp2 = entry + riskPips * 3 * pipSize();
+        tp2 =
+            entry +
+            riskPips * 3 * pipSize();
 
-        tp3 = entry + riskPips * 4 * pipSize();
+        tp3 =
+            entry +
+            riskPips * 4 * pipSize();
     }
 
     const score = 90;
@@ -668,6 +914,11 @@ function displaySniper(setup) {
 
     setText(
         "sniperStatus",
+        setup.status
+    );
+
+    setText(
+        "sniperStatusBig",
         setup.status
     );
 
@@ -770,7 +1021,8 @@ function evaluateScalp(
         momentum === "BEARISH"
     ) {
 
-        const entry = price;
+        const entry =
+            price;
 
         return {
 
@@ -780,11 +1032,14 @@ function evaluateScalp(
 
             entry,
 
-            sl: entry + 0.0007,
+            sl:
+                entry + 0.0007,
 
-            tp1: entry - 0.0014,
+            tp1:
+                entry - 0.0014,
 
-            tp2: entry - 0.0021,
+            tp2:
+                entry - 0.0021,
 
             rr: "1:2 / 1:3",
 
@@ -792,7 +1047,8 @@ function evaluateScalp(
 
             validity: "VALID",
 
-            trigger: "M5 bearish momentum",
+            trigger:
+                "M5 bearish momentum",
 
             invalidation:
                 "M5 bullish close"
@@ -807,7 +1063,8 @@ function evaluateScalp(
         momentum === "BULLISH"
     ) {
 
-        const entry = price;
+        const entry =
+            price;
 
         return {
 
@@ -817,11 +1074,14 @@ function evaluateScalp(
 
             entry,
 
-            sl: entry - 0.0007,
+            sl:
+                entry - 0.0007,
 
-            tp1: entry + 0.0014,
+            tp1:
+                entry + 0.0014,
 
-            tp2: entry + 0.0021,
+            tp2:
+                entry + 0.0021,
 
             rr: "1:2 / 1:3",
 
@@ -829,7 +1089,8 @@ function evaluateScalp(
 
             validity: "VALID",
 
-            trigger: "M5 bullish momentum",
+            trigger:
+                "M5 bullish momentum",
 
             invalidation:
                 "M5 bearish close"
@@ -965,6 +1226,7 @@ function evaluateTradeGate(
         m15Structure === "BEARISH" &&
         m5Structure === "BEARISH"
     ) {
+
         direction = "SELL";
     }
 
@@ -974,22 +1236,37 @@ function evaluateTradeGate(
         m15Structure === "BULLISH" &&
         m5Structure === "BULLISH"
     ) {
+
         direction = "BUY";
     }
 
     const allAligned =
         direction !== "--";
 
+    /*
+       FIX:
+       The previous chained comparison was
+       invalid JavaScript logic.
+
+       Correct direction-specific momentum check.
+    */
+
     const momentumOK =
-        momentum === direction === "SELL"
-            ? "BEARISH"
-            : momentum === "BULLISH";
+        direction === "SELL"
+            ? momentum === "BEARISH"
+            : direction === "BUY"
+                ? momentum === "BULLISH"
+                : false;
 
     const rsiOK =
         direction === "SELL"
-            ? rsi !== null && rsi < 50
+            ? rsi !== null &&
+              rsi < 50
+
             : direction === "BUY"
-                ? rsi !== null && rsi >= 50
+                ? rsi !== null &&
+                  rsi >= 50
+
                 : false;
 
     const gateOK =
@@ -1019,6 +1296,36 @@ function evaluateTradeGate(
         setText(
             "gateDirection",
             direction
+        );
+
+        setText(
+            "gateEntry",
+            "--"
+        );
+
+        setText(
+            "gateSL",
+            "--"
+        );
+
+        setText(
+            "gateTP1",
+            "--"
+        );
+
+        setText(
+            "gateTP2",
+            "--"
+        );
+
+        setText(
+            "gateRR",
+            "--"
+        );
+
+        setText(
+            "gateRisk",
+            "--"
         );
 
         return;
@@ -1063,11 +1370,6 @@ function evaluateTradeGate(
         direction === "SELL"
             ? price - 0.003
             : price + 0.003;
-
-    setText(
-        "gateEntry",
-        formatPrice(price)
-    );
 
     setText(
         "gateSL",
@@ -1130,69 +1432,98 @@ function displayChecklist(
     const direction =
         h4Trend === "BULLISH" &&
         h1Trend === "BULLISH"
+
             ? "BULLISH"
+
             :
+
         h4Trend === "BEARISH" &&
         h1Trend === "BEARISH"
+
             ? "BEARISH"
+
             : "--";
 
     setText(
         "checkSession",
         getSession() === "ACTIVE"
+
             ? "✓ Active London / New York session"
+
             : "— Active London / New York session"
     );
 
     setText(
         "checkHtf",
         direction !== "--"
+
             ? "✓ H4 + H1 directional alignment"
+
             : "— H4 + H1 directional alignment"
     );
 
     setText(
         "checkM15",
         m15Structure === direction
+
             ? "✓ M15 confirmation"
+
             : "— M15 confirmation"
     );
 
     setText(
         "checkM5",
         m5Structure === direction
+
             ? "✓ M5 confirmation"
+
             : "— M5 confirmation"
     );
 
     setText(
         "checkEMA",
         ema === direction
+
             ? "✓ M5 EMA20 / EMA50 alignment"
+
             : "— M5 EMA20 / EMA50 alignment"
     );
 
     setText(
         "checkRSI",
+
         (
             direction === "SELL" &&
             rsi !== null &&
             rsi < 50
-        ) ||
+        )
+
+        ||
+
         (
             direction === "BUY" &&
             rsi !== null &&
             rsi >= 50
         )
+
             ? "✓ M5 RSI confirmation"
+
             : "— M5 RSI confirmation"
     );
 
     setText(
         "checkMomentum",
+
         momentum === direction
+
             ? "✓ Completed M5 momentum candle"
+
             : "— Completed M5 momentum candle"
+    );
+
+    setText(
+        "checkExtension",
+        "— No excessive EMA extension"
     );
 
     setText(
@@ -1345,12 +1676,82 @@ function displayTechnicalData(
 }
 
 /* =========================================================
+   ERROR DISPLAY
+   ========================================================= */
+
+function displayDataError(error) {
+
+    console.error(
+        "EUR/USD Dashboard Error:",
+        error
+    );
+
+    setText(
+        "dataStatus",
+        "● DATA LOAD FAILED"
+    );
+
+    setText(
+        "eliteTradeGate",
+        "STAY AWAY"
+    );
+
+    setText(
+        "gateReason",
+        error.message
+    );
+
+    setText(
+        "gateSession",
+        getSession()
+    );
+
+    setText(
+        "gateDirection",
+        "--"
+    );
+
+    setText(
+        "gateEntry",
+        "--"
+    );
+
+    setText(
+        "gateSL",
+        "--"
+    );
+
+    setText(
+        "gateTP1",
+        "--"
+    );
+
+    setText(
+        "gateTP2",
+        "--"
+    );
+
+    setText(
+        "gateRR",
+        "--"
+    );
+
+    setText(
+        "gateRisk",
+        "--"
+    );
+
+    invalidateSniperSetup();
+}
+
+/* =========================================================
    MAIN DATA LOAD
    ========================================================= */
 
 async function loadMarketData() {
 
     if (marketDataLoading) {
+
         return;
     }
 
@@ -1364,44 +1765,88 @@ async function loadMarketData() {
     try {
 
         /*
-           IMPORTANT:
-
-           Requests are sequential rather than parallel.
-           This prevents four simultaneous requests hitting
-           Twelve Data at exactly the same time.
+           Keep requests sequential.
+           This avoids four simultaneous API calls.
         */
 
         const h4 =
-            await getCandles("4h", 100);
+            await getCandles(
+                "4h",
+                100
+            );
+
+        /*
+           Delay between API calls.
+        */
 
         await new Promise(
-            resolve => setTimeout(resolve, 1200)
+            resolve =>
+                setTimeout(
+                    resolve,
+                    1500
+                )
         );
 
         const h1 =
-            await getCandles("1h", 100);
+            await getCandles(
+                "1h",
+                100
+            );
 
         await new Promise(
-            resolve => setTimeout(resolve, 1200)
+            resolve =>
+                setTimeout(
+                    resolve,
+                    1500
+                )
         );
 
         const m15 =
-            await getCandles("15min", 100);
+            await getCandles(
+                "15min",
+                100
+            );
 
         await new Promise(
-            resolve => setTimeout(resolve, 1200)
+            resolve =>
+                setTimeout(
+                    resolve,
+                    1500
+                )
         );
 
         const m5 =
-            await getCandles("5min", 100);
+            await getCandles(
+                "5min",
+                100
+            );
+
+        /*
+           Only update stored market data
+           after ALL four requests succeed.
+        */
 
         marketData.h4 = h4;
+
         marketData.h1 = h1;
+
         marketData.m15 = m15;
+
         marketData.m5 = m5;
 
         const price =
             getMarketPrice(m5);
+
+        if (price === null) {
+
+            throw new Error(
+                "Unable to determine EUR/USD market price"
+            );
+        }
+
+        /* ============================================
+           TECHNICAL DATA
+           ============================================ */
 
         displayTechnicalData(
             price,
@@ -1410,6 +1855,10 @@ async function loadMarketData() {
             m15,
             m5
         );
+
+        /* ============================================
+           SNIPER
+           ============================================ */
 
         const sniper =
             evaluateSniper(
@@ -1420,7 +1869,13 @@ async function loadMarketData() {
                 m5
             );
 
-        displaySniper(sniper);
+        displaySniper(
+            sniper
+        );
+
+        /* ============================================
+           SCALP
+           ============================================ */
 
         const scalp =
             evaluateScalp(
@@ -1430,7 +1885,13 @@ async function loadMarketData() {
                 m5
             );
 
-        displayScalp(scalp);
+        displayScalp(
+            scalp
+        );
+
+        /* ============================================
+           ELITE TRADE GATE
+           ============================================ */
 
         evaluateTradeGate(
             price,
@@ -1440,12 +1901,20 @@ async function loadMarketData() {
             m5
         );
 
+        /* ============================================
+           CHECKLIST
+           ============================================ */
+
         displayChecklist(
             h4,
             h1,
             m15,
             m5
         );
+
+        /* ============================================
+           PRO VERDICT
+           ============================================ */
 
         setText(
             "proVerdict",
@@ -1456,24 +1925,9 @@ async function loadMarketData() {
 
     } catch (error) {
 
-        console.error(error);
-
-        setText(
-            "dataStatus",
-            "● DATA LOAD FAILED"
+        displayDataError(
+            error
         );
-
-        setText(
-            "eliteTradeGate",
-            "STAY AWAY"
-        );
-
-        setText(
-            "gateReason",
-            error.message
-        );
-
-        invalidateSniperSetup();
 
     } finally {
 
@@ -1487,11 +1941,16 @@ async function loadMarketData() {
 
 function manualRefresh() {
 
+    if (marketDataLoading) {
+
+        return;
+    }
+
     loadMarketData();
 }
 
 /* =========================================================
-   START
+   START DASHBOARD
    ========================================================= */
 
 document.addEventListener(
@@ -1501,8 +1960,7 @@ document.addEventListener(
         loadMarketData();
 
         /*
-           Refresh only every 5 minutes.
-           This is deliberately conservative.
+           Automatic refresh every 5 minutes.
         */
 
         setInterval(
