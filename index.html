@@ -1,10 +1,20 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
   <title>EUR/USD Sniper Dashboard</title>
 
+
   <style>
+
     body {
       font-family: Arial, sans-serif;
       background: #111;
@@ -62,6 +72,7 @@
       border: 0;
       border-radius: 8px;
       font-weight: bold;
+      cursor: pointer;
     }
 
     .timeframes button.active {
@@ -114,11 +125,22 @@
       background: #333;
       color: white;
       margin-top: 10px;
+      cursor: pointer;
     }
 
     .section-note {
       color: #aaa;
       font-size: 14px;
+    }
+
+    .error {
+      color: #ff5252;
+      font-weight: bold;
+    }
+
+    .success {
+      color: #00e676;
+      font-weight: bold;
     }
 
     @media (max-width: 600px) {
@@ -134,78 +156,114 @@
       .level span:last-child {
         max-width: 60%;
       }
+
     }
+
   </style>
+
 </head>
+
 
 <body>
 
-  <h1>EUR/USD Sniper Dashboard</h1>
+
+  <!-- =====================================================
+       HEADER
+       ===================================================== -->
+
+  <h1>
+    EUR/USD Sniper Dashboard
+  </h1>
 
   <div class="subtitle">
     H4 → H1 → M15 → M5 • A+ Sniper Engine
   </div>
 
 
-  <!-- ================= LIVE PRICE ================= -->
+  <!-- =====================================================
+       LIVE PRICE
+       ===================================================== -->
 
   <div class="card">
 
-    <h2>Live Price</h2>
+    <h2>
+      Live Price
+    </h2>
 
-    <div class="price" id="price">
+    <div
+      class="price"
+      id="price"
+    >
       Loading...
     </div>
 
-    <div class="status" id="priceStatus">
+    <div
+      class="status"
+      id="priceStatus"
+    >
       Connecting to market data...
     </div>
 
   </div>
 
 
-  <!-- ================= LIVE CHART ================= -->
+  <!-- =====================================================
+       LIVE CHART
+       ===================================================== -->
 
   <div class="card">
 
-    <h2>Live EUR/USD Chart</h2>
+    <h2>
+      Live EUR/USD Chart
+    </h2>
 
     <div class="timeframes">
 
       <button
         id="btn5"
-        onclick="changeChart('5')">
+        onclick="changeChart('5')"
+      >
         M5
       </button>
 
       <button
         id="btn15"
-        onclick="changeChart('15')">
+        onclick="changeChart('15')"
+      >
         M15
       </button>
 
       <button
         id="btn60"
         class="active"
-        onclick="changeChart('60')">
+        onclick="changeChart('60')"
+      >
         H1
       </button>
 
       <button
         id="btn240"
-        onclick="changeChart('4H')">
+        onclick="changeChart('240')"
+      >
         H4
       </button>
 
     </div>
 
+
     <div class="chart-container">
 
       <iframe
         id="tradingChart"
+
         src="https://www.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=FX%3AEURUSD&interval=60&hidesidetoolbar=1&hidetoptoolbar=0&symboledit=1&saveimage=0&toolbarbg=f1f3f6&theme=dark&style=1&timezone=Asia%2FKolkata&withdateranges=1&hideideas=1&studies=%5B%5D&overrides=%7B%7D&locale=en"
+
         allowtransparency="true"
-        scrolling="no">
+
+        scrolling="no"
+
+        title="EUR/USD TradingView Chart"
+      >
       </iframe>
 
     </div>
@@ -213,177 +271,440 @@
   </div>
 
 
-  <!-- ================= MARKET STRUCTURE ================= -->
+  <!-- =====================================================
+       MARKET STRUCTURE
+       ===================================================== -->
 
   <div class="card">
 
-    <h2>Market Structure</h2>
+    <h2>
+      Market Structure
+    </h2>
+
 
     <div class="level">
-      <span>H4 Trend</span>
-      <span id="h4Trend" class="muted">Calculating...</span>
+
+      <span>
+        H4 Trend
+      </span>
+
+      <span
+        id="h4Trend"
+        class="muted"
+      >
+        Calculating...
+      </span>
+
     </div>
 
-    <div class="level">
-      <span>H1 Trend</span>
-      <span id="h1Trend" class="muted">Calculating...</span>
-    </div>
 
     <div class="level">
-      <span>M15 Structure</span>
-      <span id="m15Structure" class="muted">Calculating...</span>
+
+      <span>
+        H1 Trend
+      </span>
+
+      <span
+        id="h1Trend"
+        class="muted"
+      >
+        Calculating...
+      </span>
+
     </div>
 
+
     <div class="level">
-      <span>M5 Structure</span>
-      <span id="m5Structure" class="muted">Calculating...</span>
+
+      <span>
+        M15 Structure
+      </span>
+
+      <span
+        id="m15Structure"
+        class="muted"
+      >
+        Calculating...
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        M5 Structure
+      </span>
+
+      <span
+        id="m5Structure"
+        class="muted"
+      >
+        Calculating...
+      </span>
+
     </div>
 
   </div>
 
 
-  <!-- ================= SUPPORT / RESISTANCE ================= -->
+  <!-- =====================================================
+       SUPPORT / RESISTANCE
+       ===================================================== -->
 
   <div class="card">
 
-    <h2>Support & Resistance</h2>
+    <h2>
+      Support & Resistance
+    </h2>
+
 
     <div class="level">
-      <span>Resistance 1</span>
-      <span id="resistance1" class="muted">—</span>
+
+      <span>
+        Resistance 1
+      </span>
+
+      <span
+        id="resistance1"
+        class="muted"
+      >
+        —
+      </span>
+
     </div>
 
-    <div class="level">
-      <span>Resistance 2</span>
-      <span id="resistance2" class="muted">—</span>
-    </div>
 
     <div class="level">
-      <span>Support 1</span>
-      <span id="support1" class="muted">—</span>
+
+      <span>
+        Resistance 2
+      </span>
+
+      <span
+        id="resistance2"
+        class="muted"
+      >
+        —
+      </span>
+
     </div>
 
+
     <div class="level">
-      <span>Support 2</span>
-      <span id="support2" class="muted">—</span>
+
+      <span>
+        Support 1
+      </span>
+
+      <span
+        id="support1"
+        class="muted"
+      >
+        —
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        Support 2
+      </span>
+
+      <span
+        id="support2"
+        class="muted"
+      >
+        —
+      </span>
+
     </div>
 
   </div>
 
 
-  <!-- ================= INDICATORS ================= -->
+  <!-- =====================================================
+       INDICATORS
+       ===================================================== -->
 
   <div class="card">
 
-    <h2>Indicators</h2>
+    <h2>
+      Indicators
+    </h2>
+
 
     <div class="level">
-      <span>H4 RSI</span>
-      <span id="h4Rsi" class="muted">—</span>
+
+      <span>
+        H4 RSI
+      </span>
+
+      <span
+        id="h4Rsi"
+        class="muted"
+      >
+        —
+      </span>
+
     </div>
 
-    <div class="level">
-      <span>H1 RSI</span>
-      <span id="h1Rsi" class="muted">—</span>
-    </div>
 
     <div class="level">
-      <span>M15 RSI</span>
-      <span id="m15Rsi" class="muted">—</span>
+
+      <span>
+        H1 RSI
+      </span>
+
+      <span
+        id="h1Rsi"
+        class="muted"
+      >
+        —
+      </span>
+
     </div>
 
-    <div class="level">
-      <span>M5 RSI</span>
-      <span id="m5Rsi" class="muted">—</span>
-    </div>
 
     <div class="level">
-      <span>EMA Structure</span>
-      <span id="emaStructure" class="muted">—</span>
+
+      <span>
+        M15 RSI
+      </span>
+
+      <span
+        id="m15Rsi"
+        class="muted"
+      >
+        —
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        M5 RSI
+      </span>
+
+      <span
+        id="m5Rsi"
+        class="muted"
+      >
+        —
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        EMA Structure
+      </span>
+
+      <span
+        id="emaStructure"
+        class="muted"
+      >
+        —
+      </span>
+
     </div>
 
   </div>
 
 
-  <!-- ================= SNIPER SETUP ================= -->
+  <!-- =====================================================
+       SNIPER SETUP
+       ===================================================== -->
 
   <div class="card">
 
-    <h2>🎯 Sniper Setup</h2>
+    <h2>
+      🎯 Sniper Setup
+    </h2>
 
-    <p class="wait" id="sniperStatus">
+
+    <p
+      class="wait"
+      id="sniperVerdict"
+    >
       WAIT — Calculating...
     </p>
 
-    <div class="level">
-      <span>Direction</span>
-      <span id="direction">—</span>
-    </div>
 
     <div class="level">
-      <span>Entry</span>
-      <span id="entry">—</span>
+
+      <span>
+        Direction
+      </span>
+
+      <span id="direction">
+        —
+      </span>
+
     </div>
 
-    <div class="level">
-      <span>Stop Loss</span>
-      <span id="stopLoss">—</span>
-    </div>
 
     <div class="level">
-      <span>TP1</span>
-      <span id="tp1">—</span>
+
+      <span>
+        Entry
+      </span>
+
+      <span id="entry">
+        —
+      </span>
+
     </div>
 
-    <div class="level">
-      <span>TP2</span>
-      <span id="tp2">—</span>
-    </div>
 
     <div class="level">
-      <span>TP3</span>
-      <span id="tp3">—</span>
+
+      <span>
+        Stop Loss
+      </span>
+
+      <span id="stopLoss">
+        —
+      </span>
+
     </div>
 
-    <div class="level">
-      <span>Risk / Reward</span>
-      <span id="riskReward">—</span>
-    </div>
 
     <div class="level">
-      <span>Validity</span>
-      <span id="validity">—</span>
+
+      <span>
+        TP1
+      </span>
+
+      <span id="tp1">
+        —
+      </span>
+
     </div>
 
-    <div class="level">
-      <span>Trigger</span>
-      <span id="trigger">—</span>
-    </div>
 
     <div class="level">
-      <span>Invalidation</span>
-      <span id="invalidation">—</span>
+
+      <span>
+        TP2
+      </span>
+
+      <span id="tp2">
+        —
+      </span>
+
     </div>
 
+
     <div class="level">
-      <span>Setup Score</span>
-      <span id="setupScore">—</span>
+
+      <span>
+        TP3
+      </span>
+
+      <span id="tp3">
+        —
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        Risk / Reward
+      </span>
+
+      <span id="riskReward">
+        —
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        Validity
+      </span>
+
+      <span id="validity">
+        —
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        Trigger
+      </span>
+
+      <span id="trigger">
+        —
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        Invalidation
+      </span>
+
+      <span id="invalidation">
+        —
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        Setup Score
+      </span>
+
+      <span id="setupScore">
+        —
+      </span>
+
     </div>
 
   </div>
 
 
-  <!-- ================= PRO VERDICT ================= -->
+  <!-- =====================================================
+       PRO VERDICT
+       ===================================================== -->
 
   <div class="card">
 
-    <h2>PRO VERDICT</h2>
+    <h2>
+      PRO VERDICT
+    </h2>
 
-    <p class="wait" id="proVerdict">
+
+    <p
+      class="wait"
+      id="proVerdict"
+    >
       WAIT — Calculating multi-timeframe alignment...
     </p>
 
-    <p class="section-note" id="proExplanation">
+
+    <p
+      class="section-note"
+      id="proExplanation"
+    >
       H4 and H1 establish direction.
       M15 confirms the setup.
       M5 provides the sniper trigger.
@@ -392,32 +713,225 @@
   </div>
 
 
-  <!-- ================= NEWS ================= -->
+  <!-- =====================================================
+       NEWS FILTER
+       ===================================================== -->
 
   <div class="card">
 
-    <h2>📰 News Filter</h2>
+    <h2>
+      📰 News Filter
+    </h2>
+
 
     <div class="level">
-      <span>EUR High-Impact News</span>
-      <span id="eurNews">NOT CHECKED</span>
+
+      <span>
+        EUR High-Impact News
+      </span>
+
+      <span id="eurNews">
+        NOT CHECKED
+      </span>
+
     </div>
 
-    <div class="level">
-      <span>USD High-Impact News</span>
-      <span id="usdNews">NOT CHECKED</span>
-    </div>
 
     <div class="level">
-      <span>Impact News</span>
-      <span id="newsFilter">NEWS CHECK REQUIRED</span>
+
+      <span>
+        USD High-Impact News
+      </span>
+
+      <span id="usdNews">
+        NOT CHECKED
+      </span>
+
     </div>
 
-    <div class="level">
-      <span>Next Important Event</span>
-      <span id="nextEvent">—</span>
-    </div>
 
     <div class="level">
-      <span>Trading Risk</span>
-      <span id="tradingRisk">HIGH —
+
+      <span>
+        Impact News
+      </span>
+
+      <span id="newsFilter">
+        NEWS CHECK REQUIRED
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        Next Important Event
+      </span>
+
+      <span id="nextEvent">
+        —
+      </span>
+
+    </div>
+
+
+    <div class="level">
+
+      <span>
+        Trading Risk
+      </span>
+
+      <span id="tradingRisk">
+        HIGH —
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <!-- =====================================================
+       LAST UPDATE
+       ===================================================== -->
+
+  <div class="card">
+
+    <div
+      class="status"
+      id="lastUpdate"
+    >
+      Waiting for market data...
+    </div>
+
+  </div>
+
+
+  <!-- =====================================================
+       MANUAL REFRESH
+       ===================================================== -->
+
+  <button
+    class="refresh"
+    onclick="loadMarketData()"
+  >
+    🔄 Refresh Market Data
+  </button>
+
+
+  <!-- =====================================================
+       CHART JAVASCRIPT
+       ===================================================== -->
+
+  <script>
+
+    function changeChart(interval) {
+
+      const iframe =
+        document.getElementById(
+          "tradingChart"
+        );
+
+
+      if (!iframe) {
+        return;
+      }
+
+
+      const url =
+        "https://www.tradingview.com/widgetembed/" +
+
+        "?frameElementId=tradingview_chart" +
+
+        "&symbol=FX%3AEURUSD" +
+
+        "&interval=" +
+        encodeURIComponent(interval) +
+
+        "&hidesidetoolbar=1" +
+
+        "&hidetoptoolbar=0" +
+
+        "&symboledit=1" +
+
+        "&saveimage=0" +
+
+        "&toolbarbg=f1f3f6" +
+
+        "&theme=dark" +
+
+        "&style=1" +
+
+        "&timezone=Asia%2FKolkata" +
+
+        "&withdateranges=1" +
+
+        "&hideideas=1" +
+
+        "&studies=%5B%5D" +
+
+        "&overrides=%7B%7D" +
+
+        "&locale=en";
+
+
+      iframe.src = url;
+
+
+      document
+        .querySelectorAll(
+          ".timeframes button"
+        )
+        .forEach(
+          button =>
+            button.classList.remove(
+              "active"
+            )
+        );
+
+
+      const buttonMap = {
+        "5": "btn5",
+        "15": "btn15",
+        "60": "btn60",
+        "240": "btn240"
+      };
+
+
+      const activeButton =
+        document.getElementById(
+          buttonMap[interval]
+        );
+
+
+      if (activeButton) {
+
+        activeButton.classList.add(
+          "active"
+        );
+
+      }
+
+    }
+
+  </script>
+
+
+  <!-- =====================================================
+       MAIN DASHBOARD JAVASCRIPT
+       
+       IMPORTANT:
+       This file MUST be named exactly:
+       
+       script.js
+       
+       and must be in the SAME GitHub folder
+       as this index.html.
+       ===================================================== -->
+
+  <script src="./script.js"></script>
+
+
+</body>
+
+</html>
