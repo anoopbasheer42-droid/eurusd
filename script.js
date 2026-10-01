@@ -1,8 +1,19 @@
 /* =========================================================
    EUR/USD SNIPER DASHBOARD
+   VERSION 3
+   ---------------------------------------------------------
+   A+ ENGINE:
    H4 → H1 → M15 → M5
-   A+ PRICE ACTION ENGINE
-   FIXED S/R + API RATE LIMIT VERSION
+
+   SCALPING ENGINE:
+   H1 → M5
+   Next 2 Hours
+
+   NEWS SAFETY GATE:
+   EUR + USD High Impact
+
+   API OPTIMIZATION:
+   Local caching prevents unnecessary Twelve Data calls.
    ========================================================= */
 
 
@@ -14,29 +25,79 @@ const API_KEY = "8908432b6c784bc49aad6ccf64845991";
 
 const SYMBOL = "EUR/USD";
 
-/*
-   15 minutes between automatic full updates.
-*/
-const REFRESH_MS = 900000;
+const TIMEZONE = "Asia/Kolkata";
 
 /*
-   Twelve Data free plans can have a per-minute limit.
-
-   We use ONE request per timeframe = 4 requests/update.
+   Normal dashboard refresh.
+   Cached timeframe data prevents this from consuming
+   4 API credits every time.
 */
-const REQUEST_DELAY_MS = 1200;
+const REFRESH_MS = 60000;
+
 
 /*
-   News is still closed until a real calendar
-   source is connected.
-*/
-const NEWS_CLEAR = false;
+   Twelve Data free plan:
+   8 API credits/minute.
 
+   Cache durations:
+*/
+const CACHE_TTL = {
+
+    h4: 15 * 60 * 1000,
+
+    h1: 5 * 60 * 1000,
+
+    m15: 5 * 60 * 1000,
+
+    m5: 60 * 1000
+
+};
+
+
+/*
+   News feed.
+
+   If this feed cannot be reached, the dashboard will
+   BLOCK trading rather than pretending news is clear.
+*/
+const NEWS_URL =
+    "https://nfs.faireconomy.media/ff_calendar_thisweek.json";
+
+
+/*
+   High-impact news safety windows.
+*/
+const NEWS_BLOCK_BEFORE_MINUTES = 30;
+
+const NEWS_BLOCK_AFTER_MINUTES = 15;
+
+
+/*
+   A+ engine.
+*/
 const MIN_SETUP_SCORE = 8;
 
+
+/*
+   Maximum price risk.
+*/
 const MAX_RISK = 0.0030;
 
+
+/*
+   Stop-loss buffer.
+*/
 const SL_BUFFER = 0.00015;
+
+
+/*
+   Scalping engine.
+
+   Less strict than A+ engine.
+*/
+const SCALP_MIN_SCORE = 5;
+
+const SCALP_RISK_MAX = 0.0012;
 
 
 /* =========================================================
@@ -58,6 +119,22 @@ let marketData = {
 
 };
 
+
+let newsData = {
+
+    checked: false,
+
+    available: false,
+
+    error: null,
+
+    events: [],
+
+    lastChecked: null
+
+};
+
+
 window.__dashboardLoading = false;
 
 
@@ -68,20 +145,29 @@ window.__dashboardLoading = false;
 function setTextAny(ids, value) {
 
     if (!Array.isArray(ids)) {
+
         ids = [ids];
+
     }
+
 
     for (const id of ids) {
 
-        const el = document.getElementById(id);
+        const el =
+            document.getElementById(id);
+
 
         if (el) {
 
-            el.innerText = value;
+            el.innerText =
+                value;
 
             return true;
+
         }
+
     }
+
 
     return false;
 }
@@ -93,9 +179,13 @@ function setTextAny(ids, value) {
 
 function num(value) {
 
-    const n = Number(value);
+    const n =
+        Number(value);
 
-    return Number.isFinite(n) ? n : null;
+
+    return Number.isFinite(n)
+        ? n
+        : null;
 }
 
 
@@ -108,7 +198,9 @@ function roundPrice(value) {
     ) {
 
         return "—";
+
     }
+
 
     return Number(value).toFixed(5);
 }
@@ -123,23 +215,127 @@ function roundRSI(value) {
     ) {
 
         return "—";
+
     }
+
 
     return Number(value).toFixed(1);
 }
 
 
 /* =========================================================
-   DELAY
+   CACHE
    ========================================================= */
 
-function sleep(ms) {
+function cacheKey(interval) {
 
-    return new Promise(resolve => {
+    return (
+        "eurusd_" +
+        interval +
+        "_v3"
+    );
 
-        setTimeout(resolve, ms);
+}
 
-    });
+
+function getCachedCandles(interval) {
+
+    try {
+
+        const raw =
+            localStorage.getItem(
+                cacheKey(interval)
+            );
+
+
+        if (!raw) {
+
+            return null;
+
+        }
+
+
+        const parsed =
+            JSON.parse(raw);
+
+
+        if (
+            !parsed ||
+            !parsed.timestamp ||
+            !Array.isArray(parsed.data)
+        ) {
+
+            return null;
+
+        }
+
+
+        const ttl =
+            interval === "4h"
+                ? CACHE_TTL.h4
+                : interval === "1h"
+                ? CACHE_TTL.h1
+                : interval === "15min"
+                ? CACHE_TTL.m15
+                : CACHE_TTL.m5;
+
+
+        if (
+            Date.now() -
+            parsed.timestamp >
+            ttl
+        ) {
+
+            return null;
+
+        }
+
+
+        return parsed.data;
+
+    }
+
+    catch {
+
+        return null;
+
+    }
+
+}
+
+
+function saveCachedCandles(
+    interval,
+    data
+) {
+
+    try {
+
+        localStorage.setItem(
+
+            cacheKey(interval),
+
+            JSON.stringify({
+
+                timestamp:
+                    Date.now(),
+
+                data
+
+            })
+
+        );
+
+    }
+
+    catch {
+
+        /*
+           Ignore localStorage errors.
+        */
+
+    }
+
 }
 
 
@@ -147,25 +343,61 @@ function sleep(ms) {
    FETCH CANDLES
    ========================================================= */
 
-async function getCandles(interval, outputsize = 100) {
+async function getCandles(
+    interval,
+    outputsize = 100
+) {
+
+    /*
+       First try cache.
+    */
+
+    const cached =
+        getCachedCandles(
+            interval
+        );
+
+
+    if (cached) {
+
+        console.log(
+            interval,
+            "USING CACHE"
+        );
+
+        return cached;
+
+    }
+
+
+    console.log(
+        interval,
+        "REQUESTING TWELVE DATA"
+    );
+
 
     const url =
+
         "https://api.twelvedata.com/time_series" +
+
         "?symbol=" +
         encodeURIComponent(SYMBOL) +
+
         "&interval=" +
         encodeURIComponent(interval) +
+
         "&outputsize=" +
         outputsize +
-        "&timezone=Asia/Kolkata" +
+
+        "&timezone=" +
+        TIMEZONE +
+
         "&apikey=" +
         encodeURIComponent(API_KEY);
 
 
-    console.log("Requesting:", interval);
-
-
-    const response = await fetch(url);
+    const response =
+        await fetch(url);
 
 
     if (!response.ok) {
@@ -173,16 +405,24 @@ async function getCandles(interval, outputsize = 100) {
         throw new Error(
             `${interval}: HTTP ${response.status}`
         );
+
     }
 
 
-    const data = await response.json();
+    const data =
+        await response.json();
 
 
-    console.log(interval, "API response:", data);
+    console.log(
+        interval,
+        "API:",
+        data
+    );
 
 
-    if (data.status === "error") {
+    if (
+        data.status === "error"
+    ) {
 
         throw new Error(
             `${interval}: ${
@@ -190,6 +430,7 @@ async function getCandles(interval, outputsize = 100) {
                 "Twelve Data API error"
             }`
         );
+
     }
 
 
@@ -201,37 +442,46 @@ async function getCandles(interval, outputsize = 100) {
         throw new Error(
             `No ${interval} candle data received`
         );
+
     }
 
 
-    const candles = data.values
+    const candles =
 
-        .map(c => ({
+        data.values
 
-            datetime: c.datetime,
+            .map(c => ({
 
-            open: num(c.open),
+                datetime:
+                    c.datetime,
 
-            high: num(c.high),
+                open:
+                    num(c.open),
 
-            low: num(c.low),
+                high:
+                    num(c.high),
 
-            close: num(c.close),
+                low:
+                    num(c.low),
 
-            volume: num(c.volume) || 0
+                close:
+                    num(c.close),
 
-        }))
+                volume:
+                    num(c.volume) || 0
 
-        .filter(c =>
+            }))
 
-            c.open !== null &&
-            c.high !== null &&
-            c.low !== null &&
-            c.close !== null
+            .filter(c =>
 
-        )
+                c.open !== null &&
+                c.high !== null &&
+                c.low !== null &&
+                c.close !== null
 
-        .reverse();
+            )
+
+            .reverse();
 
 
     if (!candles.length) {
@@ -239,10 +489,18 @@ async function getCandles(interval, outputsize = 100) {
         throw new Error(
             `No valid ${interval} candles`
         );
+
     }
 
 
+    saveCachedCandles(
+        interval,
+        candles
+    );
+
+
     return candles;
+
 }
 
 
@@ -250,7 +508,10 @@ async function getCandles(interval, outputsize = 100) {
    EMA
    ========================================================= */
 
-function calculateEMA(candles, period) {
+function calculateEMA(
+    candles,
+    period
+) {
 
     if (
         !candles ||
@@ -258,17 +519,20 @@ function calculateEMA(candles, period) {
     ) {
 
         return null;
+
     }
 
 
-    const multiplier = 2 / (period + 1);
+    const multiplier =
+        2 / (period + 1);
 
 
     let ema =
         candles
             .slice(0, period)
             .reduce(
-                (sum, c) => sum + c.close,
+                (sum, c) =>
+                    sum + c.close,
                 0
             ) / period;
 
@@ -281,13 +545,18 @@ function calculateEMA(candles, period) {
 
         ema =
             (
-                (candles[i].close - ema) *
+                (
+                    candles[i].close -
+                    ema
+                ) *
                 multiplier
             ) + ema;
+
     }
 
 
     return ema;
+
 }
 
 
@@ -295,14 +564,19 @@ function calculateEMA(candles, period) {
    RSI
    ========================================================= */
 
-function calculateRSI(candles, period = 14) {
+function calculateRSI(
+    candles,
+    period = 14
+) {
 
     if (
         !candles ||
-        candles.length < period + 1
+        candles.length <
+        period + 1
     ) {
 
         return null;
+
     }
 
 
@@ -326,10 +600,15 @@ function calculateRSI(candles, period = 14) {
 
             gains += change;
 
-        } else {
-
-            losses += Math.abs(change);
         }
+
+        else {
+
+            losses +=
+                Math.abs(change);
+
+        }
+
     }
 
 
@@ -353,11 +632,17 @@ function calculateRSI(candles, period = 14) {
 
 
         const gain =
-            Math.max(change, 0);
+            Math.max(
+                change,
+                0
+            );
 
 
         const loss =
-            Math.max(-change, 0);
+            Math.max(
+                -change,
+                0
+            );
 
 
         averageGain =
@@ -374,12 +659,16 @@ function calculateRSI(candles, period = 14) {
                 (period - 1) +
                 loss
             ) / period;
+
     }
 
 
-    if (averageLoss === 0) {
+    if (
+        averageLoss === 0
+    ) {
 
         return 100;
+
     }
 
 
@@ -388,11 +677,14 @@ function calculateRSI(candles, period = 14) {
         averageLoss;
 
 
-    return 100 -
+    return (
+        100 -
         (
             100 /
             (1 + rs)
-        );
+        )
+    );
+
 }
 
 
@@ -405,6 +697,7 @@ function candleDirection(candle) {
     if (!candle) {
 
         return "NEUTRAL";
+
     }
 
 
@@ -414,6 +707,7 @@ function candleDirection(candle) {
     ) {
 
         return "BULLISH";
+
     }
 
 
@@ -423,10 +717,12 @@ function candleDirection(candle) {
     ) {
 
         return "BEARISH";
+
     }
 
 
     return "NEUTRAL";
+
 }
 
 
@@ -435,6 +731,7 @@ function candleBody(candle) {
     if (!candle) {
 
         return 0;
+
     }
 
 
@@ -442,6 +739,7 @@ function candleBody(candle) {
         candle.close -
         candle.open
     );
+
 }
 
 
@@ -450,6 +748,7 @@ function candleRange(candle) {
     if (!candle) {
 
         return 0;
+
     }
 
 
@@ -457,6 +756,7 @@ function candleRange(candle) {
         candle.high -
         candle.low
     );
+
 }
 
 
@@ -469,6 +769,7 @@ function candleStrength(candle) {
     if (range <= 0) {
 
         return 0;
+
     }
 
 
@@ -476,6 +777,7 @@ function candleStrength(candle) {
         candleBody(candle) /
         range
     );
+
 }
 
 
@@ -483,18 +785,24 @@ function candleStrength(candle) {
    SWINGS
    ========================================================= */
 
-function isSwingHigh(candles, index) {
+function isSwingHigh(
+    candles,
+    index
+) {
 
     if (
         index < 2 ||
-        index > candles.length - 3
+        index >
+        candles.length - 3
     ) {
 
         return false;
+
     }
 
 
-    const c = candles[index];
+    const c =
+        candles[index];
 
 
     return (
@@ -512,21 +820,28 @@ function isSwingHigh(candles, index) {
         candles[index + 2].high
 
     );
+
 }
 
 
-function isSwingLow(candles, index) {
+function isSwingLow(
+    candles,
+    index
+) {
 
     if (
         index < 2 ||
-        index > candles.length - 3
+        index >
+        candles.length - 3
     ) {
 
         return false;
+
     }
 
 
-    const c = candles[index];
+    const c =
+        candles[index];
 
 
     return (
@@ -544,10 +859,14 @@ function isSwingLow(candles, index) {
         candles[index + 2].low
 
     );
+
 }
 
 
-function getSwingLevels(candles, lookback = 80) {
+function getSwingLevels(
+    candles,
+    lookback = 80
+) {
 
     if (
         !candles ||
@@ -560,6 +879,7 @@ function getSwingLevels(candles, lookback = 80) {
             swingLows: []
 
         };
+
     }
 
 
@@ -579,23 +899,32 @@ function getSwingLevels(candles, lookback = 80) {
     ) {
 
         if (
-            isSwingHigh(data, i)
+            isSwingHigh(
+                data,
+                i
+            )
         ) {
 
             swingHighs.push(
                 data[i].high
             );
+
         }
 
 
         if (
-            isSwingLow(data, i)
+            isSwingLow(
+                data,
+                i
+            )
         ) {
 
             swingLows.push(
                 data[i].low
             );
+
         }
+
     }
 
 
@@ -605,6 +934,7 @@ function getSwingLevels(candles, lookback = 80) {
         swingLows
 
     };
+
 }
 
 
@@ -623,6 +953,7 @@ function clusterLevels(
     ) {
 
         return [];
+
     }
 
 
@@ -635,12 +966,16 @@ function clusterLevels(
     const clusters = [];
 
 
-    for (const level of sorted) {
+    for (
+        const level of sorted
+    ) {
 
         let found = null;
 
 
-        for (const cluster of clusters) {
+        for (
+            const cluster of clusters
+        ) {
 
             if (
                 Math.abs(
@@ -649,7 +984,9 @@ function clusterLevels(
                 ) <= tolerance
             ) {
 
-                cluster.values.push(level);
+                cluster.values.push(
+                    level
+                );
 
 
                 cluster.mean =
@@ -660,10 +997,13 @@ function clusterLevels(
                     cluster.values.length;
 
 
-                found = cluster;
+                found =
+                    cluster;
 
                 break;
+
             }
+
         }
 
 
@@ -676,7 +1016,9 @@ function clusterLevels(
                 values: [level]
 
             });
+
         }
+
     }
 
 
@@ -691,14 +1033,17 @@ function clusterLevels(
         .map(
             c => c.mean
         );
+
 }
 
 
 /* =========================================================
-   IMPROVED SUPPORT / RESISTANCE
+   SUPPORT / RESISTANCE
    ========================================================= */
 
-function calculateSupportResistance(candles) {
+function calculateSupportResistance(
+    candles
+) {
 
     if (
         !candles ||
@@ -714,6 +1059,7 @@ function calculateSupportResistance(candles) {
             support2: null
 
         };
+
     }
 
 
@@ -723,38 +1069,27 @@ function calculateSupportResistance(candles) {
         ].close;
 
 
-    /*
-       Use a wider lookback so we have
-       more opportunities to find R2/S2.
-    */
-
     const swings =
         getSwingLevels(
             candles,
-            Math.min(100, candles.length)
+            80
         );
 
 
-    let resistanceLevels =
+    const resistanceLevels =
         clusterLevels(
-            swings.swingHighs,
-            0.00020
+            swings.swingHighs
         );
 
 
-    let supportLevels =
+    const supportLevels =
         clusterLevels(
-            swings.swingLows,
-            0.00020
+            swings.swingLows
         );
 
 
-    /*
-       Keep only levels on the correct
-       side of current price.
-    */
+    const resistances =
 
-    let resistances =
         resistanceLevels
 
             .filter(
@@ -768,7 +1103,8 @@ function calculateSupportResistance(candles) {
             );
 
 
-    let supports =
+    const supports =
+
         supportLevels
 
             .filter(
@@ -780,110 +1116,6 @@ function calculateSupportResistance(candles) {
                 (a, b) =>
                     b - a
             );
-
-
-    /*
-       FALLBACK:
-       If swing detection does not give
-       enough levels, use recent highs/lows.
-
-       This is what fixes the missing R2/S2.
-    */
-
-    if (resistances.length < 2) {
-
-        const recentHighs =
-            candles
-                .slice(-60)
-                .map(c => c.high)
-                .filter(
-                    h => h > current
-                )
-                .sort(
-                    (a, b) => a - b
-                );
-
-
-        for (const high of recentHighs) {
-
-            if (
-                !resistances.some(
-                    r =>
-                        Math.abs(r - high) <
-                        0.00010
-                )
-            ) {
-
-                resistances.push(high);
-            }
-
-
-            if (resistances.length >= 2) {
-
-                break;
-            }
-        }
-    }
-
-
-    if (supports.length < 2) {
-
-        const recentLows =
-            candles
-                .slice(-60)
-                .map(c => c.low)
-                .filter(
-                    l => l < current
-                )
-                .sort(
-                    (a, b) => b - a
-                );
-
-
-        for (const low of recentLows) {
-
-            if (
-                !supports.some(
-                    s =>
-                        Math.abs(s - low) <
-                        0.00010
-                )
-            ) {
-
-                supports.push(low);
-            }
-
-
-            if (supports.length >= 2) {
-
-                break;
-            }
-        }
-    }
-
-
-    /*
-       Final cleanup.
-    */
-
-    resistances =
-        [...new Set(
-            resistances.map(
-                x => Number(x.toFixed(5))
-            )
-        )]
-        .filter(r => r > current)
-        .sort((a, b) => a - b);
-
-
-    supports =
-        [...new Set(
-            supports.map(
-                x => Number(x.toFixed(5))
-            )
-        )]
-        .filter(s => s < current)
-        .sort((a, b) => b - a);
 
 
     return {
@@ -901,6 +1133,7 @@ function calculateSupportResistance(candles) {
             supports[1] ?? null
 
     };
+
 }
 
 
@@ -908,7 +1141,9 @@ function calculateSupportResistance(candles) {
    MARKET STRUCTURE
    ========================================================= */
 
-function calculateStructure(candles) {
+function calculateStructure(
+    candles
+) {
 
     if (
         !candles ||
@@ -916,6 +1151,7 @@ function calculateStructure(candles) {
     ) {
 
         return "INSUFFICIENT DATA";
+
     }
 
 
@@ -940,23 +1176,32 @@ function calculateStructure(candles) {
     ) {
 
         return "RANGE";
+
     }
 
 
     const lastHigh =
-        highs[highs.length - 1];
+        highs[
+            highs.length - 1
+        ];
 
 
     const previousHigh =
-        highs[highs.length - 2];
+        highs[
+            highs.length - 2
+        ];
 
 
     const lastLow =
-        lows[lows.length - 1];
+        lows[
+            lows.length - 1
+        ];
 
 
     const previousLow =
-        lows[lows.length - 2];
+        lows[
+            lows.length - 2
+        ];
 
 
     if (
@@ -965,6 +1210,7 @@ function calculateStructure(candles) {
     ) {
 
         return "BULLISH";
+
     }
 
 
@@ -974,10 +1220,12 @@ function calculateStructure(candles) {
     ) {
 
         return "BEARISH";
+
     }
 
 
     return "RANGE";
+
 }
 
 
@@ -985,7 +1233,9 @@ function calculateStructure(candles) {
    EMA ANALYSIS
    ========================================================= */
 
-function getEMAAnalysis(candles) {
+function getEMAAnalysis(
+    candles
+) {
 
     const ema20 =
         calculateEMA(
@@ -1015,19 +1265,20 @@ function getEMAAnalysis(candles) {
 
         return {
 
-            text: "CALCULATING",
+            text:
+                "CALCULATING",
 
             ema20,
-
             ema50,
-
             ema200
 
         };
+
     }
 
 
-    let text = "MIXED";
+    let text =
+        "MIXED";
 
 
     if (
@@ -1038,7 +1289,9 @@ function getEMAAnalysis(candles) {
         )
     ) {
 
-        text = "BULLISH";
+        text =
+            "BULLISH";
+
     }
 
 
@@ -1050,7 +1303,9 @@ function getEMAAnalysis(candles) {
         )
     ) {
 
-        text = "BEARISH";
+        text =
+            "BEARISH";
+
     }
 
 
@@ -1065,6 +1320,7 @@ function getEMAAnalysis(candles) {
         ema200
 
     };
+
 }
 
 
@@ -1072,7 +1328,9 @@ function getEMAAnalysis(candles) {
    TIMEFRAME ANALYSIS
    ========================================================= */
 
-function analyzeTimeframe(candles) {
+function analyzeTimeframe(
+    candles
+) {
 
     if (
         !candles ||
@@ -1089,9 +1347,11 @@ function analyzeTimeframe(candles) {
             candle:
                 "NEUTRAL",
 
-            candleStrength: 0,
+            candleStrength:
+                0,
 
-            rsi: null,
+            rsi:
+                null,
 
             ema: {
 
@@ -1111,6 +1371,7 @@ function analyzeTimeframe(candles) {
             }
 
         };
+
     }
 
 
@@ -1156,6 +1417,7 @@ function analyzeTimeframe(candles) {
             )
 
     };
+
 }
 
 
@@ -1188,14 +1450,17 @@ function buildAnalysis() {
             )
 
     };
+
 }
 
 
 /* =========================================================
-   M5 CANDLE CONFIRMATION
+   CANDLE CONFIRMATION
    ========================================================= */
 
-function bullishCandleConfirmation(candles) {
+function bullishCandleConfirmation(
+    candles
+) {
 
     if (
         !candles ||
@@ -1203,15 +1468,20 @@ function bullishCandleConfirmation(candles) {
     ) {
 
         return false;
+
     }
 
 
     const last =
-        candles[candles.length - 1];
+        candles[
+            candles.length - 1
+        ];
 
 
     const previous =
-        candles[candles.length - 2];
+        candles[
+            candles.length - 2
+        ];
 
 
     return (
@@ -1222,13 +1492,17 @@ function bullishCandleConfirmation(candles) {
         last.close >
         previous.high &&
 
-        candleStrength(last) >= 0.45
+        candleStrength(last) >=
+        0.45
 
     );
+
 }
 
 
-function bearishCandleConfirmation(candles) {
+function bearishCandleConfirmation(
+    candles
+) {
 
     if (
         !candles ||
@@ -1236,15 +1510,20 @@ function bearishCandleConfirmation(candles) {
     ) {
 
         return false;
+
     }
 
 
     const last =
-        candles[candles.length - 1];
+        candles[
+            candles.length - 1
+        ];
 
 
     const previous =
-        candles[candles.length - 2];
+        candles[
+            candles.length - 2
+        ];
 
 
     return (
@@ -1255,14 +1534,16 @@ function bearishCandleConfirmation(candles) {
         last.close <
         previous.low &&
 
-        candleStrength(last) >= 0.45
+        candleStrength(last) >=
+        0.45
 
     );
+
 }
 
 
 /* =========================================================
-   BUY SCORE
+   A+ BUY SCORE
    ========================================================= */
 
 function calculateBuyScore(a) {
@@ -1271,22 +1552,26 @@ function calculateBuyScore(a) {
 
 
     if (
-        a.H4.structure === "BULLISH"
+        a.H4.structure ===
+        "BULLISH"
     ) score += 2;
 
 
     if (
-        a.H1.structure === "BULLISH"
+        a.H1.structure ===
+        "BULLISH"
     ) score += 2;
 
 
     if (
-        a.M15.structure === "BULLISH"
+        a.M15.structure ===
+        "BULLISH"
     ) score += 2;
 
 
     if (
-        a.M5.structure === "BULLISH"
+        a.M5.structure ===
+        "BULLISH"
     ) score += 1;
 
 
@@ -1305,16 +1590,18 @@ function calculateBuyScore(a) {
 
 
     if (
-        a.M15.ema.text === "BULLISH"
+        a.M15.ema.text ===
+        "BULLISH"
     ) score += 1;
 
 
     return score;
+
 }
 
 
 /* =========================================================
-   SELL SCORE
+   A+ SELL SCORE
    ========================================================= */
 
 function calculateSellScore(a) {
@@ -1323,22 +1610,26 @@ function calculateSellScore(a) {
 
 
     if (
-        a.H4.structure === "BEARISH"
+        a.H4.structure ===
+        "BEARISH"
     ) score += 2;
 
 
     if (
-        a.H1.structure === "BEARISH"
+        a.H1.structure ===
+        "BEARISH"
     ) score += 2;
 
 
     if (
-        a.M15.structure === "BEARISH"
+        a.M15.structure ===
+        "BEARISH"
     ) score += 2;
 
 
     if (
-        a.M5.structure === "BEARISH"
+        a.M5.structure ===
+        "BEARISH"
     ) score += 1;
 
 
@@ -1357,19 +1648,403 @@ function calculateSellScore(a) {
 
 
     if (
-        a.M15.ema.text === "BEARISH"
+        a.M15.ema.text ===
+        "BEARISH"
     ) score += 1;
 
 
     return score;
+
 }
 
 
 /* =========================================================
-   BUY SETUP
+   NEWS ENGINE
    ========================================================= */
 
-function calculateBuySetup(a, price) {
+async function loadNews() {
+
+    try {
+
+        const response =
+            await fetch(
+                NEWS_URL +
+                "?_=" +
+                Date.now(),
+                {
+                    cache:
+                        "no-store"
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                `News HTTP ${response.status}`
+            );
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !Array.isArray(data)
+        ) {
+
+            throw new Error(
+                "Invalid news response"
+            );
+
+        }
+
+
+        const now =
+            new Date();
+
+
+        const relevantEvents =
+            data.filter(event => {
+
+                const currency =
+                    String(
+                        event.country ||
+                        event.currency ||
+                        ""
+                    ).toUpperCase();
+
+
+                const impact =
+                    String(
+                        event.impact ||
+                        ""
+                    ).toLowerCase();
+
+
+                const title =
+                    String(
+                        event.title ||
+                        event.event ||
+                        ""
+                    );
+
+
+                if (
+                    currency !== "EUR" &&
+                    currency !== "USD"
+                ) {
+
+                    return false;
+
+                }
+
+
+                if (
+                    impact !== "high" &&
+                    impact !== "red"
+                ) {
+
+                    return false;
+
+                }
+
+
+                const eventDate =
+                    parseNewsDate(event);
+
+
+                if (!eventDate) {
+
+                    return false;
+
+                }
+
+
+                const diffMinutes =
+                    (
+                        eventDate -
+                        now
+                    ) / 60000;
+
+
+                /*
+                   Keep events:
+
+                   30 min before
+                   through
+                   15 min after
+                */
+
+                return (
+                    diffMinutes >=
+                    -NEWS_BLOCK_AFTER_MINUTES &&
+
+                    diffMinutes <=
+                    120
+                );
+
+            });
+
+
+        newsData = {
+
+            checked:
+                true,
+
+            available:
+                true,
+
+            error:
+                null,
+
+            events:
+                relevantEvents,
+
+            lastChecked:
+                new Date()
+
+        };
+
+
+        updateNewsUI();
+
+
+        return newsData;
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "NEWS ERROR:",
+            error
+        );
+
+
+        newsData = {
+
+            checked:
+                true,
+
+            available:
+                false,
+
+            error:
+                error.message,
+
+            events: [],
+
+            lastChecked:
+                new Date()
+
+        };
+
+
+        updateNewsUI();
+
+
+        return newsData;
+
+    }
+
+}
+
+
+/* =========================================================
+   NEWS DATE PARSER
+   ========================================================= */
+
+function parseNewsDate(event) {
+
+    const candidates = [
+
+        event.date,
+
+        event.datetime,
+
+        event.time,
+
+        event.timestamp
+
+    ];
+
+
+    for (
+        const value of candidates
+    ) {
+
+        if (!value) {
+
+            continue;
+
+        }
+
+
+        const date =
+            new Date(value);
+
+
+        if (
+            !Number.isNaN(
+                date.getTime()
+            )
+        ) {
+
+            return date;
+
+        }
+
+    }
+
+
+    return null;
+
+}
+
+
+/* =========================================================
+   NEWS SAFETY STATUS
+   ========================================================= */
+
+function getNewsSafety() {
+
+    if (
+        !newsData.checked ||
+        !newsData.available
+    ) {
+
+        return {
+
+            status:
+                "BLOCKED",
+
+            reason:
+                "NEWS DATA NOT VERIFIED"
+
+        };
+
+    }
+
+
+    const now =
+        new Date();
+
+
+    let activeDanger =
+        false;
+
+
+    let upcomingDanger =
+        false;
+
+
+    for (
+        const event of
+        newsData.events
+    ) {
+
+        const eventDate =
+            parseNewsDate(event);
+
+
+        if (!eventDate) {
+
+            continue;
+
+        }
+
+
+        const diffMinutes =
+            (
+                eventDate -
+                now
+            ) / 60000;
+
+
+        if (
+            diffMinutes >=
+            -NEWS_BLOCK_AFTER_MINUTES &&
+
+            diffMinutes <=
+            NEWS_BLOCK_BEFORE_MINUTES
+        ) {
+
+            activeDanger =
+                true;
+
+        }
+
+
+        else if (
+            diffMinutes >
+            NEWS_BLOCK_BEFORE_MINUTES &&
+
+            diffMinutes <=
+            120
+        ) {
+
+            upcomingDanger =
+                true;
+
+        }
+
+    }
+
+
+    if (activeDanger) {
+
+        return {
+
+            status:
+                "BLOCKED",
+
+            reason:
+                "HIGH-IMPACT EUR/USD NEWS WINDOW"
+
+        };
+
+    }
+
+
+    if (upcomingDanger) {
+
+        return {
+
+            status:
+                "CAUTION",
+
+            reason:
+                "HIGH-IMPACT NEWS WITHIN NEXT 2 HOURS"
+
+        };
+
+    }
+
+
+    return {
+
+        status:
+            "CLEAR",
+
+        reason:
+            "NO HIGH-IMPACT EUR/USD NEWS IN NEXT 2 HOURS"
+
+    };
+
+}
+
+
+/* =========================================================
+   A+ BUY SETUP
+   ========================================================= */
+
+function calculateBuySetup(
+    a,
+    price
+) {
 
     const score =
         calculateBuyScore(a);
@@ -1377,44 +2052,37 @@ function calculateBuySetup(a, price) {
 
     if (
         score < MIN_SETUP_SCORE
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
     if (
-        a.H4.structure !== "BULLISH" ||
-        a.H1.structure !== "BULLISH" ||
-        a.M15.structure !== "BULLISH" ||
-        a.M5.structure !== "BULLISH"
-    ) {
-
-        return null;
-    }
+        a.H4.structure !==
+        "BULLISH" ||
+        a.H1.structure !==
+        "BULLISH" ||
+        a.M15.structure !==
+        "BULLISH" ||
+        a.M5.structure !==
+        "BULLISH"
+    ) return null;
 
 
     if (
         !bullishCandleConfirmation(
             marketData.m5
         )
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
     if (
         a.M5.rsi === null ||
         a.M5.rsi < 45 ||
         a.M5.rsi > 70
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
-    const entry = price;
+    const entry =
+        price;
 
 
     let structuralSL =
@@ -1429,7 +2097,7 @@ function calculateBuySetup(a, price) {
         const lows =
             getSwingLevels(
                 marketData.m5,
-                40
+                30
             ).swingLows;
 
 
@@ -1437,6 +2105,7 @@ function calculateBuySetup(a, price) {
             lows.length
                 ? lows[lows.length - 1]
                 : entry - 0.0010;
+
     }
 
 
@@ -1452,15 +2121,13 @@ function calculateBuySetup(a, price) {
     if (
         risk <= 0 ||
         risk > MAX_RISK
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
     return {
 
-        direction: "BUY",
+        direction:
+            "BUY",
 
         entry,
 
@@ -1477,7 +2144,8 @@ function calculateBuySetup(a, price) {
 
         score,
 
-        rr: "1:3",
+        rr:
+            "1:3",
 
         validity:
             "Valid while H4/H1 bullish structure remains intact",
@@ -1492,14 +2160,18 @@ function calculateBuySetup(a, price) {
             "BUY — A+ PRICE ACTION ALIGNMENT"
 
     };
+
 }
 
 
 /* =========================================================
-   SELL SETUP
+   A+ SELL SETUP
    ========================================================= */
 
-function calculateSellSetup(a, price) {
+function calculateSellSetup(
+    a,
+    price
+) {
 
     const score =
         calculateSellScore(a);
@@ -1507,44 +2179,37 @@ function calculateSellSetup(a, price) {
 
     if (
         score < MIN_SETUP_SCORE
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
     if (
-        a.H4.structure !== "BEARISH" ||
-        a.H1.structure !== "BEARISH" ||
-        a.M15.structure !== "BEARISH" ||
-        a.M5.structure !== "BEARISH"
-    ) {
-
-        return null;
-    }
+        a.H4.structure !==
+        "BEARISH" ||
+        a.H1.structure !==
+        "BEARISH" ||
+        a.M15.structure !==
+        "BEARISH" ||
+        a.M5.structure !==
+        "BEARISH"
+    ) return null;
 
 
     if (
         !bearishCandleConfirmation(
             marketData.m5
         )
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
     if (
         a.M5.rsi === null ||
         a.M5.rsi < 30 ||
         a.M5.rsi > 55
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
-    const entry = price;
+    const entry =
+        price;
 
 
     let structuralSL =
@@ -1559,7 +2224,7 @@ function calculateSellSetup(a, price) {
         const highs =
             getSwingLevels(
                 marketData.m5,
-                40
+                30
             ).swingHighs;
 
 
@@ -1567,6 +2232,7 @@ function calculateSellSetup(a, price) {
             highs.length
                 ? highs[highs.length - 1]
                 : entry + 0.0010;
+
     }
 
 
@@ -1582,15 +2248,13 @@ function calculateSellSetup(a, price) {
     if (
         risk <= 0 ||
         risk > MAX_RISK
-    ) {
-
-        return null;
-    }
+    ) return null;
 
 
     return {
 
-        direction: "SELL",
+        direction:
+            "SELL",
 
         entry,
 
@@ -1607,7 +2271,8 @@ function calculateSellSetup(a, price) {
 
         score,
 
-        rr: "1:3",
+        rr:
+            "1:3",
 
         validity:
             "Valid while H4/H1 bearish structure remains intact",
@@ -1622,11 +2287,12 @@ function calculateSellSetup(a, price) {
             "SELL — A+ PRICE ACTION ALIGNMENT"
 
     };
+
 }
 
 
 /* =========================================================
-   FINAL SNIPER ENGINE
+   A+ ENGINE
    ========================================================= */
 
 function calculateSniperSetup(
@@ -1634,43 +2300,19 @@ function calculateSniperSetup(
     price
 ) {
 
-    const buyScore =
-        calculateBuyScore(analysis);
-
-
-    const sellScore =
-        calculateSellScore(analysis);
-
-
-    const bestScore =
-        Math.max(
-            buyScore,
-            sellScore
-        );
-
-
     /*
-       First safety gate:
-       H4 and H1 must agree.
+       A+ engine requires verified news.
     */
 
-    const h4 =
-        analysis.H4.structure;
-
-
-    const h1 =
-        analysis.H1.structure;
-
-
     if (
-        h4 !== h1 ||
-        h4 === "RANGE" ||
-        h1 === "RANGE"
+        !newsData.checked ||
+        !newsData.available
     ) {
 
         return {
 
-            direction: "WAIT",
+            direction:
+                "WAIT",
 
             entry: null,
             sl: null,
@@ -1680,34 +2322,46 @@ function calculateSniperSetup(
 
             rr: null,
 
-            score: bestScore,
+            score:
+                Math.max(
+                    calculateBuyScore(
+                        analysis
+                    ),
+                    calculateSellScore(
+                        analysis
+                    )
+                ),
 
             validity:
-                "H4/H1 conflict detected. News filter is also closed.",
+                "Trading blocked until news is verified",
 
             trigger:
-                "H4/H1 direction → M15 confirmation → M5 trigger → news clearance",
+                "H4/H1 → M15 → M5 → NEWS CLEARANCE",
 
             invalidation:
-                "No trade while NEWS FILTER is CLOSED",
+                "No trade while news is unknown",
 
             verdict:
                 "WAIT — NEWS FILTER NOT CONFIRMED"
 
         };
+
     }
 
 
-    /*
-       Second safety gate:
-       News must be confirmed.
-    */
+    const news =
+        getNewsSafety();
 
-    if (!NEWS_CLEAR) {
+
+    if (
+        news.status ===
+        "BLOCKED"
+    ) {
 
         return {
 
-            direction: "WAIT",
+            direction:
+                "WAIT",
 
             entry: null,
             sl: null,
@@ -1717,21 +2371,30 @@ function calculateSniperSetup(
 
             rr: null,
 
-            score: bestScore,
+            score:
+                Math.max(
+                    calculateBuyScore(
+                        analysis
+                    ),
+                    calculateSellScore(
+                        analysis
+                    )
+                ),
 
             validity:
-                "Trading blocked until real economic news is checked",
+                news.reason,
 
             trigger:
-                "Technical setup may develop, but no trade is allowed while news status is unknown",
+                "Wait for news risk to clear",
 
             invalidation:
-                "No trade while NEWS FILTER is CLOSED",
+                "No trade during high-impact news window",
 
             verdict:
-                "WAIT — NEWS FILTER NOT CONFIRMED"
+                "WAIT — NEWS RISK BLOCKED"
 
         };
+
     }
 
 
@@ -1749,29 +2412,27 @@ function calculateSniperSetup(
         );
 
 
-    if (buy && sell) {
+    if (
+        buy &&
+        sell
+    ) {
 
         return buy.score >= sell.score
             ? buy
             : sell;
+
     }
 
 
-    if (buy) {
+    if (buy) return buy;
 
-        return buy;
-    }
-
-
-    if (sell) {
-
-        return sell;
-    }
+    if (sell) return sell;
 
 
     return {
 
-        direction: "WAIT",
+        direction:
+            "WAIT",
 
         entry: null,
         sl: null,
@@ -1781,10 +2442,18 @@ function calculateSniperSetup(
 
         rr: null,
 
-        score: bestScore,
+        score:
+            Math.max(
+                calculateBuyScore(
+                    analysis
+                ),
+                calculateSellScore(
+                    analysis
+                )
+            ),
 
         validity:
-            "No valid A+ setup currently",
+            "No valid A+ setup",
 
         trigger:
             "Wait for H4/H1 direction → M15 confirmation → M5 trigger",
@@ -1796,19 +2465,889 @@ function calculateSniperSetup(
             "WAIT — NO A+ MULTI-TIMEFRAME ALIGNMENT"
 
     };
+
 }
 
 
 /* =========================================================
-   PRICE UI
+   SCALPING SCORE
+   ========================================================= */
+
+function calculateScalpBuyScore(a) {
+
+    let score = 0;
+
+
+    /*
+       H1 direction.
+    */
+
+    if (
+        a.H1.structure ===
+        "BULLISH"
+    ) score += 3;
+
+
+    /*
+       H1 EMA.
+    */
+
+    if (
+        a.H1.ema.text ===
+        "BULLISH"
+    ) score += 2;
+
+
+    /*
+       M5 structure.
+    */
+
+    if (
+        a.M5.structure ===
+        "BULLISH"
+    ) score += 2;
+
+
+    /*
+       M5 momentum.
+    */
+
+    if (
+        a.M5.rsi !== null &&
+        a.M5.rsi >= 45 &&
+        a.M5.rsi <= 70
+    ) score += 1;
+
+
+    /*
+       Bullish candle.
+    */
+
+    if (
+        bullishCandleConfirmation(
+            marketData.m5
+        )
+    ) score += 2;
+
+
+    return score;
+
+}
+
+
+function calculateScalpSellScore(a) {
+
+    let score = 0;
+
+
+    if (
+        a.H1.structure ===
+        "BEARISH"
+    ) score += 3;
+
+
+    if (
+        a.H1.ema.text ===
+        "BEARISH"
+    ) score += 2;
+
+
+    if (
+        a.M5.structure ===
+        "BEARISH"
+    ) score += 2;
+
+
+    if (
+        a.M5.rsi !== null &&
+        a.M5.rsi >= 30 &&
+        a.M5.rsi <= 55
+    ) score += 1;
+
+
+    if (
+        bearishCandleConfirmation(
+            marketData.m5
+        )
+    ) score += 2;
+
+
+    return score;
+
+}
+
+
+/* =========================================================
+   SCALP BUY
+   ========================================================= */
+
+function calculateScalpBuy(
+    a,
+    price
+) {
+
+    const score =
+        calculateScalpBuyScore(a);
+
+
+    if (
+        score <
+        SCALP_MIN_SCORE
+    ) {
+
+        return null;
+
+    }
+
+
+    if (
+        a.H1.structure !==
+        "BULLISH"
+    ) {
+
+        return null;
+
+    }
+
+
+    /*
+       Need M5 confirmation.
+    */
+
+    const m5Bullish =
+        a.M5.structure ===
+        "BULLISH" ||
+
+        bullishCandleConfirmation(
+            marketData.m5
+        );
+
+
+    if (!m5Bullish) {
+
+        return null;
+
+    }
+
+
+    /*
+       Avoid overbought entries.
+    */
+
+    if (
+        a.M5.rsi !== null &&
+        a.M5.rsi > 75
+    ) {
+
+        return null;
+
+    }
+
+
+    const sr =
+        a.M5.sr;
+
+
+    let sl =
+        sr.support1;
+
+
+    if (
+        !sl ||
+        sl >= price
+    ) {
+
+        const lows =
+            getSwingLevels(
+                marketData.m5,
+                20
+            ).swingLows;
+
+
+        sl =
+            lows.length
+                ? lows[lows.length - 1]
+                : price - 0.0006;
+
+    }
+
+
+    sl -=
+        SL_BUFFER;
+
+
+    const risk =
+        price - sl;
+
+
+    if (
+        risk <= 0 ||
+        risk >
+        SCALP_RISK_MAX
+    ) {
+
+        return null;
+
+    }
+
+
+    return {
+
+        direction:
+            "BUY",
+
+        entry:
+            price,
+
+        sl,
+
+        tp1:
+            price + risk,
+
+        tp2:
+            price + risk * 2,
+
+        score,
+
+        confidence:
+            Math.min(
+                95,
+                50 +
+                score * 5
+            ),
+
+        window:
+            "Next 2 hours",
+
+        trigger:
+            "H1 bullish bias + M5 bullish confirmation",
+
+        invalidation:
+            `M5 closes below ${roundPrice(sl)}`
+
+    };
+
+}
+
+
+/* =========================================================
+   SCALP SELL
+   ========================================================= */
+
+function calculateScalpSell(
+    a,
+    price
+) {
+
+    const score =
+        calculateScalpSellScore(a);
+
+
+    if (
+        score <
+        SCALP_MIN_SCORE
+    ) {
+
+        return null;
+
+    }
+
+
+    if (
+        a.H1.structure !==
+        "BEARISH"
+    ) {
+
+        return null;
+
+    }
+
+
+    const m5Bearish =
+        a.M5.structure ===
+        "BEARISH" ||
+
+        bearishCandleConfirmation(
+            marketData.m5
+        );
+
+
+    if (!m5Bearish) {
+
+        return null;
+
+    }
+
+
+    if (
+        a.M5.rsi !== null &&
+        a.M5.rsi < 25
+    ) {
+
+        return null;
+
+    }
+
+
+    const sr =
+        a.M5.sr;
+
+
+    let sl =
+        sr.resistance1;
+
+
+    if (
+        !sl ||
+        sl <= price
+    ) {
+
+        const highs =
+            getSwingLevels(
+                marketData.m5,
+                20
+            ).swingHighs;
+
+
+        sl =
+            highs.length
+                ? highs[highs.length - 1]
+                : price + 0.0006;
+
+    }
+
+
+    sl +=
+        SL_BUFFER;
+
+
+    const risk =
+        sl - price;
+
+
+    if (
+        risk <= 0 ||
+        risk >
+        SCALP_RISK_MAX
+    ) {
+
+        return null;
+
+    }
+
+
+    return {
+
+        direction:
+            "SELL",
+
+        entry:
+            price,
+
+        sl,
+
+        tp1:
+            price - risk,
+
+        tp2:
+            price - risk * 2,
+
+        score,
+
+        confidence:
+            Math.min(
+                95,
+                50 +
+                score * 5
+            ),
+
+        window:
+            "Next 2 hours",
+
+        trigger:
+            "H1 bearish bias + M5 bearish confirmation",
+
+        invalidation:
+            `M5 closes above ${roundPrice(sl)}`
+
+    };
+
+}
+
+
+/* =========================================================
+   SCALPING ENGINE
+   ========================================================= */
+
+function calculateScalpSetup(
+    analysis,
+    price
+) {
+
+    const news =
+        getNewsSafety();
+
+
+    /*
+       NEWS IS A HARD GATE.
+    */
+
+    if (
+        news.status ===
+        "BLOCKED"
+    ) {
+
+        return {
+
+            direction:
+                "BLOCKED",
+
+            reason:
+                news.reason,
+
+            entry: null,
+            sl: null,
+            tp1: null,
+            tp2: null,
+
+            score: 0,
+
+            confidence: 0,
+
+            window:
+                "Next 2 hours",
+
+            trigger:
+                "Wait until news risk clears",
+
+            invalidation:
+                "No scalp while news is blocked"
+
+        };
+
+    }
+
+
+    if (
+        news.status !==
+        "CLEAR"
+    ) {
+
+        return {
+
+            direction:
+                "CAUTION",
+
+            reason:
+                news.reason,
+
+            entry: null,
+            sl: null,
+            tp1: null,
+            tp2: null,
+
+            score: 0,
+
+            confidence: 0,
+
+            window:
+                "Next 2 hours",
+
+            trigger:
+                "High-impact news approaching — wait",
+
+            invalidation:
+                "Do not enter before news clearance"
+
+        };
+
+    }
+
+
+    /*
+       News clear.
+    */
+
+    const buy =
+        calculateScalpBuy(
+            analysis,
+            price
+        );
+
+
+    const sell =
+        calculateScalpSell(
+            analysis,
+            price
+        );
+
+
+    if (
+        buy &&
+        sell
+    ) {
+
+        return buy.score >=
+            sell.score
+            ? buy
+            : sell;
+
+    }
+
+
+    if (buy) {
+
+        return buy;
+
+    }
+
+
+    if (sell) {
+
+        return sell;
+
+    }
+
+
+    return {
+
+        direction:
+            "WAIT",
+
+        reason:
+            "No valid H1 + M5 scalp alignment",
+
+        entry: null,
+        sl: null,
+        tp1: null,
+        tp2: null,
+
+        score:
+            Math.max(
+                calculateScalpBuyScore(
+                    analysis
+                ),
+                calculateScalpSellScore(
+                    analysis
+                )
+            ),
+
+        confidence: 0,
+
+        window:
+            "Next 2 hours",
+
+        trigger:
+            "Wait for H1 direction + M5 confirmation",
+
+        invalidation:
+            "No trade until setup develops"
+
+    };
+
+}
+
+
+/* =========================================================
+   DYNAMIC SCALP CARD
+   ========================================================= */
+
+function createScalpCard() {
+
+    if (
+        document.getElementById(
+            "scalpCard"
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    const card =
+        document.createElement(
+            "div"
+        );
+
+
+    card.className =
+        "card";
+
+
+    card.id =
+        "scalpCard";
+
+
+    card.innerHTML = `
+
+        <h2>⚡ Scalping Window — Next 2 Hours</h2>
+
+        <p class="wait"
+           id="scalpVerdict">
+           WAIT — Calculating...
+        </p>
+
+        <div class="level">
+          <span>Direction</span>
+          <span id="scalpDirection">—</span>
+        </div>
+
+        <div class="level">
+          <span>Entry</span>
+          <span id="scalpEntry">—</span>
+        </div>
+
+        <div class="level">
+          <span>Stop Loss</span>
+          <span id="scalpSL">—</span>
+        </div>
+
+        <div class="level">
+          <span>TP1</span>
+          <span id="scalpTP1">—</span>
+        </div>
+
+        <div class="level">
+          <span>TP2</span>
+          <span id="scalpTP2">—</span>
+        </div>
+
+        <div class="level">
+          <span>Risk / Reward</span>
+          <span id="scalpRR">—</span>
+        </div>
+
+        <div class="level">
+          <span>Confidence</span>
+          <span id="scalpConfidence">—</span>
+        </div>
+
+        <div class="level">
+          <span>Window</span>
+          <span id="scalpWindow">Next 2 hours</span>
+        </div>
+
+        <div class="level">
+          <span>Trigger</span>
+          <span id="scalpTrigger">—</span>
+        </div>
+
+        <div class="level">
+          <span>Invalidation</span>
+          <span id="scalpInvalidation">—</span>
+        </div>
+
+        <div class="level">
+          <span>News Safety</span>
+          <span id="scalpNews">—</span>
+        </div>
+
+    `;
+
+
+    /*
+       Put scalping card immediately before
+       the PRO VERDICT card.
+    */
+
+    const proCard =
+        document.getElementById(
+            "proVerdict"
+        );
+
+
+    if (
+        proCard &&
+        proCard.closest(".card")
+    ) {
+
+        proCard
+            .closest(".card")
+            .before(card);
+
+    }
+
+    else {
+
+        document.body.appendChild(
+            card
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   UPDATE SCALPING UI
+   ========================================================= */
+
+function updateScalpUI(
+    setup
+) {
+
+    createScalpCard();
+
+
+    const news =
+        getNewsSafety();
+
+
+    let verdict =
+        "SCALP WAIT";
+
+
+    if (
+        setup.direction ===
+        "BUY"
+    ) {
+
+        verdict =
+            "🟢 SCALP BUY";
+
+    }
+
+    else if (
+        setup.direction ===
+        "SELL"
+    ) {
+
+        verdict =
+            "🔴 SCALP SELL";
+
+    }
+
+    else if (
+        setup.direction ===
+        "BLOCKED"
+    ) {
+
+        verdict =
+            "🔴 SCALP BLOCKED — NEWS";
+
+    }
+
+    else if (
+        setup.direction ===
+        "CAUTION"
+    ) {
+
+        verdict =
+            "🟠 SCALP CAUTION — NEWS";
+
+    }
+
+    else {
+
+        verdict =
+            "WAIT — NO SCALP SETUP";
+
+    }
+
+
+    setTextAny(
+        "scalpVerdict",
+        verdict
+    );
+
+
+    setTextAny(
+        "scalpDirection",
+        setup.direction
+    );
+
+
+    setTextAny(
+        "scalpEntry",
+        roundPrice(
+            setup.entry
+        )
+    );
+
+
+    setTextAny(
+        "scalpSL",
+        roundPrice(
+            setup.sl
+        )
+    );
+
+
+    setTextAny(
+        "scalpTP1",
+        roundPrice(
+            setup.tp1
+        )
+    );
+
+
+    setTextAny(
+        "scalpTP2",
+        roundPrice(
+            setup.tp2
+        )
+    );
+
+
+    setTextAny(
+        "scalpRR",
+        setup.entry &&
+        setup.sl
+            ? "1:2"
+            : "—"
+    );
+
+
+    setTextAny(
+        "scalpConfidence",
+        setup.confidence
+            ? `${setup.confidence}%`
+            : "—"
+    );
+
+
+    setTextAny(
+        "scalpWindow",
+        setup.window ||
+        "Next 2 hours"
+    );
+
+
+    setTextAny(
+        "scalpTrigger",
+        setup.trigger ||
+        "—"
+    );
+
+
+    setTextAny(
+        "scalpInvalidation",
+        setup.invalidation ||
+        "—"
+    );
+
+
+    setTextAny(
+        "scalpNews",
+        news.status +
+        " — " +
+        news.reason
+    );
+
+}
+
+
+/* =========================================================
+   UPDATE PRICE
    ========================================================= */
 
 function updatePriceUI(price) {
 
     setTextAny(
         [
-            "livePrice",
             "price",
+            "livePrice",
             "currentPrice",
             "live-price"
         ],
@@ -1818,18 +3357,19 @@ function updatePriceUI(price) {
 
     setTextAny(
         [
-            "trend",
             "priceStatus",
+            "trend",
             "status",
             "marketStatus"
         ],
         "MARKET DATA LOADED"
     );
+
 }
 
 
 /* =========================================================
-   STRUCTURE UI
+   UPDATE STRUCTURE
    ========================================================= */
 
 function updateStructureUI(a) {
@@ -1856,18 +3396,15 @@ function updateStructureUI(a) {
         "m5Structure",
         a.M5.structure
     );
+
 }
 
 
 /* =========================================================
-   SUPPORT / RESISTANCE UI
+   UPDATE SR
    ========================================================= */
 
 function updateSRUI(a) {
-
-    /*
-       H1 remains the main dashboard S/R timeframe.
-    */
 
     const sr =
         a.H1.sr;
@@ -1903,11 +3440,12 @@ function updateSRUI(a) {
             sr.support2
         )
     );
+
 }
 
 
 /* =========================================================
-   INDICATORS UI
+   UPDATE INDICATORS
    ========================================================= */
 
 function updateIndicatorsUI(a) {
@@ -1948,57 +3486,200 @@ function updateIndicatorsUI(a) {
         "emaStructure",
         a.H1.ema.text
     );
+
 }
 
 
 /* =========================================================
-   NEWS UI
+   UPDATE NEWS UI
    ========================================================= */
 
 function updateNewsUI() {
 
+    if (
+        !newsData.available
+    ) {
+
+        setTextAny(
+            "eurNews",
+            "NOT VERIFIED"
+        );
+
+
+        setTextAny(
+            "usdNews",
+            "NOT VERIFIED"
+        );
+
+
+        setTextAny(
+            "newsFilter",
+            "NEWS CHECK FAILED"
+        );
+
+
+        setTextAny(
+            "nextEvent",
+            "NEWS DATA UNAVAILABLE"
+        );
+
+
+        setTextAny(
+            "tradingRisk",
+            "HIGH — NEWS BLOCKED"
+        );
+
+
+        return;
+
+    }
+
+
+    let eurCount = 0;
+
+    let usdCount = 0;
+
+
+    for (
+        const event of
+        newsData.events
+    ) {
+
+        const currency =
+            String(
+                event.country ||
+                event.currency ||
+                ""
+            ).toUpperCase();
+
+
+        if (
+            currency ===
+            "EUR"
+        ) {
+
+            eurCount++;
+
+        }
+
+
+        if (
+            currency ===
+            "USD"
+        ) {
+
+            usdCount++;
+
+        }
+
+    }
+
+
+    const safety =
+        getNewsSafety();
+
+
     setTextAny(
         "eurNews",
-        "NOT CONNECTED"
+        eurCount > 0
+            ? `${eurCount} HIGH-IMPACT`
+            : "CLEAR"
     );
 
 
     setTextAny(
         "usdNews",
-        "NOT CONNECTED"
+        usdCount > 0
+            ? `${usdCount} HIGH-IMPACT`
+            : "CLEAR"
     );
 
 
     setTextAny(
         "newsFilter",
-        "NEWS CHECK REQUIRED"
+        safety.status
     );
+
+
+    let next =
+        "No high-impact EUR/USD event found";
+
+
+    if (
+        newsData.events.length
+    ) {
+
+        const sorted =
+            [...newsData.events]
+                .sort(
+                    (a, b) =>
+                        parseNewsDate(a) -
+                        parseNewsDate(b)
+                );
+
+
+        const event =
+            sorted[0];
+
+
+        const currency =
+            event.country ||
+            event.currency ||
+            "";
+
+
+        const title =
+            event.title ||
+            event.event ||
+            "Important event";
+
+
+        next =
+            `${currency} — ${title}`;
+
+    }
 
 
     setTextAny(
         "nextEvent",
-        "Economic calendar required"
+        next
     );
 
 
     setTextAny(
         "tradingRisk",
-        "HIGH — NEWS FILTER CLOSED"
+        safety.status ===
+        "CLEAR"
+            ? "LOW — NEWS CLEAR"
+            : safety.status ===
+              "CAUTION"
+            ? "MEDIUM — NEWS APPROACHING"
+            : "HIGH — NEWS BLOCKED"
     );
+
 }
 
 
 /* =========================================================
-   SNIPER UI
+   UPDATE SNIPER UI
    ========================================================= */
 
-function updateSniperUI(setup) {
+function updateSniperUI(
+    setup
+) {
 
     setTextAny(
-        [
-            "sniperVerdict",
-            "sniperStatus"
-        ],
+        "sniperStatus",
+        setup.verdict
+    );
+
+
+    /*
+       Compatibility with older HTML.
+    */
+
+    setTextAny(
+        "sniperVerdict",
         setup.verdict
     );
 
@@ -2051,7 +3732,8 @@ function updateSniperUI(setup) {
 
     setTextAny(
         "riskReward",
-        setup.rr || "—"
+        setup.rr ||
+        "—"
     );
 
 
@@ -2075,11 +3757,11 @@ function updateSniperUI(setup) {
 
     setTextAny(
         "setupScore",
-        setup.score !== null &&
         setup.score !== undefined
             ? `${setup.score} / 11`
             : "—"
     );
+
 }
 
 
@@ -2087,7 +3769,10 @@ function updateSniperUI(setup) {
    PRO VERDICT
    ========================================================= */
 
-function updateProVerdictUI(setup) {
+function updateProVerdictUI(
+    setup,
+    analysis
+) {
 
     setTextAny(
         "proVerdict",
@@ -2096,7 +3781,26 @@ function updateProVerdictUI(setup) {
 
 
     if (
-        setup.direction === "BUY"
+        analysis.H4.structure ===
+            "BEARISH" &&
+        analysis.H1.structure ===
+            "BULLISH"
+    ) {
+
+        setTextAny(
+            "proExplanation",
+            "STAY OUT — H4 is BEARISH while H1 is BULLISH. Higher-timeframe conflict."
+        );
+
+
+        return;
+
+    }
+
+
+    if (
+        setup.direction ===
+        "BUY"
     ) {
 
         setTextAny(
@@ -2104,12 +3808,12 @@ function updateProVerdictUI(setup) {
             "BUY: H4 + H1 bullish structure, M15 confirmation and M5 bullish trigger."
         );
 
-        return;
     }
 
 
-    if (
-        setup.direction === "SELL"
+    else if (
+        setup.direction ===
+        "SELL"
     ) {
 
         setTextAny(
@@ -2117,43 +3821,18 @@ function updateProVerdictUI(setup) {
             "SELL: H4 + H1 bearish structure, M15 confirmation and M5 bearish trigger."
         );
 
-        return;
     }
 
 
-    if (
-        marketData.h4.length &&
-        marketData.h1.length
-    ) {
+    else {
 
-        const h4 =
-            calculateStructure(
-                marketData.h4
-            );
+        setTextAny(
+            "proExplanation",
+            "No A+ multi-timeframe alignment. Stay out and wait."
+        );
 
-
-        const h1 =
-            calculateStructure(
-                marketData.h1
-            );
-
-
-        if (h4 !== h1) {
-
-            setTextAny(
-                "proExplanation",
-                `STAY OUT — H4 is ${h4} while H1 is ${h1}. Higher-timeframe conflict.`
-            );
-
-            return;
-        }
     }
 
-
-    setTextAny(
-        "proExplanation",
-        "Technical analysis is running, but trading remains blocked until the economic news filter is connected."
-    );
 }
 
 
@@ -2173,7 +3852,7 @@ function updateTimestamp() {
             {
 
                 timeZone:
-                    "Asia/Kolkata",
+                    TIMEZONE,
 
                 day:
                     "2-digit",
@@ -2207,6 +3886,7 @@ function updateTimestamp() {
         ],
         `Updated: ${text} IST`
     );
+
 }
 
 
@@ -2214,7 +3894,9 @@ function updateTimestamp() {
    ERROR HANDLER
    ========================================================= */
 
-function showDashboardError(error) {
+function showDashboardError(
+    error
+) {
 
     console.error(
         "EUR/USD DASHBOARD ERROR:",
@@ -2231,8 +3913,8 @@ function showDashboardError(error) {
 
     setTextAny(
         [
-            "trend",
             "priceStatus",
+            "trend",
             "status",
             "marketStatus"
         ],
@@ -2241,10 +3923,7 @@ function showDashboardError(error) {
 
 
     setTextAny(
-        [
-            "sniperVerdict",
-            "sniperStatus"
-        ],
+        "sniperStatus",
         "WAIT — MARKET DATA ERROR"
     );
 
@@ -2259,6 +3938,39 @@ function showDashboardError(error) {
         "proExplanation",
         message
     );
+
+
+    /*
+       Never allow a data error to produce
+       a trading signal.
+    */
+
+    updateScalpUI({
+
+        direction:
+            "BLOCKED",
+
+        reason:
+            "MARKET DATA ERROR",
+
+        entry: null,
+        sl: null,
+        tp1: null,
+        tp2: null,
+
+        confidence: 0,
+
+        window:
+            "Next 2 hours",
+
+        trigger:
+            "Market data unavailable",
+
+        invalidation:
+            "No trade"
+
+    });
+
 }
 
 
@@ -2273,93 +3985,73 @@ async function loadMarketData() {
     ) {
 
         return;
+
     }
 
 
-    window.__dashboardLoading = true;
-
-
-    setTextAny(
-        [
-            "trend",
-            "priceStatus",
-            "status",
-            "marketStatus"
-        ],
-        "CONNECTING TO MARKET DATA..."
-    );
+    window.__dashboardLoading =
+        true;
 
 
     try {
 
         console.log(
-            "EUR/USD DASHBOARD UPDATE START"
+            "EUR/USD DASHBOARD UPDATE"
         );
 
 
         /*
-           Four requests.
+           Load all required timeframes.
 
-           We deliberately space them out to
-           reduce the chance of hitting the
-           Twelve Data per-minute limit.
+           Cache ensures we don't repeatedly
+           consume API credits.
         */
 
-        const h4 =
-            await getCandles(
+        const [
+            h4,
+            h1,
+            m15,
+            m5
+        ] = await Promise.all([
+
+            getCandles(
                 "4h",
                 100
-            );
+            ),
 
-
-        await sleep(
-            REQUEST_DELAY_MS
-        );
-
-
-        const h1 =
-            await getCandles(
+            getCandles(
                 "1h",
                 100
-            );
+            ),
 
-
-        await sleep(
-            REQUEST_DELAY_MS
-        );
-
-
-        const m15 =
-            await getCandles(
+            getCandles(
                 "15min",
                 100
-            );
+            ),
 
-
-        await sleep(
-            REQUEST_DELAY_MS
-        );
-
-
-        const m5 =
-            await getCandles(
+            getCandles(
                 "5min",
                 100
-            );
+            )
+
+        ]);
 
 
-        marketData.h4 = h4;
-
-        marketData.h1 = h1;
-
-        marketData.m15 = m15;
-
-        marketData.m5 = m5;
+        marketData.h4 =
+            h4;
 
 
-        /*
-           Latest M5 close.
-        */
+        marketData.h1 =
+            h1;
+
+
+        marketData.m15 =
+            m15;
+
+
+        marketData.m5 =
+            m5;
+
 
         marketData.price =
             m5[
@@ -2371,37 +4063,29 @@ async function loadMarketData() {
             new Date();
 
 
-        marketData.apiError =
-            null;
+        /*
+           News is checked separately.
+        */
 
-
-        console.log(
-            "PRICE:",
-            marketData.price
-        );
+        await loadNews();
 
 
         const analysis =
             buildAnalysis();
 
 
-        console.log(
-            "ANALYSIS:",
-            analysis
-        );
-
-
-        const setup =
+        const sniperSetup =
             calculateSniperSetup(
                 analysis,
                 marketData.price
             );
 
 
-        console.log(
-            "SETUP:",
-            setup
-        );
+        const scalpSetup =
+            calculateScalpSetup(
+                analysis,
+                marketData.price
+            );
 
 
         updatePriceUI(
@@ -2428,31 +4112,26 @@ async function loadMarketData() {
 
 
         updateSniperUI(
-            setup
+            sniperSetup
         );
 
 
         updateProVerdictUI(
-            setup
+            sniperSetup,
+            analysis
+        );
+
+
+        updateScalpUI(
+            scalpSetup
         );
 
 
         updateTimestamp();
 
 
-        setTextAny(
-            [
-                "trend",
-                "priceStatus",
-                "status",
-                "marketStatus"
-            ],
-            "MARKET DATA LOADED"
-        );
-
-
         console.log(
-            "EUR/USD DASHBOARD UPDATE COMPLETE"
+            "EUR/USD DASHBOARD COMPLETE"
         );
 
     }
@@ -2475,7 +4154,115 @@ async function loadMarketData() {
 
         window.__dashboardLoading =
             false;
+
     }
+
+}
+
+
+/* =========================================================
+   CHART SWITCHER
+   ========================================================= */
+
+function changeChart(
+    interval
+) {
+
+    const iframe =
+        document.getElementById(
+            "tradingChart"
+        );
+
+
+    if (!iframe) {
+
+        return;
+
+    }
+
+
+    iframe.src =
+
+        "https://www.tradingview.com/widgetembed/?" +
+
+        "frameElementId=tradingview_chart" +
+
+        "&symbol=FX%3AEURUSD" +
+
+        "&interval=" +
+        encodeURIComponent(interval) +
+
+        "&hidesidetoolbar=1" +
+
+        "&hidetoptoolbar=0" +
+
+        "&symboledit=1" +
+
+        "&saveimage=0" +
+
+        "&toolbarbg=f1f3f6" +
+
+        "&theme=dark" +
+
+        "&style=1" +
+
+        "&timezone=Asia%2FKolkata" +
+
+        "&withdateranges=1" +
+
+        "&hideideas=1" +
+
+        "&studies=%5B%5D" +
+
+        "&overrides=%7B%7D" +
+
+        "&locale=en";
+
+
+    document
+        .querySelectorAll(
+            ".timeframes button"
+        )
+        .forEach(
+            button =>
+                button.classList
+                    .remove(
+                        "active"
+                    )
+        );
+
+
+    const map = {
+
+        "5":
+            "btn5",
+
+        "15":
+            "btn15",
+
+        "60":
+            "btn60",
+
+        "4H":
+            "btn240"
+
+    };
+
+
+    const button =
+        document.getElementById(
+            map[interval]
+        );
+
+
+    if (button) {
+
+        button.classList.add(
+            "active"
+        );
+
+    }
+
 }
 
 
@@ -2486,17 +4273,36 @@ async function loadMarketData() {
 function startDashboard() {
 
     console.log(
-        "EUR/USD SNIPER DASHBOARD STARTING..."
+        "EUR/USD SNIPER DASHBOARD V3 STARTING..."
     );
 
 
+    /*
+       Create scalping section immediately.
+    */
+
+    createScalpCard();
+
+
+    /*
+       First load.
+    */
+
     loadMarketData();
 
+
+    /*
+       Refresh every minute.
+
+       Cache means only expired timeframe data
+       will actually call Twelve Data.
+    */
 
     setInterval(
         loadMarketData,
         REFRESH_MS
     );
+
 }
 
 
@@ -2505,7 +4311,8 @@ function startDashboard() {
    ========================================================= */
 
 if (
-    document.readyState === "loading"
+    document.readyState ===
+    "loading"
 ) {
 
     document.addEventListener(
@@ -2513,7 +4320,10 @@ if (
         startDashboard
     );
 
-} else {
+}
+
+else {
 
     startDashboard();
+
 }
