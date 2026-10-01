@@ -167,6 +167,7 @@
         #tradingViewChart {
             width: 100%;
             height: 500px;
+            min-height: 400px;
         }
 
         @media (max-width: 600px) {
@@ -181,6 +182,7 @@
 
             #tradingViewChart {
                 height: 400px;
+                min-height: 400px;
             }
 
             .row strong {
@@ -268,9 +270,7 @@
 
         <h2>EUR/USD LIVE CHART</h2>
 
-        <div
-            id="tradingViewChart"
-        ></div>
+        <div id="tradingViewChart"></div>
 
     </div>
 
@@ -387,7 +387,7 @@
         <h2>A+ SNIPER SETUP</h2>
 
         <div
-            id="sniperStatus"
+            id="sniperStatusBig"
             class="big-status"
         >
             WAIT
@@ -448,7 +448,6 @@
             <strong id="sniperInvalidation">--</strong>
         </div>
 
-        <!-- IMPORTANT: SNIPER SETUP CLOCK -->
         <div class="row">
             <span>Setup Time</span>
             <strong
@@ -567,7 +566,6 @@
         >
             Waiting for complete market data...
         </div>
-
 
         <div class="row">
             <span>SESSION</span>
@@ -736,7 +734,7 @@
 
 
     <!-- ===================================== -->
-    <!-- TRADINGVIEW SCRIPT -->
+    <!-- TRADINGVIEW -->
     <!-- ===================================== -->
 
     <script
@@ -747,49 +745,71 @@
 
     <script>
 
+        function loadTradingViewChart() {
+
+            if (
+                typeof TradingView === "undefined"
+            ) {
+                setTimeout(
+                    loadTradingViewChart,
+                    500
+                );
+
+                return;
+            }
+
+            const container =
+                document.getElementById(
+                    "tradingViewChart"
+                );
+
+            if (!container) {
+                return;
+            }
+
+            container.innerHTML = "";
+
+            new TradingView.widget({
+
+                width: "100%",
+
+                height: 500,
+
+                symbol: "OANDA:EURUSD",
+
+                interval: "5",
+
+                timezone: "Asia/Kolkata",
+
+                theme: "dark",
+
+                style: "1",
+
+                locale: "en",
+
+                toolbar_bg: "#111",
+
+                enable_publishing: false,
+
+                hide_top_toolbar: false,
+
+                hide_legend: false,
+
+                allow_symbol_change: false,
+
+                container_id:
+                    "tradingViewChart"
+
+            });
+
+        }
+
+
         document.addEventListener(
             "DOMContentLoaded",
             function () {
 
-                if (
-                    typeof TradingView === "undefined"
-                ) {
-                    return;
-                }
-
-
-                new TradingView.widget({
-
-                    width: "100%",
-
-                    height: 500,
-
-                    symbol: "FXCM:EURUSD",
-
-                    interval: "5",
-
-                    timezone: "Asia/Kolkata",
-
-                    theme: "dark",
-
-                    style: "1",
-
-                    locale: "en",
-
-                    toolbar_bg: "#111",
-
-                    enable_publishing: false,
-
-                    hide_top_toolbar: false,
-
-                    hide_legend: false,
-
-                    allow_symbol_change: false,
-
-                    container_id:
-                        "tradingViewChart"
-
-                });
+                loadTradingViewChart();
 
             }
         );
