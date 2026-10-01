@@ -1,6 +1,6 @@
 /* =========================================================
    EUR/USD SNIPER DASHBOARD
-   FULL ELITE VERSION
+   FULL ELITE VERSION + LIVE M5 PRICE CHART
 
    ENGINE 1 = A+ SNIPER
    ENGINE 2 = ELITE SCALP
@@ -8,6 +8,8 @@
 
    NEWS = INFORMATION ONLY
    NEWS DOES NOT BLOCK ANY ENGINE
+
+   CHART = LIVE M5 PRICE CHART
    ========================================================= */
 
 
@@ -93,14 +95,6 @@ let newsUpdated = 0;
 
 /* =========================================================
    NEWS STATE
-   IMPORTANT:
-
-   NEWS IS INFORMATION ONLY.
-
-   It DOES NOT block:
-   - Sniper
-   - Scalp
-   - Trade Gate
    ========================================================= */
 
 let newsState = {
@@ -125,19 +119,9 @@ let newsState = {
    ENGINE SETUP CLOCKS
    ========================================================= */
 
-
-/*
-   SNIPER setup clock
-*/
-
 let sniperSetupTime = null;
 
 let sniperSetupActive = false;
-
-
-/*
-   TRADE GATE setup clock
-*/
 
 let gateSetupTime = null;
 
@@ -192,7 +176,6 @@ function startSniperSetup() {
             true;
     }
 
-
     setText(
         "setupTime",
         sniperSetupTime
@@ -207,7 +190,6 @@ function invalidateSniperSetup() {
 
     sniperSetupTime =
         null;
-
 
     setText(
         "setupTime",
@@ -231,7 +213,6 @@ function startGateSetup() {
             true;
     }
 
-
     setText(
         "gateSetupTime",
         gateSetupTime
@@ -246,7 +227,6 @@ function invalidateGateSetup() {
 
     gateSetupTime =
         null;
-
 
     setText(
         "gateSetupTime",
@@ -267,7 +247,6 @@ function setText(
     const el =
         document.getElementById(id);
 
-
     if (el) {
 
         el.textContent =
@@ -280,7 +259,6 @@ function num(value) {
 
     const n =
         parseFloat(value);
-
 
     return Number.isFinite(n)
         ? n
@@ -309,7 +287,6 @@ function formatPrice(value) {
         return "--";
     }
 
-
     return Number(value)
         .toFixed(5);
 }
@@ -333,7 +310,6 @@ function formatNumber(
         return "--";
     }
 
-
     return Number(value)
         .toFixed(decimals);
 }
@@ -350,6 +326,651 @@ function delay(ms) {
             )
 
     );
+}
+
+
+/* =========================================================
+   =========================================================
+   LIVE EUR/USD M5 PRICE CHART
+   =========================================================
+   ========================================================= */
+
+/*
+   This function creates the chart container
+   automatically.
+
+   It is inserted immediately AFTER the
+   Live Market Price element.
+
+   No HTML chart div is required.
+*/
+
+function createPriceChartContainer() {
+
+    const livePriceElement =
+        document.getElementById("livePrice");
+
+    if (!livePriceElement) {
+
+        console.warn(
+            "livePrice element not found."
+        );
+
+        return null;
+    }
+
+
+    let chartContainer =
+        document.getElementById("priceChart");
+
+
+    if (chartContainer) {
+
+        return chartContainer;
+    }
+
+
+    chartContainer =
+        document.createElement("div");
+
+    chartContainer.id =
+        "priceChart";
+
+
+    chartContainer.style.width =
+        "100%";
+
+    chartContainer.style.margin =
+        "14px 0 18px 0";
+
+    chartContainer.style.background =
+        "#181818";
+
+    chartContainer.style.border =
+        "1px solid #333";
+
+    chartContainer.style.borderRadius =
+        "12px";
+
+    chartContainer.style.padding =
+        "12px";
+
+    chartContainer.style.boxSizing =
+        "border-box";
+
+    chartContainer.style.overflow =
+        "hidden";
+
+
+    /*
+       Insert chart directly after
+       Live Market Price.
+    */
+
+    const parent =
+        livePriceElement.parentNode;
+
+
+    if (parent) {
+
+        parent.insertBefore(
+
+            chartContainer,
+
+            livePriceElement.nextSibling
+
+        );
+
+    }
+
+
+    return chartContainer;
+}
+
+
+/* =========================================================
+   CREATE SVG PRICE CHART
+   ========================================================= */
+
+function renderPriceChart(candles) {
+
+    const chartContainer =
+        createPriceChartContainer();
+
+
+    if (!chartContainer) {
+
+        return;
+    }
+
+
+    if (
+
+        !candles ||
+
+        candles.length === 0
+
+    ) {
+
+        chartContainer.innerHTML = `
+            <div style="
+                color:#aaa;
+                text-align:center;
+                padding:20px;
+                font-family:Arial,sans-serif;
+            ">
+                Waiting for EUR/USD chart data...
+            </div>
+        `;
+
+        return;
+    }
+
+
+    /*
+       Use latest 60 M5 candles.
+    */
+
+    const recent =
+        candles.slice(-60);
+
+
+    const width =
+        900;
+
+    const height =
+        360;
+
+
+    const paddingLeft =
+        55;
+
+    const paddingRight =
+        15;
+
+    const paddingTop =
+        45;
+
+    const paddingBottom =
+        35;
+
+
+    const chartWidth =
+        width -
+        paddingLeft -
+        paddingRight;
+
+
+    const chartHeight =
+        height -
+        paddingTop -
+        paddingBottom;
+
+
+    const highs =
+        recent.map(
+            c => c.high
+        );
+
+
+    const lows =
+        recent.map(
+            c => c.low
+        );
+
+
+    const maxPrice =
+        Math.max(
+            ...highs
+        );
+
+
+    const minPrice =
+        Math.min(
+            ...lows
+        );
+
+
+    const priceRange =
+        maxPrice -
+        minPrice;
+
+
+    if (
+        priceRange <= 0
+    ) {
+
+        return;
+    }
+
+
+    function xPosition(index) {
+
+        if (
+            recent.length <= 1
+        ) {
+
+            return paddingLeft;
+        }
+
+
+        return (
+
+            paddingLeft +
+
+            (
+                index /
+                (recent.length - 1)
+            ) *
+
+            chartWidth
+
+        );
+    }
+
+
+    function yPosition(price) {
+
+        return (
+
+            paddingTop +
+
+            (
+
+                maxPrice -
+                price
+
+            ) /
+
+            priceRange *
+
+            chartHeight
+
+        );
+    }
+
+
+    /*
+       Grid lines.
+    */
+
+    let grid =
+        "";
+
+
+    const gridCount =
+        5;
+
+
+    for (
+        let i = 0;
+
+        i <= gridCount;
+
+        i++
+
+    ) {
+
+        const ratio =
+            i / gridCount;
+
+
+        const y =
+            paddingTop +
+            ratio *
+            chartHeight;
+
+
+        const price =
+            maxPrice -
+            ratio *
+            priceRange;
+
+
+        grid += `
+
+            <line
+                x1="${paddingLeft}"
+                y1="${y}"
+                x2="${width - paddingRight}"
+                y2="${y}"
+                stroke="#2b2b2b"
+                stroke-width="1"
+            />
+
+            <text
+                x="${paddingLeft - 8}"
+                y="${y + 4}"
+                text-anchor="end"
+                fill="#999"
+                font-size="11"
+                font-family="Arial"
+            >
+                ${formatPrice(price)}
+            </text>
+
+        `;
+    }
+
+
+    /*
+       Candles.
+    */
+
+    let candleSVG =
+        "";
+
+
+    const candleSpacing =
+        chartWidth /
+        recent.length;
+
+
+    const candleWidth =
+        Math.max(
+            3,
+            candleSpacing * 0.55
+        );
+
+
+    recent.forEach(
+
+        (candle, index) => {
+
+            const x =
+                xPosition(index);
+
+
+            const highY =
+                yPosition(
+                    candle.high
+                );
+
+
+            const lowY =
+                yPosition(
+                    candle.low
+                );
+
+
+            const openY =
+                yPosition(
+                    candle.open
+                );
+
+
+            const closeY =
+                yPosition(
+                    candle.close
+                );
+
+
+            const bullish =
+                candle.close >=
+                candle.open;
+
+
+            const candleColor =
+                bullish
+                    ? "#20c997"
+                    : "#ff4d6d";
+
+
+            const bodyTop =
+                Math.min(
+                    openY,
+                    closeY
+                );
+
+
+            const bodyHeight =
+                Math.max(
+                    2,
+                    Math.abs(
+                        closeY -
+                        openY
+                    )
+                );
+
+
+            candleSVG += `
+
+                <line
+                    x1="${x}"
+                    y1="${highY}"
+                    x2="${x}"
+                    y2="${lowY}"
+                    stroke="${candleColor}"
+                    stroke-width="1"
+                />
+
+                <rect
+                    x="${x - candleWidth / 2}"
+                    y="${bodyTop}"
+                    width="${candleWidth}"
+                    height="${bodyHeight}"
+                    fill="${candleColor}"
+                    rx="1"
+                />
+
+            `;
+        }
+
+    );
+
+
+    /*
+       Current/latest price line.
+    */
+
+    const latest =
+        recent[
+            recent.length - 1
+        ];
+
+
+    const latestPrice =
+        latest.close;
+
+
+    const latestY =
+        yPosition(
+            latestPrice
+        );
+
+
+    const priceLine = `
+
+        <line
+            x1="${paddingLeft}"
+            y1="${latestY}"
+            x2="${width - paddingRight}"
+            y2="${latestY}"
+            stroke="#ffffff"
+            stroke-width="1"
+            stroke-dasharray="5 4"
+        />
+
+        <rect
+            x="${width - 92}"
+            y="${latestY - 11}"
+            width="77"
+            height="22"
+            rx="4"
+            fill="#252525"
+        />
+
+        <text
+            x="${width - 53}"
+            y="${latestY + 4}"
+            text-anchor="middle"
+            fill="#ffffff"
+            font-size="11"
+            font-family="Arial"
+            font-weight="bold"
+        >
+            ${formatPrice(latestPrice)}
+        </text>
+
+    `;
+
+
+    /*
+       Title.
+    */
+
+    const title = `
+
+        <text
+            x="${paddingLeft}"
+            y="22"
+            fill="#ffffff"
+            font-size="15"
+            font-family="Arial"
+            font-weight="bold"
+        >
+            EUR/USD — M5 PRICE CHART
+        </text>
+
+        <text
+            x="${width - paddingRight}"
+            y="22"
+            text-anchor="end"
+            fill="#888"
+            font-size="11"
+            font-family="Arial"
+        >
+            Last ${recent.length} candles
+        </text>
+
+    `;
+
+
+    /*
+       Time labels.
+    */
+
+    let timeLabels =
+        "";
+
+
+    const labelIndexes = [
+
+        0,
+
+        Math.floor(
+            recent.length * 0.25
+        ),
+
+        Math.floor(
+            recent.length * 0.50
+        ),
+
+        Math.floor(
+            recent.length * 0.75
+        ),
+
+        recent.length - 1
+
+    ];
+
+
+    labelIndexes.forEach(
+
+        index => {
+
+            const candle =
+                recent[index];
+
+
+            if (!candle) {
+
+                return;
+            }
+
+
+            const x =
+                xPosition(index);
+
+
+            const date =
+                new Date(
+                    candle.datetime
+                );
+
+
+            const label =
+                date.toLocaleTimeString(
+                    "en-IN",
+                    {
+                        timeZone:
+                            "Asia/Kolkata",
+
+                        hour:
+                            "2-digit",
+
+                        minute:
+                            "2-digit",
+
+                        hour12:
+                            false
+                    }
+                );
+
+
+            timeLabels += `
+
+                <text
+                    x="${x}"
+                    y="${height - 10}"
+                    text-anchor="middle"
+                    fill="#888"
+                    font-size="10"
+                    font-family="Arial"
+                >
+                    ${label}
+                </text>
+
+            `;
+        }
+
+    );
+
+
+    chartContainer.innerHTML = `
+
+        <div style="
+            width:100%;
+            overflow-x:auto;
+        ">
+
+            <svg
+                viewBox="0 0 ${width} ${height}"
+                width="100%"
+                height="360"
+                preserveAspectRatio="none"
+                style="
+                    display:block;
+                    min-width:650px;
+                    background:#181818;
+                "
+            >
+
+                ${title}
+
+                ${grid}
+
+                ${candleSVG}
+
+                ${priceLine}
+
+                ${timeLabels}
+
+            </svg>
+
+        </div>
+
+    `;
 }
 
 
@@ -1353,12 +1974,6 @@ function isEMAOverExtended(
         );
 
 
-    /*
-       If price is extremely extended
-       away from EMA20 relative to the
-       EMA20/EMA50 structure, avoid chasing.
-    */
-
     if (
         normalGap > 0 &&
         distance > normalGap * 3
@@ -1455,34 +2070,6 @@ function getCandleQuality(
    SESSION ENGINE
    ========================================================= */
 
-/*
-   Session times are interpreted in IST.
-
-   Approximate dashboard windows:
-
-   LONDON:
-   12:30 - 17:30
-
-   LONDON / US OVERLAP:
-   17:30 - 20:30
-
-   US:
-   20:30 - 22:30
-
-   LONDON CLOSING:
-   20:00 - 21:30
-
-   US CLOSING:
-   01:00 - 02:30
-
-   OFF SESSION:
-   Everything else.
-
-   Important:
-   OFF SESSION does NOT block trades.
-*/
-
-
 function getSessionInfo() {
 
     const now =
@@ -1554,10 +2141,6 @@ function getSessionInfo() {
         minute;
 
 
-    /*
-       US closing
-    */
-
     if (
 
         totalMinutes >= 60 &&
@@ -1580,10 +2163,6 @@ function getSessionInfo() {
         };
     }
 
-
-    /*
-       London / US overlap
-    */
 
     if (
 
@@ -1608,10 +2187,6 @@ function getSessionInfo() {
     }
 
 
-    /*
-       London closing
-    */
-
     if (
 
         totalMinutes >= 1200 &&
@@ -1635,10 +2210,6 @@ function getSessionInfo() {
     }
 
 
-    /*
-       US session
-    */
-
     if (
 
         totalMinutes >= 1230 &&
@@ -1661,10 +2232,6 @@ function getSessionInfo() {
         };
     }
 
-
-    /*
-       London session
-    */
 
     if (
 
@@ -1704,10 +2271,6 @@ function getSessionInfo() {
 }
 
 
-/*
-   Backward-compatible session name.
-*/
-
 function getSession() {
 
     return getSessionInfo().name;
@@ -1716,7 +2279,6 @@ function getSession() {
 
 /* =========================================================
    NEWS SYSTEM
-   INFORMATION ONLY
    ========================================================= */
 
 const EUR_NEWS_KEYWORDS = [
@@ -2477,16 +3039,6 @@ function processNews(
         relevantEvents.length > 0;
 
 
-    /*
-       IMPORTANT:
-
-       This may identify a news window,
-       BUT IT DOES NOT BLOCK ANY ENGINE.
-
-       newsState.blocked is retained only
-       for display/information.
-    */
-
     let blockingEvent =
         null;
 
@@ -2620,10 +3172,6 @@ function processNews(
     }
 
 
-    /*
-       NEWS DISPLAY ONLY.
-    */
-
     if (
         newsState.blocked
     ) {
@@ -2677,10 +3225,6 @@ function processNews(
     }
 
 
-    /*
-       News risk is informational only.
-    */
-
     if (
         newsState.blocked
     ) {
@@ -2731,19 +3275,10 @@ function processNews(
 
         setText(
             "tradingRisk",
-        "NORMAL"
+            "NORMAL"
         );
     }
 
-
-    /*
-       IMPORTANT:
-
-       Always show news as INFORMATION.
-
-       Never use this checklist item
-       as an engine gate.
-    */
 
     setText(
         "checkNews",
@@ -2962,14 +3497,6 @@ function formatMinutes(
 
 /* =========================================================
    NEWS BLOCK FUNCTION
-   =========================================================
-
-   KEPT ONLY FOR COMPATIBILITY.
-
-   IT ALWAYS RETURNS FALSE.
-
-   NO ENGINE IS ALLOWED TO BLOCK
-   BECAUSE OF NEWS.
    ========================================================= */
 
 function isNewsBlocked() {
@@ -2979,43 +3506,9 @@ function isNewsBlocked() {
 
 
 /* =========================================================
-   =========================================================
    ENGINE 1
    A+ SNIPER ENGINE
-   =========================================================
    ========================================================= */
-
-
-/*
-   SNIPER RULES
-
-   SELL:
-
-   1. H4 bearish
-   2. H1 bearish
-   3. M15 bearish
-   4. M5 bearish
-   5. M5 EMA20 < EMA50
-   6. M5 completed candle bearish momentum
-   7. M5 RSI < 50
-   8. Candle quality acceptable
-   9. EMA not excessively extended
-
-   BUY:
-
-   1. H4 bullish
-   2. H1 bullish
-   3. M15 bullish
-   4. M5 bullish
-   5. M5 EMA20 > EMA50
-   6. M5 completed candle bullish momentum
-   7. M5 RSI >= 50
-   8. Candle quality acceptable
-   9. EMA not excessively extended
-
-   NEWS DOES NOT PARTICIPATE.
-*/
-
 
 function evaluateSniper(
 
@@ -3238,13 +3731,6 @@ function evaluateSniper(
     const entry =
         price;
 
-
-    /*
-       10 pip base structural risk.
-
-       This can later be replaced
-       with swing-based structural SL.
-    */
 
     const riskPips =
         10;
@@ -3489,36 +3975,9 @@ function displaySniper(
 
 
 /* =========================================================
-   =========================================================
    ENGINE 2
    ELITE SCALP ENGINE
-   =========================================================
    ========================================================= */
-
-
-/*
-   SCALP RULES
-
-   SELL:
-
-   H1 bearish
-   M15 bearish
-   M5 bearish
-   M5 EMA bearish
-   M5 momentum bearish
-
-   BUY:
-
-   H1 bullish
-   M15 bullish
-   M5 bullish
-   M5 EMA bullish
-   M5 momentum bullish
-
-   News does NOT participate.
-   Session does NOT automatically block.
-*/
-
 
 function evaluateScalp(
 
@@ -3555,10 +4014,6 @@ function evaluateScalp(
     const rsi =
         calculateRSI(m5);
 
-
-    /*
-       SELL
-    */
 
     if (
 
@@ -3624,10 +4079,6 @@ function evaluateScalp(
         };
     }
 
-
-    /*
-       BUY
-    */
 
     if (
 
@@ -3817,47 +4268,9 @@ function displayScalp(
 
 
 /* =========================================================
-   =========================================================
    ENGINE 3
    ELITE TRADE GATE
-   =========================================================
    ========================================================= */
-
-
-/*
-   TRADE GATE IS INDEPENDENT.
-
-   NEWS = NOT A RULE.
-
-   SESSION = CONTEXT ONLY.
-
-   OFF SESSION DOES NOT BLOCK.
-
-   SELL GATE:
-
-   1. H4 bearish
-   2. H1 bearish
-   3. M15 bearish
-   4. M5 bearish
-   5. EMA20 < EMA50
-   6. RSI < 50
-   7. completed M5 bearish momentum
-   8. candle quality
-   9. EMA not excessively extended
-   10. risk <= 15 pips
-   11. RR >= 1:2
-
-   BUY GATE:
-
-   Opposite conditions.
-
-   This engine is intended to answer:
-
-   "Can I execute this setup?"
-
-   rather than simply detecting direction.
-*/
-
 
 function evaluateTradeGate(
 
@@ -3880,12 +4293,6 @@ function evaluateTradeGate(
     const session =
         sessionInfo.name;
 
-
-    /*
-       ALWAYS SHOW SESSION.
-
-       OFF SESSION DOES NOT BLOCK.
-    */
 
     setText(
         "gateSession",
@@ -3946,11 +4353,6 @@ function evaluateTradeGate(
     );
 
 
-    /*
-       If H4 + H1 do not agree,
-       there is no directional gate.
-    */
-
     if (
         direction === "--"
     ) {
@@ -3977,10 +4379,6 @@ function evaluateTradeGate(
     }
 
 
-    /*
-       M15 structure.
-    */
-
     const m15OK =
 
         direction === "SELL"
@@ -3989,10 +4387,6 @@ function evaluateTradeGate(
 
             : m15Structure === "BULLISH";
 
-
-    /*
-       M5 structure.
-    */
 
     const m5OK =
 
@@ -4003,10 +4397,6 @@ function evaluateTradeGate(
             : m5Structure === "BULLISH";
 
 
-    /*
-       EMA.
-    */
-
     const emaOK =
 
         direction === "SELL"
@@ -4015,10 +4405,6 @@ function evaluateTradeGate(
 
             : ema === "BULLISH";
 
-
-    /*
-       RSI.
-    */
 
     const rsiOK =
 
@@ -4031,10 +4417,6 @@ function evaluateTradeGate(
               rsi >= 50;
 
 
-    /*
-       Momentum.
-    */
-
     const momentumOK =
 
         direction === "SELL"
@@ -4044,10 +4426,6 @@ function evaluateTradeGate(
             : momentum === "BULLISH";
 
 
-    /*
-       Candle quality.
-    */
-
     const candleOK =
         getCandleQuality(
             m5,
@@ -4055,24 +4433,12 @@ function evaluateTradeGate(
         );
 
 
-    /*
-       EMA extension.
-    */
-
     const extensionOK =
         !isEMAOverExtended(
             m5,
             direction
         );
 
-
-    /*
-       Structural risk.
-
-       Base gate risk = 10 pips.
-
-       Maximum allowed = 15 pips.
-    */
 
     const riskPips =
         10;
@@ -4085,27 +4451,13 @@ function evaluateTradeGate(
         riskPips <= 15;
 
 
-    /*
-       Minimum RR.
-    */
-
     const rrOK =
         true;
 
 
-    /*
-       SESSION IS NOT A BLOCK.
-
-       We only use it as context.
-    */
-
     const sessionContext =
         sessionInfo.quality;
 
-
-    /*
-       Final Gate.
-    */
 
     const gateOK =
 
@@ -4212,12 +4564,6 @@ function evaluateTradeGate(
         return;
     }
 
-
-    /*
-       QUALIFYING SETUP FOUND.
-
-       Start the Gate setup clock.
-    */
 
     startGateSetup();
 
@@ -4444,12 +4790,6 @@ function displayChecklist(
             : "--";
 
 
-    /*
-       Session is information/context.
-
-       It does not block.
-    */
-
     setText(
 
         "checkSession",
@@ -4591,13 +4931,6 @@ function displayChecklist(
     );
 
 
-    /*
-       S/R check.
-
-       This remains informational until
-       structural TP logic is expanded.
-    */
-
     setText(
 
         "checkSR",
@@ -4666,10 +4999,24 @@ function displayTechnicalData(
         calculateSR(h1);
 
 
+    /*
+       LIVE MARKET PRICE
+    */
+
     setText(
         "livePrice",
         formatPrice(price)
     );
+
+
+    /*
+       =====================================================
+       NEW:
+       RENDER CHART DIRECTLY BELOW LIVE MARKET PRICE
+       =====================================================
+    */
+
+    renderPriceChart(m5);
 
 
     setText(
@@ -4802,12 +5149,6 @@ function updateProVerdict(
     scalp
 
 ) {
-
-    /*
-       Pro verdict is a summary only.
-
-       It does not control the engines.
-    */
 
     if (
         sniper.status ===
@@ -5029,7 +5370,7 @@ async function loadMarketData() {
 
 
         /*
-           Technical display.
+           Technical display + CHART
         */
 
         displayTechnicalData(
@@ -5048,11 +5389,7 @@ async function loadMarketData() {
 
 
         /*
-           News loads separately.
-
-           IMPORTANT:
-           News does not participate
-           in engine decisions.
+           News
         */
 
         await loadNews();
@@ -5060,7 +5397,6 @@ async function loadMarketData() {
 
         /*
            ENGINE 1
-           A+ SNIPER
         */
 
         const sniper =
@@ -5086,7 +5422,6 @@ async function loadMarketData() {
 
         /*
            ENGINE 2
-           ELITE SCALP
         */
 
         const scalp =
@@ -5110,7 +5445,6 @@ async function loadMarketData() {
 
         /*
            ENGINE 3
-           ELITE TRADE GATE
         */
 
         evaluateTradeGate(
@@ -5159,7 +5493,7 @@ async function loadMarketData() {
 
 
         /*
-           Final status.
+           Final status
         */
 
         setText(
@@ -5198,13 +5532,6 @@ function manualRefresh() {
         return;
     }
 
-
-    /*
-       Force news refresh.
-
-       Market data cache remains
-       protected from unnecessary calls.
-    */
 
     newsUpdated =
         0;
@@ -5261,6 +5588,13 @@ document.addEventListener(
     "DOMContentLoaded",
 
     () => {
+
+        /*
+           Make sure chart container can be
+           created after the page is ready.
+        */
+
+        createPriceChartContainer();
 
         loadMarketData();
 
