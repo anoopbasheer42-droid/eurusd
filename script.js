@@ -28,7 +28,6 @@ let newsClear = false;
 // ============================================================
 
 function setText(id, value) {
-
     const element = document.getElementById(id);
 
     if (element) {
@@ -38,7 +37,6 @@ function setText(id, value) {
 
 
 function formatPrice(value) {
-
     if (
         value === null ||
         value === undefined ||
@@ -175,7 +173,7 @@ async function fetchCandles(
 
 
 // ============================================================
-// LOAD CANDLES — EACH TIMEFRAME INDEPENDENTLY
+// LOAD CANDLES
 // ============================================================
 
 async function loadCandles() {
@@ -186,6 +184,7 @@ async function loadCandles() {
         H1: false,
         M15: false,
         M5: false
+
     };
 
 
@@ -269,7 +268,6 @@ async function loadCandles() {
         "CANDLE LOAD STATUS:",
         results
     );
-
 
     return results;
 }
@@ -494,13 +492,11 @@ function getStructure(candles) {
 
 
     const firstClose =
-        first[first.length - 1]
-            .close;
+        first[first.length - 1].close;
 
 
     const lastClose =
-        last[last.length - 1]
-            .close;
+        last[last.length - 1].close;
 
 
     if (
@@ -528,6 +524,62 @@ function getStructure(candles) {
 
 
 // ============================================================
+// SWING HIGH
+// ============================================================
+
+function isSwingHigh(
+    candles,
+    index
+) {
+
+    if (
+        index < 2 ||
+        index > candles.length - 3
+    ) {
+        return false;
+    }
+
+    const current =
+        candles[index].high;
+
+    return (
+        current > candles[index - 1].high &&
+        current > candles[index - 2].high &&
+        current > candles[index + 1].high &&
+        current > candles[index + 2].high
+    );
+}
+
+
+// ============================================================
+// SWING LOW
+// ============================================================
+
+function isSwingLow(
+    candles,
+    index
+) {
+
+    if (
+        index < 2 ||
+        index > candles.length - 3
+    ) {
+        return false;
+    }
+
+    const current =
+        candles[index].low;
+
+    return (
+        current < candles[index - 1].low &&
+        current < candles[index - 2].low &&
+        current < candles[index + 1].low &&
+        current < candles[index + 2].low
+    );
+}
+
+
+// ============================================================
 // SUPPORT / RESISTANCE
 // ============================================================
 
@@ -550,46 +602,105 @@ function calculateLevels(candles) {
 
 
     const recent =
-        candles.slice(-50);
+        candles.slice(-80);
 
 
-    const highs =
-        recent.map(
-            candle => candle.high
-        );
+    const resistanceLevels = [];
+
+    const supportLevels = [];
 
 
-    const lows =
-        recent.map(
-            candle => candle.low
-        );
+    for (
+        let i = 2;
+        i < recent.length - 2;
+        i++
+    ) {
+
+        if (
+            isSwingHigh(
+                recent,
+                i
+            )
+        ) {
+
+            resistanceLevels.push(
+                recent[i].high
+            );
+        }
 
 
-    const sortedHighs =
-        [...highs].sort(
-            (a, b) => b - a
-        );
+        if (
+            isSwingLow(
+                recent,
+                i
+            )
+        ) {
+
+            supportLevels.push(
+                recent[i].low
+            );
+        }
+    }
 
 
-    const sortedLows =
-        [...lows].sort(
-            (a, b) => a - b
-        );
+    const price =
+        currentPrice ||
+        recent[recent.length - 1].close;
+
+
+    // --------------------------------------------------------
+    // RESISTANCE ABOVE PRICE
+    // --------------------------------------------------------
+
+    const resistances =
+        resistanceLevels
+            .filter(
+                level =>
+                    level > price
+            )
+            .sort(
+                (a, b) =>
+                    a - b
+            );
+
+
+    // --------------------------------------------------------
+    // SUPPORT BELOW PRICE
+    // --------------------------------------------------------
+
+    const supports =
+        supportLevels
+            .filter(
+                level =>
+                    level < price
+            )
+            .sort(
+                (a, b) =>
+                    b - a
+            );
 
 
     return {
 
         resistance1:
-            sortedHighs[0],
+            resistances.length > 0
+                ? resistances[0]
+                : null,
 
         resistance2:
-            sortedHighs[1],
+            resistances.length > 1
+                ? resistances[1]
+                : null,
 
         support1:
-            sortedLows[0],
+            supports.length > 0
+                ? supports[0]
+                : null,
 
         support2:
-            sortedLows[1]
+            supports.length > 1
+                ? supports[1]
+                : null
     };
 }
 
@@ -647,9 +758,9 @@ function updateTechnicalAnalysis() {
     );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // RSI
-    // --------------------------------------------------------
+    // ========================================================
 
     const h4RSI =
         calculateRSI(h4);
@@ -693,9 +804,9 @@ function updateTechnicalAnalysis() {
     );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // EMA
-    // --------------------------------------------------------
+    // ========================================================
 
     const ema20 =
         calculateEMA(
@@ -738,9 +849,9 @@ function updateTechnicalAnalysis() {
     );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // LEVELS
-    // --------------------------------------------------------
+    // ========================================================
 
     const levels =
         calculateLevels(h1);
@@ -775,9 +886,9 @@ function updateTechnicalAnalysis() {
     );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // ENGINES
-    // --------------------------------------------------------
+    // ========================================================
 
     runSniperEngine(
         h4Trend,
@@ -1259,6 +1370,7 @@ function processNews() {
 
                     eur:
                         isEURRelevant(event)
+
                 };
 
             })
@@ -1268,9 +1380,9 @@ function processNews() {
             );
 
 
-    // --------------------------------------------------------
-    // EUR
-    // --------------------------------------------------------
+    // ========================================================
+    // EUR EVENTS
+    // ========================================================
 
     const eurEvents =
         events
@@ -1286,9 +1398,9 @@ function processNews() {
             );
 
 
-    // --------------------------------------------------------
-    // USD
-    // --------------------------------------------------------
+    // ========================================================
+    // USD EVENTS
+    // ========================================================
 
     const usdEvents =
         events
@@ -1304,9 +1416,9 @@ function processNews() {
             );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // EUR DISPLAY
-    // --------------------------------------------------------
+    // ========================================================
 
     if (eurEvents.length > 0) {
 
@@ -1327,9 +1439,9 @@ function processNews() {
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // USD DISPLAY
-    // --------------------------------------------------------
+    // ========================================================
 
     if (usdEvents.length > 0) {
 
@@ -1350,9 +1462,9 @@ function processNews() {
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // EUR/USD EVENTS
-    // --------------------------------------------------------
+    // ========================================================
 
     const relevantEvents =
         events
@@ -1377,9 +1489,9 @@ function processNews() {
         );
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // NEXT EVENT
-    // --------------------------------------------------------
+    // ========================================================
 
     if (nextEvent) {
 
@@ -1418,7 +1530,6 @@ function processNews() {
         const eventTime =
             event.date.getTime();
 
-
         const difference =
             now - eventTime;
 
@@ -1436,9 +1547,9 @@ function processNews() {
     }
 
 
-    // --------------------------------------------------------
-    // NEWS BLOCK ACTIVE
-    // --------------------------------------------------------
+    // ========================================================
+    // ACTIVE NEWS BLOCK
+    // ========================================================
 
     if (blockedEvent) {
 
@@ -1485,14 +1596,13 @@ function processNews() {
 
         newsClear = false;
 
-
         return;
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // NEWS WITHIN 2 HOURS
-    // --------------------------------------------------------
+    // ========================================================
 
     if (nextEvent) {
 
@@ -1524,15 +1634,14 @@ function processNews() {
 
             newsClear = false;
 
-
             return;
         }
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // NEWS CLEAR
-    // --------------------------------------------------------
+    // ========================================================
 
     setText(
         "newsFilter",
@@ -1568,9 +1677,9 @@ function runSniperEngine(
     newsStatus
 ) {
 
-    // --------------------------------------------------------
+    // ========================================================
     // NEWS CHECK
-    // --------------------------------------------------------
+    // ========================================================
 
     if (!newsStatus) {
 
@@ -1615,9 +1724,9 @@ function runSniperEngine(
     }
 
 
-    // --------------------------------------------------------
-    // RANGE IS NOT A DIRECTION
-    // --------------------------------------------------------
+    // ========================================================
+    // H4 MUST HAVE DIRECTION
+    // ========================================================
 
     if (
         h4Trend !== "BULLISH" &&
@@ -1665,9 +1774,9 @@ function runSniperEngine(
     }
 
 
-    // --------------------------------------------------------
-    // H4 / H1 CONFLICT
-    // --------------------------------------------------------
+    // ========================================================
+    // H4 / H1 ALIGNMENT
+    // ========================================================
 
     if (
         h1Trend !== h4Trend
@@ -1714,6 +1823,10 @@ function runSniperEngine(
     }
 
 
+    // ========================================================
+    // DIRECTION
+    // ========================================================
+
     const direction =
         h4Trend;
 
@@ -1721,46 +1834,48 @@ function runSniperEngine(
     let score = 0;
 
 
-    if (
-        h4Trend === direction
-    ) {
-        score += 2;
-    }
+    // H4
+    score += 2;
 
 
-    if (
-        h1Trend === direction
-    ) {
-        score += 2;
-    }
+    // H1
+    score += 2;
 
 
+    // M15
     if (
         m15Structure === direction
     ) {
+
         score += 2;
     }
 
 
+    // M5
     if (
         m5Structure === direction
     ) {
+
         score += 1;
     }
 
 
+    // EMA
     if (
         emaStructure === direction
     ) {
+
         score += 1;
     }
 
 
+    // RSI
     if (
         direction === "BULLISH" &&
         h1RSI !== null &&
         h1RSI < 65
     ) {
+
         score += 1;
     }
 
@@ -1770,11 +1885,14 @@ function runSniperEngine(
         h1RSI !== null &&
         h1RSI > 35
     ) {
+
         score += 1;
     }
 
 
+    // NEWS
     if (newsStatus) {
+
         score += 1;
     }
 
@@ -1784,6 +1902,10 @@ function runSniperEngine(
         `${score} / 11`
     );
 
+
+    // ========================================================
+    // A+ REQUIREMENT
+    // ========================================================
 
     if (score < 8) {
 
@@ -1864,18 +1986,21 @@ function createSniperTrade(
                 : entry - 0.00100;
 
 
-        const risk =
+        const riskDistance =
             entry - sl;
 
 
         tp1 =
-            entry + risk * 2;
+            entry +
+            riskDistance * 2;
 
         tp2 =
-            entry + risk * 3;
+            entry +
+            riskDistance * 3;
 
         tp3 =
-            entry + risk * 4;
+            entry +
+            riskDistance * 4;
 
 
         setText(
@@ -1891,18 +2016,21 @@ function createSniperTrade(
                 : entry + 0.00100;
 
 
-        const risk =
+        const riskDistance =
             sl - entry;
 
 
         tp1 =
-            entry - risk * 2;
+            entry -
+            riskDistance * 2;
 
         tp2 =
-            entry - risk * 3;
+            entry -
+            riskDistance * 3;
 
         tp3 =
-            entry - risk * 4;
+            entry -
+            riskDistance * 4;
 
 
         setText(
@@ -1994,9 +2122,9 @@ function runScalpingEngine(
     newsStatus
 ) {
 
-    // --------------------------------------------------------
+    // ========================================================
     // NEWS
-    // --------------------------------------------------------
+    // ========================================================
 
     if (!newsStatus) {
 
@@ -2036,9 +2164,9 @@ function runScalpingEngine(
     }
 
 
-    // --------------------------------------------------------
-    // H1 MUST HAVE DIRECTION
-    // --------------------------------------------------------
+    // ========================================================
+    // H1 DIRECTION
+    // ========================================================
 
     if (
         h1Trend !== "BULLISH" &&
@@ -2060,11 +2188,7 @@ function runScalpingEngine(
         setText("scalpTP1", "—");
         setText("scalpTP2", "—");
         setText("scalpRR", "—");
-
-        setText(
-            "scalpScore",
-            "—"
-        );
+        setText("scalpScore", "—");
 
         setText(
             "scalpValidity",
@@ -2088,15 +2212,11 @@ function runScalpingEngine(
     let score = 0;
 
 
-    if (
-        h1Trend === "BULLISH" ||
-        h1Trend === "BEARISH"
-    ) {
-
-        score += 2;
-    }
+    // H1
+    score += 2;
 
 
+    // M5 structure
     if (
         m5Structure === h1Trend
     ) {
@@ -2105,6 +2225,7 @@ function runScalpingEngine(
     }
 
 
+    // M5 RSI
     if (
         m5RSI !== null
     ) {
@@ -2130,9 +2251,10 @@ function runScalpingEngine(
     }
 
 
+    // S/R available
     if (
-        levels.support1 &&
-        levels.resistance1
+        levels.support1 !== null &&
+        levels.resistance1 !== null
     ) {
 
         score += 2;
@@ -2144,6 +2266,10 @@ function runScalpingEngine(
         `${score} / 8`
     );
 
+
+    // ========================================================
+    // SCORE CHECK
+    // ========================================================
 
     if (score < 6) {
 
@@ -2241,15 +2367,17 @@ function createScalpTrade(
                 : entry - 0.00070;
 
 
-        const risk =
+        const riskDistance =
             entry - sl;
 
 
         tp1 =
-            entry + risk * 1.5;
+            entry +
+            riskDistance * 1.5;
 
         tp2 =
-            entry + risk * 2;
+            entry +
+            riskDistance * 2;
 
 
         setText(
@@ -2265,15 +2393,17 @@ function createScalpTrade(
                 : entry + 0.00070;
 
 
-        const risk =
+        const riskDistance =
             sl - entry;
 
 
         tp1 =
-            entry - risk * 1.5;
+            entry -
+            riskDistance * 1.5;
 
         tp2 =
-            entry - risk * 2;
+            entry -
+            riskDistance * 2;
 
 
         setText(
@@ -2360,9 +2490,9 @@ function updateProVerdict(
     newsStatus
 ) {
 
-    // --------------------------------------------------------
+    // ========================================================
     // NEWS
-    // --------------------------------------------------------
+    // ========================================================
 
     if (!newsStatus) {
 
@@ -2380,9 +2510,9 @@ function updateProVerdict(
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // H4 RANGE
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
         h4Trend !== "BULLISH" &&
@@ -2403,9 +2533,9 @@ function updateProVerdict(
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // H1 CONFLICT
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
         h1Trend !== h4Trend
@@ -2425,9 +2555,9 @@ function updateProVerdict(
     }
 
 
-    // --------------------------------------------------------
-    // M15 CONFIRMATION
-    // --------------------------------------------------------
+    // ========================================================
+    // M15
+    // ========================================================
 
     if (
         m15Structure === h4Trend
@@ -2483,34 +2613,41 @@ async function loadMarketData() {
     );
 
 
-    // --------------------------------------------------------
+    // ========================================================
+    // RESET NEWS STATE
+    // ========================================================
+
+    newsClear = false;
+
+
+    // ========================================================
     // 1. PRICE
-    // --------------------------------------------------------
+    // ========================================================
 
     await fetchPrice();
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // 2. CANDLES
-    // --------------------------------------------------------
+    // ========================================================
 
     const candleStatus =
         await loadCandles();
 
 
-    // --------------------------------------------------------
-    // 3. NEWS FIRST
-    // --------------------------------------------------------
-
-    await loadNews();
-
-
-    // --------------------------------------------------------
-    // 4. TECHNICAL ANALYSIS
+    // ========================================================
+    // 3. NEWS
     //
-    // IMPORTANT:
-    // newsClear is now already known.
-    // --------------------------------------------------------
+    // MUST COMPLETE BEFORE TECHNICAL ENGINES
+    // ========================================================
+
+    const newsLoaded =
+        await loadNews();
+
+
+    // ========================================================
+    // 4. TECHNICAL ANALYSIS
+    // ========================================================
 
     const minimumDataAvailable =
         marketData.H4.length > 0 &&
@@ -2521,12 +2658,37 @@ async function loadMarketData() {
 
         updateTechnicalAnalysis();
 
+    } else {
+
+        console.error(
+            "INSUFFICIENT H4/H1 DATA"
+        );
+
+        setText(
+            "sniperStatus",
+            "WAIT — TECHNICAL DATA INCOMPLETE"
+        );
+
+        setText(
+            "scalpVerdict",
+            "WAIT — TECHNICAL DATA INCOMPLETE"
+        );
+
+        setText(
+            "proVerdict",
+            "WAIT — TECHNICAL DATA INCOMPLETE"
+        );
+
+        setText(
+            "proExplanation",
+            "H4/H1 candle data could not be loaded."
+        );
     }
 
 
-    // --------------------------------------------------------
+    // ========================================================
     // STATUS
-    // --------------------------------------------------------
+    // ========================================================
 
     const allCandlesLoaded =
         candleStatus.H4 &&
@@ -2537,7 +2699,8 @@ async function loadMarketData() {
 
     if (
         allCandlesLoaded &&
-        currentPrice !== null
+        currentPrice !== null &&
+        newsLoaded
     ) {
 
         setText(
@@ -2554,9 +2717,33 @@ async function loadMarketData() {
     }
 
 
+    // ========================================================
+    // DEBUG
+    // ========================================================
+
     console.log(
         "FINAL NEWS STATUS:",
         newsClear
+    );
+
+    console.log(
+        "H4 CANDLES:",
+        marketData.H4.length
+    );
+
+    console.log(
+        "H1 CANDLES:",
+        marketData.H1.length
+    );
+
+    console.log(
+        "M15 CANDLES:",
+        marketData.M15.length
+    );
+
+    console.log(
+        "M5 CANDLES:",
+        marketData.M5.length
     );
 
     console.log(
