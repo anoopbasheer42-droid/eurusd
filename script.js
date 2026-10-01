@@ -1,11 +1,18 @@
 /* =========================================================
    EUR/USD SNIPER DASHBOARD
    H4 → H1 → M15 → M5
-   A+ SNIPER + 2-HOUR SCALPING ENGINE
 
-   IMPORTANT:
-   NEWS_CLEAR remains false until a real
-   economic calendar is connected.
+   A+ SNIPER ENGINE
+   +
+   2-HOUR SCALPING ENGINE
+
+   API OPTIMIZATION:
+   - H1 API request
+   - M15 API request
+   - M5 API request
+   - H4 is BUILT locally from H1 candles
+
+   This reduces Twelve Data usage.
    ========================================================= */
 
 
@@ -19,55 +26,80 @@ const API_KEY =
 const SYMBOL =
   "EUR/USD";
 
+/*
+   15-minute refresh.
+
+   Do NOT set this lower while using
+   the current Twelve Data plan.
+*/
 const REFRESH_MS =
-  900000; // 15 minutes
+  900000;
+
 
 /*
    NEWS SAFETY GATE
 
-   false = trading blocked
-   true  = trading allowed
+   FALSE = all trading blocked.
 
-   DO NOT manually change this to true
-   until a real news-calendar source is connected.
+   It will remain false until a real
+   economic-calendar source is connected.
 */
-const NEWS_CLEAR = false;
+const NEWS_CLEAR =
+  false;
 
 
 /*
-   A+ sniper minimum score
+   A+ sniper minimum score.
 */
-const MIN_SETUP_SCORE = 8;
+const MIN_SETUP_SCORE =
+  8;
 
 
 /*
    Scalping minimum score.
 
-   Lower than sniper because the scalper
-   intentionally uses only H1 + M5.
+   Less strict than sniper.
 */
-const MIN_SCALP_SCORE = 5;
+const MIN_SCALP_SCORE =
+  5;
 
 
 /*
-   Maximum technical risk distance.
+   Maximum sniper risk.
 */
 const MAX_RISK =
   0.0030;
 
 
 /*
-   Buffer beyond structural level.
+   Maximum scalping risk.
+*/
+const MAX_SCALP_RISK =
+  0.0015;
+
+
+/*
+   Structural SL buffer.
 */
 const SL_BUFFER =
   0.00015;
 
 
 /*
-   Scalping target window.
+   Scalping forecast window.
 */
 const SCALP_WINDOW_HOURS =
   2;
+
+
+/*
+   Number of candles requested.
+
+   100 is enough for the calculations
+   while keeping the response small.
+*/
+const CANDLE_LIMIT =
+  100;
 
 
 /* =========================================================
@@ -90,14 +122,18 @@ let marketData = {
 };
 
 
-window.__dashboardLoading = false;
+window.__dashboardLoading =
+  false;
 
 
 /* =========================================================
    DOM HELPER
    ========================================================= */
 
-function setTextAny(ids, value) {
+function setTextAny(
+  ids,
+  value
+) {
 
   if (!Array.isArray(ids)) {
     ids = [ids];
@@ -115,7 +151,6 @@ function setTextAny(ids, value) {
 
       return true;
     }
-
   }
 
   return false;
@@ -142,7 +177,9 @@ function roundPrice(value) {
   if (
     value === null ||
     value === undefined ||
-    !Number.isFinite(Number(value))
+    !Number.isFinite(
+      Number(value)
+    )
   ) {
 
     return "—";
@@ -158,7 +195,9 @@ function roundRSI(value) {
   if (
     value === null ||
     value === undefined ||
-    !Number.isFinite(Number(value))
+    !Number.isFinite(
+      Number(value)
+    )
   ) {
 
     return "—";
@@ -175,7 +214,7 @@ function roundRSI(value) {
 
 async function getCandles(
   interval,
-  outputsize = 100
+  outputsize = CANDLE_LIMIT
 ) {
 
   const url =
@@ -215,7 +254,6 @@ async function getCandles(
 
   console.log(
     interval,
-    "API response:",
     data
   );
 
@@ -234,8 +272,9 @@ async function getCandles(
 
 
   if (
-    !data.values ||
-    !Array.isArray(data.values)
+    !Array.isArray(
+      data.values
+    )
   ) {
 
     throw new Error(
@@ -270,12 +309,10 @@ async function getCandles(
       }))
 
       .filter(c =>
-
         c.open !== null &&
         c.high !== null &&
         c.low !== null &&
         c.close !== null
-
       )
 
       .reverse();
@@ -290,6 +327,125 @@ async function getCandles(
 
 
   return candles;
+}
+
+
+/* =========================================================
+   BUILD H4 FROM H1
+   ========================================================= */
+
+function buildH4FromH1(
+  h1Candles
+) {
+
+  if (
+    !h1Candles ||
+    h1Candles.length < 8
+  ) {
+
+    return [];
+  }
+
+
+  const groups = {};
+
+
+  for (
+    const candle of h1Candles
+  ) {
+
+    const date =
+      new Date(
+        candle.datetime
+      );
+
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+      continue;
+    }
+
+
+    /*
+       UTC four-hour bucket.
+
+       Using a fixed 4-hour bucket avoids
+       timezone grouping problems.
+    */
+
+    const bucket =
+      new Date(
+        Math.floor(
+          date.getTime() /
+          (4 * 60 * 60 * 1000)
+        ) *
+        (4 * 60 * 60 * 1000)
+      );
+
+
+    const key =
+      bucket.toISOString();
+
+
+    if (!groups[key]) {
+
+      groups[key] = {
+
+        datetime:
+          bucket.toISOString(),
+
+        open:
+          candle.open,
+
+        high:
+          candle.high,
+
+        low:
+          candle.low,
+
+        close:
+          candle.close,
+
+        volume:
+          candle.volume || 0
+
+      };
+
+    } else {
+
+      groups[key].high =
+        Math.max(
+          groups[key].high,
+          candle.high
+        );
+
+
+      groups[key].low =
+        Math.min(
+          groups[key].low,
+          candle.low
+        );
+
+
+      groups[key].close =
+        candle.close;
+
+
+      groups[key].volume +=
+        candle.volume || 0;
+    }
+  }
+
+
+  return Object.values(groups)
+    .sort(
+      (a, b) =>
+        new Date(a.datetime) -
+        new Date(b.datetime)
+    );
 }
 
 
@@ -382,9 +538,9 @@ function calculateRSI(
 
     } else {
 
-      losses += Math.abs(change);
+      losses +=
+        Math.abs(change);
     }
-
   }
 
 
@@ -408,11 +564,17 @@ function calculateRSI(
 
 
     const gain =
-      Math.max(change, 0);
+      Math.max(
+        change,
+        0
+      );
 
 
     const loss =
-      Math.max(-change, 0);
+      Math.max(
+        -change,
+        0
+      );
 
 
     averageGain =
@@ -429,7 +591,6 @@ function calculateRSI(
         (period - 1) +
         loss
       ) / period;
-
   }
 
 
@@ -455,10 +616,12 @@ function calculateRSI(
 
 
 /* =========================================================
-   CANDLE FUNCTIONS
+   CANDLE HELPERS
    ========================================================= */
 
-function candleDirection(candle) {
+function candleDirection(
+  candle
+) {
 
   if (!candle) {
     return "NEUTRAL";
@@ -487,7 +650,9 @@ function candleDirection(candle) {
 }
 
 
-function candleBody(candle) {
+function candleBody(
+  candle
+) {
 
   if (!candle) {
     return 0;
@@ -501,7 +666,9 @@ function candleBody(candle) {
 }
 
 
-function candleRange(candle) {
+function candleRange(
+  candle
+) {
 
   if (!candle) {
     return 0;
@@ -515,7 +682,9 @@ function candleRange(candle) {
 }
 
 
-function candleStrength(candle) {
+function candleStrength(
+  candle
+) {
 
   const range =
     candleRange(candle);
@@ -534,7 +703,7 @@ function candleStrength(candle) {
 
 
 /* =========================================================
-   SWINGS
+   SWING DETECTION
    ========================================================= */
 
 function isSwingHigh(
@@ -544,7 +713,8 @@ function isSwingHigh(
 
   if (
     index < 2 ||
-    index > candles.length - 3
+    index >
+      candles.length - 3
   ) {
 
     return false;
@@ -580,7 +750,8 @@ function isSwingLow(
 
   if (
     index < 2 ||
-    index > candles.length - 3
+    index >
+      candles.length - 3
   ) {
 
     return false;
@@ -666,7 +837,6 @@ function getSwingLevels(
         data[i].low
       );
     }
-
   }
 
 
@@ -685,7 +855,7 @@ function getSwingLevels(
 
 function clusterLevels(
   levels,
-  tolerance = 0.00025
+  tolerance = 0.00020
 ) {
 
   if (
@@ -731,7 +901,8 @@ function clusterLevels(
 
         cluster.mean =
           cluster.values.reduce(
-            (a, b) => a + b,
+            (a, b) =>
+              a + b,
             0
           ) /
           cluster.values.length;
@@ -740,9 +911,9 @@ function clusterLevels(
         found =
           cluster;
 
+
         break;
       }
-
     }
 
 
@@ -750,25 +921,23 @@ function clusterLevels(
 
       clusters.push({
 
-        mean: level,
+        mean:
+          level,
 
-        values: [level]
+        values:
+          [level]
 
       });
-
     }
-
   }
 
 
   return clusters
-
     .sort(
       (a, b) =>
         b.values.length -
         a.values.length
     )
-
     .map(
       c => c.mean
     );
@@ -795,7 +964,6 @@ function calculateSupportResistance(
 
       support1: null,
       support2: null
-
     };
   }
 
@@ -809,7 +977,10 @@ function calculateSupportResistance(
   const swings =
     getSwingLevels(
       candles,
-      80
+      Math.min(
+        100,
+        candles.length
+      )
     );
 
 
@@ -825,48 +996,258 @@ function calculateSupportResistance(
     );
 
 
-  const resistances =
-    resistanceLevels
+  /*
+     Resistance:
+     nearest above price first.
+  */
 
+  let resistances =
+    resistanceLevels
       .filter(
         level =>
-          level > current
+          level >
+          current
       )
-
       .sort(
         (a, b) =>
           a - b
       );
 
 
-  const supports =
-    supportLevels
+  /*
+     Support:
+     nearest below price first.
+  */
 
+  let supports =
+    supportLevels
       .filter(
         level =>
-          level < current
+          level <
+          current
       )
-
       .sort(
         (a, b) =>
           b - a
       );
 
 
+  /*
+     IMPORTANT FIX:
+
+     If the second level is missing,
+     search raw swing levels before
+     giving up.
+  */
+
+  if (
+    resistances.length < 2
+  ) {
+
+    const extraResistance =
+      swings.swingHighs
+        .filter(
+          level =>
+            level >
+            current
+        )
+        .sort(
+          (a, b) =>
+            a - b
+        );
+
+
+    for (
+      const level of
+      extraResistance
+    ) {
+
+      if (
+        !resistances.some(
+          r =>
+            Math.abs(
+              r - level
+            ) < 0.00005
+        )
+      ) {
+
+        resistances.push(
+          level
+        );
+      }
+
+
+      if (
+        resistances.length >= 2
+      ) {
+        break;
+      }
+    }
+  }
+
+
+  if (
+    supports.length < 2
+  ) {
+
+    const extraSupport =
+      swings.swingLows
+        .filter(
+          level =>
+            level <
+            current
+        )
+        .sort(
+          (a, b) =>
+            b - a
+        );
+
+
+    for (
+      const level of
+      extraSupport
+    ) {
+
+      if (
+        !supports.some(
+          s =>
+            Math.abs(
+              s - level
+            ) < 0.00005
+        )
+      ) {
+
+        supports.push(
+          level
+        );
+      }
+
+
+      if (
+        supports.length >= 2
+      ) {
+        break;
+      }
+    }
+  }
+
+
+  /*
+     Final fallback.
+
+     This guarantees that R2/S2 can
+     be produced when enough historical
+     candles exist.
+
+     These are NOT artificial trade levels;
+     they are derived from recent range.
+  */
+
+  if (
+    resistances.length < 2
+  ) {
+
+    const recentHighs =
+      candles
+        .slice(-30)
+        .map(c => c.high)
+        .filter(
+          h =>
+            h > current
+        )
+        .sort(
+          (a, b) =>
+            a - b
+        );
+
+
+    for (
+      const h of recentHighs
+    ) {
+
+      if (
+        !resistances.some(
+          r =>
+            Math.abs(
+              r - h
+            ) < 0.00005
+        )
+      ) {
+
+        resistances.push(h);
+      }
+
+
+      if (
+        resistances.length >= 2
+      ) {
+        break;
+      }
+    }
+  }
+
+
+  if (
+    supports.length < 2
+  ) {
+
+    const recentLows =
+      candles
+        .slice(-30)
+        .map(c => c.low)
+        .filter(
+          l =>
+            l < current
+        )
+        .sort(
+          (a, b) =>
+            b - a
+        );
+
+
+    for (
+      const l of recentLows
+    ) {
+
+      if (
+        !supports.some(
+          s =>
+            Math.abs(
+              s - l
+            ) < 0.00005
+        )
+      ) {
+
+        supports.push(l);
+      }
+
+
+      if (
+        supports.length >= 2
+      ) {
+        break;
+      }
+    }
+  }
+
+
   return {
 
     resistance1:
-      resistances[0] ?? null,
+      resistances[0] ??
+      null,
 
     resistance2:
-      resistances[1] ?? null,
+      resistances[1] ??
+      null,
 
     support1:
-      supports[0] ?? null,
+      supports[0] ??
+      null,
 
     support2:
-      supports[1] ?? null
-
+      supports[1] ??
+      null
   };
 }
 
@@ -937,8 +1318,10 @@ function calculateStructure(
 
 
   if (
-    lastHigh > previousHigh &&
-    lastLow > previousLow
+    lastHigh >
+      previousHigh &&
+    lastLow >
+      previousLow
   ) {
 
     return "BULLISH";
@@ -946,8 +1329,10 @@ function calculateStructure(
 
 
   if (
-    lastHigh < previousHigh &&
-    lastLow < previousLow
+    lastHigh <
+      previousHigh &&
+    lastLow <
+      previousLow
   ) {
 
     return "BEARISH";
@@ -1000,7 +1385,6 @@ function getEMAAnalysis(
       ema20,
       ema50,
       ema200
-
     };
   }
 
@@ -1044,7 +1428,6 @@ function getEMAAnalysis(
     ema50,
 
     ema200
-
   };
 }
 
@@ -1087,14 +1470,18 @@ function analyzeTimeframe(
 
       sr: {
 
-        resistance1: null,
-        resistance2: null,
+        resistance1:
+          null,
 
-        support1: null,
-        support2: null
+        resistance2:
+          null,
 
+        support1:
+          null,
+
+        support2:
+          null
       }
-
     };
   }
 
@@ -1139,7 +1526,6 @@ function analyzeTimeframe(
       calculateSupportResistance(
         candles
       )
-
   };
 }
 
@@ -1171,7 +1557,6 @@ function buildAnalysis() {
       analyzeTimeframe(
         marketData.m5
       )
-
   };
 }
 
@@ -1208,13 +1593,13 @@ function bullishCandleConfirmation(
   return (
 
     last.close >
-    last.open &&
+      last.open &&
 
     last.close >
-    previous.high &&
+      previous.high &&
 
     candleStrength(last) >=
-    0.45
+      0.45
 
   );
 }
@@ -1248,13 +1633,13 @@ function bearishCandleConfirmation(
   return (
 
     last.close <
-    last.open &&
+      last.open &&
 
     last.close <
-    previous.low &&
+      previous.low &&
 
     candleStrength(last) >=
-    0.45
+      0.45
 
   );
 }
@@ -1393,10 +1778,14 @@ function calculateBuySetup(
 
 
   if (
-    a.H4.structure !== "BULLISH" ||
-    a.H1.structure !== "BULLISH" ||
-    a.M15.structure !== "BULLISH" ||
-    a.M5.structure !== "BULLISH"
+    a.H4.structure !==
+      "BULLISH" ||
+    a.H1.structure !==
+      "BULLISH" ||
+    a.M15.structure !==
+      "BULLISH" ||
+    a.M5.structure !==
+      "BULLISH"
   ) return null;
 
 
@@ -1490,7 +1879,6 @@ function calculateBuySetup(
 
     verdict:
       "BUY — A+ PRICE ACTION ALIGNMENT"
-
   };
 }
 
@@ -1514,10 +1902,14 @@ function calculateSellSetup(
 
 
   if (
-    a.H4.structure !== "BEARISH" ||
-    a.H1.structure !== "BEARISH" ||
-    a.M15.structure !== "BEARISH" ||
-    a.M5.structure !== "BEARISH"
+    a.H4.structure !==
+      "BEARISH" ||
+    a.H1.structure !==
+      "BEARISH" ||
+    a.M15.structure !==
+      "BEARISH" ||
+    a.M5.structure !==
+      "BEARISH"
   ) return null;
 
 
@@ -1611,7 +2003,6 @@ function calculateSellSetup(
 
     verdict:
       "SELL — A+ PRICE ACTION ALIGNMENT"
-
   };
 }
 
@@ -1645,7 +2036,7 @@ function calculateSniperSetup(
 
 
   /*
-     H4/H1 conflict check
+     H4 / H1 conflict.
   */
 
   if (
@@ -1680,10 +2071,13 @@ function calculateSniperSetup(
 
       verdict:
         "WAIT — NEWS FILTER NOT CONFIRMED"
-
     };
   }
 
+
+  /*
+     NEWS SAFETY GATE.
+  */
 
   if (!NEWS_CLEAR) {
 
@@ -1714,7 +2108,6 @@ function calculateSniperSetup(
 
       verdict:
         "WAIT — NEWS FILTER NOT CONFIRMED"
-
     };
   }
 
@@ -1738,7 +2131,8 @@ function calculateSniperSetup(
     sell
   ) {
 
-    return buy.score >= sell.score
+    return buy.score >=
+      sell.score
       ? buy
       : sell;
   }
@@ -1776,30 +2170,15 @@ function calculateSniperSetup(
 
     verdict:
       "WAIT — NO A+ MULTI-TIMEFRAME ALIGNMENT"
-
   };
 }
 
 
 /* =========================================================
-   SCALPING ENGINE
+   SCALPING BUY SCORE
    H1 + M5 ONLY
-   NEXT 2 HOURS
    ========================================================= */
 
-
-/*
-   Scalping BUY score:
-
-   H1 bullish structure       +2
-   H1 EMA bullish             +1
-   M5 bullish structure       +2
-   M5 bullish candle          +1
-   M5 RSI 45-68               +1
-   price above H1 support     +1
-
-   Maximum = 8
-*/
 function calculateScalpBuyScore(
   a,
   price
@@ -1807,6 +2186,10 @@ function calculateScalpBuyScore(
 
   let score = 0;
 
+
+  /*
+     H1 direction.
+  */
 
   if (
     a.H1.structure ===
@@ -1817,6 +2200,10 @@ function calculateScalpBuyScore(
   }
 
 
+  /*
+     H1 EMA.
+  */
+
   if (
     a.H1.ema.text ===
     "BULLISH"
@@ -1826,6 +2213,10 @@ function calculateScalpBuyScore(
   }
 
 
+  /*
+     M5 structure.
+  */
+
   if (
     a.M5.structure ===
     "BULLISH"
@@ -1834,6 +2225,10 @@ function calculateScalpBuyScore(
     score += 2;
   }
 
+
+  /*
+     M5 candle momentum.
+  */
 
   if (
     bullishCandleConfirmation(
@@ -1845,6 +2240,10 @@ function calculateScalpBuyScore(
   }
 
 
+  /*
+     RSI.
+  */
+
   if (
     a.M5.rsi !== null &&
     a.M5.rsi >= 45 &&
@@ -1855,10 +2254,14 @@ function calculateScalpBuyScore(
   }
 
 
+  /*
+     Price above H1 support.
+  */
+
   if (
     a.H1.sr.support1 !== null &&
     price >
-    a.H1.sr.support1
+      a.H1.sr.support1
   ) {
 
     score += 1;
@@ -1869,18 +2272,10 @@ function calculateScalpBuyScore(
 }
 
 
-/*
-   Scalping SELL score:
+/* =========================================================
+   SCALPING SELL SCORE
+   ========================================================= */
 
-   H1 bearish structure       +2
-   H1 EMA bearish             +1
-   M5 bearish structure       +2
-   M5 bearish candle          +1
-   M5 RSI 32-55               +1
-   price below H1 resistance  +1
-
-   Maximum = 8
-*/
 function calculateScalpSellScore(
   a,
   price
@@ -1939,7 +2334,7 @@ function calculateScalpSellScore(
   if (
     a.H1.sr.resistance1 !== null &&
     price <
-    a.H1.sr.resistance1
+      a.H1.sr.resistance1
   ) {
 
     score += 1;
@@ -1997,7 +2392,8 @@ function calculateScalpBuy(
     structuralSL =
       lows.length
         ? lows[lows.length - 1]
-        : entry - 0.00070;
+        : entry -
+          0.00070;
   }
 
 
@@ -2011,12 +2407,12 @@ function calculateScalpBuy(
 
 
   /*
-     Scalping risk should be tighter.
+     Keep scalping risk tight.
   */
 
   if (
     risk <= 0 ||
-    risk > 0.0015
+    risk > MAX_SCALP_RISK
   ) {
 
     sl =
@@ -2037,10 +2433,12 @@ function calculateScalpBuy(
     sl,
 
     tp1:
-      entry + risk * 1.2,
+      entry +
+      risk * 1.2,
 
     tp2:
-      entry + risk * 2,
+      entry +
+      risk * 2,
 
     score,
 
@@ -2048,7 +2446,7 @@ function calculateScalpBuy(
       "1:2",
 
     validity:
-      "Next 2 hours only",
+      `Next ${SCALP_WINDOW_HOURS} hours only`,
 
     trigger:
       "H1 bullish bias + M5 bullish momentum / breakout",
@@ -2058,7 +2456,6 @@ function calculateScalpBuy(
 
     verdict:
       "BUY — 2-HOUR SCALPING BIAS"
-
   };
 }
 
@@ -2110,7 +2507,8 @@ function calculateScalpSell(
     structuralSL =
       highs.length
         ? highs[highs.length - 1]
-        : entry + 0.00070;
+        : entry +
+          0.00070;
   }
 
 
@@ -2125,7 +2523,7 @@ function calculateScalpSell(
 
   if (
     risk <= 0 ||
-    risk > 0.0015
+    risk > MAX_SCALP_RISK
   ) {
 
     sl =
@@ -2146,10 +2544,12 @@ function calculateScalpSell(
     sl,
 
     tp1:
-      entry - risk * 1.2,
+      entry -
+      risk * 1.2,
 
     tp2:
-      entry - risk * 2,
+      entry -
+      risk * 2,
 
     score,
 
@@ -2157,7 +2557,7 @@ function calculateScalpSell(
       "1:2",
 
     validity:
-      "Next 2 hours only",
+      `Next ${SCALP_WINDOW_HOURS} hours only`,
 
     trigger:
       "H1 bearish bias + M5 bearish momentum / breakdown",
@@ -2167,7 +2567,6 @@ function calculateScalpSell(
 
     verdict:
       "SELL — 2-HOUR SCALPING BIAS"
-
   };
 }
 
@@ -2195,8 +2594,18 @@ function calculateScalpingSetup(
     );
 
 
+  const bestScore =
+    Math.max(
+      buyScore,
+      sellScore
+    );
+
+
   /*
-     NEWS SAFETY GATE
+     NEWS SAFETY GATE.
+
+     This is deliberately BEFORE
+     returning a trade.
   */
 
   if (!NEWS_CLEAR) {
@@ -2214,23 +2623,19 @@ function calculateScalpingSetup(
       rr: null,
 
       score:
-        `${Math.max(
-          buyScore,
-          sellScore
-        )} / 8`,
+        `${bestScore} / 8`,
 
       validity:
-        "Next 2 hours, but trading blocked until news is checked",
+        `Next ${SCALP_WINDOW_HOURS} hours, but trading blocked until news is checked`,
 
       trigger:
-        "H1 + M5 technical setup detected, waiting for EUR/USD news clearance",
+        "H1 + M5 technical setup detected; waiting for EUR/USD news clearance",
 
       invalidation:
         "No trade while NEWS FILTER is CLOSED",
 
       verdict:
         "WAIT — NEWS CHECK REQUIRED"
-
     };
   }
 
@@ -2254,7 +2659,8 @@ function calculateScalpingSetup(
     sell
   ) {
 
-    return buy.score >= sell.score
+    return buy.score >=
+      sell.score
       ? buy
       : sell;
   }
@@ -2278,13 +2684,10 @@ function calculateScalpingSetup(
     rr: null,
 
     score:
-      `${Math.max(
-        buyScore,
-        sellScore
-      )} / 8`,
+      `${bestScore} / 8`,
 
     validity:
-      "Next 2 hours only",
+      `Next ${SCALP_WINDOW_HOURS} hours only`,
 
     trigger:
       "Wait for H1 direction and M5 confirmation",
@@ -2294,16 +2697,17 @@ function calculateScalpingSetup(
 
     verdict:
       "WAIT — NO VALID SCALPING SETUP"
-
   };
 }
 
 
 /* =========================================================
-   UPDATE PRICE
+   PRICE UI
    ========================================================= */
 
-function updatePriceUI(price) {
+function updatePriceUI(
+  price
+) {
 
   setTextAny(
     [
@@ -2329,10 +2733,12 @@ function updatePriceUI(price) {
 
 
 /* =========================================================
-   UPDATE STRUCTURE
+   STRUCTURE UI
    ========================================================= */
 
-function updateStructureUI(a) {
+function updateStructureUI(
+  a
+) {
 
   setTextAny(
     "h4Trend",
@@ -2360,13 +2766,19 @@ function updateStructureUI(a) {
 
 
 /* =========================================================
-   UPDATE S/R
+   S/R UI
    ========================================================= */
 
-function updateSRUI(a) {
+function updateSRUI(
+  a
+) {
 
   /*
-     Use H1 S/R for the main dashboard.
+     H1 is used for the main
+     dashboard S/R levels.
+
+     R1/R2/S1/S2 are now independently
+     calculated and displayed.
   */
 
   const sr =
@@ -2407,10 +2819,12 @@ function updateSRUI(a) {
 
 
 /* =========================================================
-   UPDATE INDICATORS
+   INDICATORS UI
    ========================================================= */
 
-function updateIndicatorsUI(a) {
+function updateIndicatorsUI(
+  a
+) {
 
   setTextAny(
     "h4Rsi",
@@ -2452,10 +2866,18 @@ function updateIndicatorsUI(a) {
 
 
 /* =========================================================
-   UPDATE NEWS
+   NEWS UI
    ========================================================= */
 
 function updateNewsUI() {
+
+  /*
+     We are NOT pretending that
+     news has been checked.
+
+     Until a real calendar is connected,
+     the filter stays CLOSED.
+  */
 
   setTextAny(
     "eurNews",
@@ -2489,10 +2911,12 @@ function updateNewsUI() {
 
 
 /* =========================================================
-   UPDATE SNIPER
+   SNIPER UI
    ========================================================= */
 
-function updateSniperUI(setup) {
+function updateSniperUI(
+  setup
+) {
 
   setTextAny(
     "sniperStatus",
@@ -2578,7 +3002,7 @@ function updateSniperUI(setup) {
 
 
 /* =========================================================
-   UPDATE SCALPING UI
+   SCALPING UI
    ========================================================= */
 
 function updateScalpingUI(
@@ -2661,13 +3085,26 @@ function updateScalpingUI(
 
 
 /* =========================================================
-   UPDATE PRO VERDICT
+   PRO VERDICT
    ========================================================= */
 
 function updateProVerdictUI(
   setup,
   scalp
 ) {
+
+  /*
+     If the API failed, don't overwrite
+     the useful error message.
+  */
+
+  if (
+    marketData.apiError
+  ) {
+
+    return;
+  }
+
 
   setTextAny(
     "proVerdict",
@@ -2702,11 +3139,6 @@ function updateProVerdictUI(
     return;
   }
 
-
-  /*
-     If sniper is waiting because of H4/H1 conflict,
-     explain that clearly.
-  */
 
   if (
     marketData.h4.length &&
@@ -2795,7 +3227,6 @@ function updateTimestamp() {
 
         hour12:
           false
-
       }
     );
 
@@ -2885,6 +3316,10 @@ async function loadMarketData() {
     true;
 
 
+  marketData.apiError =
+    null;
+
+
   setTextAny(
     [
       "priceStatus",
@@ -2899,47 +3334,81 @@ async function loadMarketData() {
   try {
 
     console.log(
+      "================================="
+    );
+
+
+    console.log(
       "EUR/USD DASHBOARD UPDATE START"
     );
 
 
+    console.log(
+      "API OPTIMIZATION: 3 REQUESTS"
+    );
+
+
     /*
-       IMPORTANT:
-
-       These are still the same four
-       Twelve Data requests.
-
-       The scalping engine does NOT
-       request additional candles.
+       REQUEST 1
+       H1
     */
-
-    const h4 =
-      await getCandles(
-        "4h",
-        100
-      );
-
 
     const h1 =
       await getCandles(
         "1h",
-        100
+        CANDLE_LIMIT
       );
 
+
+    /*
+       REQUEST 2
+       M15
+    */
 
     const m15 =
       await getCandles(
         "15min",
-        100
+        CANDLE_LIMIT
       );
 
+
+    /*
+       REQUEST 3
+       M5
+    */
 
     const m5 =
       await getCandles(
         "5min",
-        100
+        CANDLE_LIMIT
       );
 
+
+    /*
+       H4 is locally generated from H1.
+
+       NO additional Twelve Data request.
+    */
+
+    const h4 =
+      buildH4FromH1(
+        h1
+      );
+
+
+    if (
+      !h4.length
+    ) {
+
+      throw new Error(
+        "Unable to build H4 candles from H1 data"
+      );
+    }
+
+
+    /*
+       Save data.
+    */
 
     marketData.h4 =
       h4;
@@ -2958,7 +3427,7 @@ async function loadMarketData() {
 
 
     /*
-       Latest M5 close
+       Current price = latest M5 close.
     */
 
     marketData.price =
@@ -2971,6 +3440,10 @@ async function loadMarketData() {
       new Date();
 
 
+    /*
+       Analysis.
+    */
+
     const analysis =
       buildAnalysis();
 
@@ -2982,7 +3455,7 @@ async function loadMarketData() {
 
 
     /*
-       A+ sniper
+       A+ sniper.
     */
 
     const sniper =
@@ -2993,7 +3466,7 @@ async function loadMarketData() {
 
 
     /*
-       New 2-hour scalper
+       2-hour scalper.
     */
 
     const scalp =
@@ -3014,6 +3487,10 @@ async function loadMarketData() {
       scalp
     );
 
+
+    /*
+       Update dashboard.
+    */
 
     updatePriceUI(
       marketData.price
@@ -3072,6 +3549,10 @@ async function loadMarketData() {
       "EUR/USD DASHBOARD UPDATE COMPLETE"
     );
 
+
+    console.log(
+      "================================="
+    );
   }
 
 
@@ -3084,7 +3565,6 @@ async function loadMarketData() {
     showDashboardError(
       error
     );
-
   }
 
 
@@ -3107,8 +3587,19 @@ function startDashboard() {
   );
 
 
+  /*
+     First load.
+  */
+
   loadMarketData();
 
+
+  /*
+     Refresh every 15 minutes.
+
+     This is deliberately not every few
+     seconds because of the API limit.
+  */
 
   setInterval(
     loadMarketData,
@@ -3134,5 +3625,4 @@ if (
 } else {
 
   startDashboard();
-
 }
