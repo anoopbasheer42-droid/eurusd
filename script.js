@@ -1,13 +1,4 @@
-// ============================================================
-// EUR/USD SNIPER DASHBOARD
-// FULL script.js
-// ============================================================
-
 const API_KEY = "8908432b6c784bc49aad6ccf64845991";
-
-// ============================================================
-// API URLs
-// ============================================================
 
 const PRICE_URL =
     `https://api.twelvedata.com/price?symbol=EUR/USD&apikey=${API_KEY}`;
@@ -17,11 +8,6 @@ const TIME_SERIES_URL =
 
 const NEWS_URL =
     "https://xoomar.com/api/markets/calendar?importance=high";
-
-
-// ============================================================
-// GLOBAL VARIABLES
-// ============================================================
 
 let currentPrice = null;
 
@@ -34,7 +20,7 @@ let marketData = {
 
 let newsData = [];
 
-window.newsClear = false;
+let newsClear = false;
 
 
 // ============================================================
@@ -43,8 +29,7 @@ window.newsClear = false;
 
 function setText(id, value) {
 
-    const element =
-        document.getElementById(id);
+    const element = document.getElementById(id);
 
     if (element) {
         element.textContent = value;
@@ -74,43 +59,32 @@ async function fetchPrice() {
 
     try {
 
-        const response =
-            await fetch(
-                PRICE_URL,
-                {
-                    cache: "no-store"
-                }
-            );
+        const response = await fetch(
+            PRICE_URL,
+            {
+                cache: "no-store"
+            }
+        );
 
         if (!response.ok) {
-
             throw new Error(
                 `Price HTTP ${response.status}`
             );
         }
 
-        const data =
-            await response.json();
+        const data = await response.json();
 
         if (!data.price) {
-
             throw new Error(
-                data.message ||
-                "Price unavailable"
+                data.message || "Price unavailable"
             );
         }
 
-        currentPrice =
-            Number(data.price);
+        currentPrice = Number(data.price);
 
         setText(
             "price",
             formatPrice(currentPrice)
-        );
-
-        setText(
-            "priceStatus",
-            "MARKET DATA LOADED"
         );
 
         return true;
@@ -133,7 +107,7 @@ async function fetchPrice() {
 
 
 // ============================================================
-// CANDLE DATA
+// FETCH CANDLES
 // ============================================================
 
 async function fetchCandles(
@@ -148,13 +122,12 @@ async function fetchCandles(
         `&outputsize=${outputsize}` +
         `&apikey=${API_KEY}`;
 
-    const response =
-        await fetch(
-            url,
-            {
-                cache: "no-store"
-            }
-        );
+    const response = await fetch(
+        url,
+        {
+            cache: "no-store"
+        }
+    );
 
     if (!response.ok) {
 
@@ -163,8 +136,7 @@ async function fetchCandles(
         );
     }
 
-    const data =
-        await response.json();
+    const data = await response.json();
 
     if (!data.values) {
 
@@ -203,41 +175,103 @@ async function fetchCandles(
 
 
 // ============================================================
-// LOAD ALL TIMEFRAMES
+// LOAD CANDLES — EACH TIMEFRAME INDEPENDENTLY
 // ============================================================
 
 async function loadCandles() {
 
+    const results = {
+
+        H4: false,
+        H1: false,
+        M15: false,
+        M5: false
+    };
+
+
+    // H4
     try {
 
         marketData.H4 =
             await fetchCandles("4h");
 
-        marketData.H1 =
-            await fetchCandles("1h");
-
-        marketData.M15 =
-            await fetchCandles("15min");
-
-        marketData.M5 =
-            await fetchCandles("5min");
-
-        console.log(
-            "ALL CANDLE DATA LOADED",
-            marketData
-        );
-
-        return true;
+        results.H4 = true;
 
     } catch (error) {
 
         console.error(
-            "CANDLE ERROR:",
+            "H4 ERROR:",
             error
         );
 
-        return false;
+        marketData.H4 = [];
     }
+
+
+    // H1
+    try {
+
+        marketData.H1 =
+            await fetchCandles("1h");
+
+        results.H1 = true;
+
+    } catch (error) {
+
+        console.error(
+            "H1 ERROR:",
+            error
+        );
+
+        marketData.H1 = [];
+    }
+
+
+    // M15
+    try {
+
+        marketData.M15 =
+            await fetchCandles("15min");
+
+        results.M15 = true;
+
+    } catch (error) {
+
+        console.error(
+            "M15 ERROR:",
+            error
+        );
+
+        marketData.M15 = [];
+    }
+
+
+    // M5
+    try {
+
+        marketData.M5 =
+            await fetchCandles("5min");
+
+        results.M5 = true;
+
+    } catch (error) {
+
+        console.error(
+            "M5 ERROR:",
+            error
+        );
+
+        marketData.M5 = [];
+    }
+
+
+    console.log(
+        "CANDLE LOAD STATUS:",
+        results
+    );
+
+
+    return results;
 }
 
 
@@ -272,6 +306,7 @@ function calculateEMA(
                 (a, b) => a + b,
                 0
             ) / period;
+
 
     for (
         let i = period;
@@ -314,6 +349,7 @@ function calculateRSI(
     let gains = 0;
     let losses = 0;
 
+
     for (
         let i = 1;
         i <= period;
@@ -334,11 +370,13 @@ function calculateRSI(
         }
     }
 
+
     let averageGain =
         gains / period;
 
     let averageLoss =
         losses / period;
+
 
     for (
         let i = period + 1;
@@ -360,12 +398,14 @@ function calculateRSI(
                 ? -change
                 : 0;
 
+
         averageGain =
             (
                 averageGain *
                 (period - 1) +
                 gain
             ) / period;
+
 
         averageLoss =
             (
@@ -375,20 +415,22 @@ function calculateRSI(
             ) / period;
     }
 
-    if (averageLoss === 0) {
 
+    if (averageLoss === 0) {
         return 100;
     }
 
-    const relativeStrength =
+
+    const rs =
         averageGain /
         averageLoss;
+
 
     return (
         100 -
         (
             100 /
-            (1 + relativeStrength)
+            (1 + rs)
         )
     );
 }
@@ -408,6 +450,7 @@ function getStructure(candles) {
         return "INSUFFICIENT DATA";
     }
 
+
     const recent =
         candles.slice(-10);
 
@@ -417,12 +460,14 @@ function getStructure(candles) {
     const last =
         recent.slice(-5);
 
+
     const firstHigh =
         Math.max(
             ...first.map(
                 c => c.high
             )
         );
+
 
     const lastHigh =
         Math.max(
@@ -431,12 +476,14 @@ function getStructure(candles) {
             )
         );
 
+
     const firstLow =
         Math.min(
             ...first.map(
                 c => c.low
             )
         );
+
 
     const lastLow =
         Math.min(
@@ -445,9 +492,11 @@ function getStructure(candles) {
             )
         );
 
+
     const firstClose =
         first[first.length - 1]
             .close;
+
 
     const lastClose =
         last[last.length - 1]
@@ -482,9 +531,7 @@ function getStructure(candles) {
 // SUPPORT / RESISTANCE
 // ============================================================
 
-function calculateLevels(
-    candles
-) {
+function calculateLevels(candles) {
 
     if (
         !candles ||
@@ -501,30 +548,34 @@ function calculateLevels(
         };
     }
 
+
     const recent =
         candles.slice(-50);
+
 
     const highs =
         recent.map(
             candle => candle.high
         );
 
+
     const lows =
         recent.map(
             candle => candle.low
         );
 
+
     const sortedHighs =
-        [...highs]
-            .sort(
-                (a, b) => b - a
-            );
+        [...highs].sort(
+            (a, b) => b - a
+        );
+
 
     const sortedLows =
-        [...lows]
-            .sort(
-                (a, b) => a - b
-            );
+        [...lows].sort(
+            (a, b) => a - b
+        );
+
 
     return {
 
@@ -561,10 +612,6 @@ function updateTechnicalAnalysis() {
     const m5 =
         marketData.M5;
 
-
-    // --------------------------------------------------------
-    // STRUCTURE
-    // --------------------------------------------------------
 
     const h4Trend =
         getStructure(h4);
@@ -650,39 +697,34 @@ function updateTechnicalAnalysis() {
     // EMA
     // --------------------------------------------------------
 
-    const h1EMA20 =
+    const ema20 =
         calculateEMA(
             h1,
             20
         );
 
-    const h1EMA50 =
+    const ema50 =
         calculateEMA(
             h1,
             50
         );
+
 
     let emaStructure =
         "NEUTRAL";
 
 
     if (
-        h1EMA20 !== null &&
-        h1EMA50 !== null
+        ema20 !== null &&
+        ema50 !== null
     ) {
 
-        if (
-            h1EMA20 >
-            h1EMA50
-        ) {
+        if (ema20 > ema50) {
 
             emaStructure =
                 "BULLISH";
 
-        } else if (
-            h1EMA20 <
-            h1EMA50
-        ) {
+        } else if (ema20 < ema50) {
 
             emaStructure =
                 "BEARISH";
@@ -697,7 +739,7 @@ function updateTechnicalAnalysis() {
 
 
     // --------------------------------------------------------
-    // SUPPORT / RESISTANCE
+    // LEVELS
     // --------------------------------------------------------
 
     const levels =
@@ -734,7 +776,7 @@ function updateTechnicalAnalysis() {
 
 
     // --------------------------------------------------------
-    // SNIPER
+    // ENGINES
     // --------------------------------------------------------
 
     runSniperEngine(
@@ -747,37 +789,32 @@ function updateTechnicalAnalysis() {
         m15RSI,
         m5RSI,
         emaStructure,
-        levels
+        levels,
+        newsClear
     );
 
-
-    // --------------------------------------------------------
-    // SCALPING
-    // --------------------------------------------------------
 
     runScalpingEngine(
         h1Trend,
         m5Structure,
         m5RSI,
-        levels
+        levels,
+        newsClear
     );
 
-
-    // --------------------------------------------------------
-    // PRO VERDICT
-    // --------------------------------------------------------
 
     updateProVerdict(
         h4Trend,
         h1Trend,
         m15Structure,
-        m5Structure
+        m5Structure,
+        newsClear
     );
 }
 
 
 // ============================================================
-// NEWS / ECONOMIC CALENDAR
+// NEWS
 // ============================================================
 
 async function loadNews() {
@@ -831,12 +868,6 @@ async function loadNews() {
             await response.json();
 
 
-        console.log(
-            "XOOMAR RESPONSE:",
-            json
-        );
-
-
         if (
             !json.data ||
             !Array.isArray(json.data)
@@ -856,9 +887,8 @@ async function loadNews() {
 
 
         console.log(
-            "NEWS CONNECTED:",
-            newsData.length,
-            "events"
+            "NEWS LOADED:",
+            newsData.length
         );
 
 
@@ -873,8 +903,7 @@ async function loadNews() {
         );
 
 
-        window.newsClear =
-            false;
+        newsClear = false;
 
 
         setText(
@@ -933,8 +962,10 @@ function getEventTime(event) {
             continue;
         }
 
+
         const date =
             new Date(value);
+
 
         if (
             !isNaN(
@@ -968,7 +999,7 @@ function getEventName(event) {
 
 
 // ============================================================
-// EVENT IMPORTANCE
+// HIGH IMPACT
 // ============================================================
 
 function isHighImpact(event) {
@@ -992,7 +1023,7 @@ function isHighImpact(event) {
 
 
 // ============================================================
-// USD EVENT DETECTION
+// USD EVENT
 // ============================================================
 
 function isUSDEvent(event) {
@@ -1001,6 +1032,7 @@ function isUSDEvent(event) {
         getEventName(event)
             .toLowerCase();
 
+
     const source =
         String(
             event.source ||
@@ -1008,6 +1040,7 @@ function isUSDEvent(event) {
             ""
         )
         .toLowerCase();
+
 
     const currency =
         String(
@@ -1042,7 +1075,7 @@ function isUSDEvent(event) {
     }
 
 
-    const usdKeywords = [
+    const keywords = [
 
         "nonfarm payroll",
         "employment situation",
@@ -1076,7 +1109,7 @@ function isUSDEvent(event) {
     ];
 
 
-    return usdKeywords.some(
+    return keywords.some(
         keyword =>
             name.includes(keyword)
     );
@@ -1084,7 +1117,7 @@ function isUSDEvent(event) {
 
 
 // ============================================================
-// EUR EVENT DETECTION
+// EUR EVENT
 // ============================================================
 
 function isEURRelevant(event) {
@@ -1093,6 +1126,7 @@ function isEURRelevant(event) {
         getEventName(event)
             .toLowerCase();
 
+
     const source =
         String(
             event.source ||
@@ -1100,6 +1134,7 @@ function isEURRelevant(event) {
             ""
         )
         .toLowerCase();
+
 
     const currency =
         String(
@@ -1132,7 +1167,7 @@ function isEURRelevant(event) {
     }
 
 
-    const eurKeywords = [
+    const keywords = [
 
         "ecb",
         "euro area",
@@ -1146,7 +1181,7 @@ function isEURRelevant(event) {
     ];
 
 
-    return eurKeywords.some(
+    return keywords.some(
         keyword =>
             name.includes(keyword)
     );
@@ -1154,7 +1189,7 @@ function isEURRelevant(event) {
 
 
 // ============================================================
-// IST FORMAT
+// IST TIME
 // ============================================================
 
 function formatIST(date) {
@@ -1188,7 +1223,7 @@ function formatIST(date) {
 
 
 // ============================================================
-// NEWS PROCESSOR
+// PROCESS NEWS
 // ============================================================
 
 function processNews() {
@@ -1197,16 +1232,13 @@ function processNews() {
         Date.now();
 
 
-    // --------------------------------------------------------
-    // Convert events into usable objects
-    // --------------------------------------------------------
-
     const events =
         newsData
             .map(event => {
 
                 const date =
                     getEventTime(event);
+
 
                 return {
 
@@ -1227,7 +1259,6 @@ function processNews() {
 
                     eur:
                         isEURRelevant(event)
-
                 };
 
             })
@@ -1238,7 +1269,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // EUR HIGH-IMPACT EVENTS
+    // EUR
     // --------------------------------------------------------
 
     const eurEvents =
@@ -1246,7 +1277,8 @@ function processNews() {
             .filter(
                 event =>
                     event.high &&
-                    event.eur
+                    event.eur &&
+                    event.date.getTime() >= now
             )
             .sort(
                 (a, b) =>
@@ -1255,7 +1287,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // USD HIGH-IMPACT EVENTS
+    // USD
     // --------------------------------------------------------
 
     const usdEvents =
@@ -1263,7 +1295,8 @@ function processNews() {
             .filter(
                 event =>
                     event.high &&
-                    event.usd
+                    event.usd &&
+                    event.date.getTime() >= now
             )
             .sort(
                 (a, b) =>
@@ -1272,21 +1305,17 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // NEXT EUR EVENT
+    // EUR DISPLAY
     // --------------------------------------------------------
 
-    const nextEUR =
-        eurEvents.find(
-            event =>
-                event.date.getTime() >= now
-        );
+    if (eurEvents.length > 0) {
 
-
-    if (nextEUR) {
+        const event =
+            eurEvents[0];
 
         setText(
             "eurNews",
-            `HIGH — ${nextEUR.name} @ ${formatIST(nextEUR.date)}`
+            `HIGH — ${event.name} @ ${formatIST(event.date)}`
         );
 
     } else {
@@ -1299,21 +1328,17 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // NEXT USD EVENT
+    // USD DISPLAY
     // --------------------------------------------------------
 
-    const nextUSD =
-        usdEvents.find(
-            event =>
-                event.date.getTime() >= now
-        );
+    if (usdEvents.length > 0) {
 
-
-    if (nextUSD) {
+        const event =
+            usdEvents[0];
 
         setText(
             "usdNews",
-            `HIGH — ${nextUSD.name} @ ${formatIST(nextUSD.date)}`
+            `HIGH — ${event.name} @ ${formatIST(event.date)}`
         );
 
     } else {
@@ -1326,10 +1351,10 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // EUR/USD RELEVANT EVENTS
+    // EUR/USD EVENTS
     // --------------------------------------------------------
 
-    const relevantHighImpact =
+    const relevantEvents =
         events
             .filter(
                 event =>
@@ -1345,69 +1370,65 @@ function processNews() {
             );
 
 
-    // --------------------------------------------------------
-    // NEXT HIGH-IMPACT EVENT
-    // --------------------------------------------------------
-
     const nextEvent =
-        relevantHighImpact.find(
+        relevantEvents.find(
             event =>
                 event.date.getTime() >= now
         );
 
 
-    if (!nextEvent) {
+    // --------------------------------------------------------
+    // NEXT EVENT
+    // --------------------------------------------------------
+
+    if (nextEvent) {
 
         setText(
             "nextEvent",
-            "No upcoming high-impact EUR/USD event found"
+            `${nextEvent.name} — ${formatIST(nextEvent.date)}`
         );
 
     } else {
 
         setText(
             "nextEvent",
-            `${nextEvent.name} — ${formatIST(nextEvent.date)}`
+            "No upcoming high-impact EUR/USD event found"
         );
     }
 
 
     // ========================================================
-    // NEWS BLOCK WINDOW
-    //
-    // 30 minutes BEFORE
-    // through
-    // 30 minutes AFTER
+    // NEWS BLOCK
     // ========================================================
 
-    const BLOCK_BEFORE =
+    const BEFORE =
         30 * 60 * 1000;
 
-    const BLOCK_AFTER =
+    const AFTER =
         30 * 60 * 1000;
 
 
-    let activeNews =
-        null;
+    let blockedEvent = null;
 
 
     for (
-        const event of relevantHighImpact
+        const event of relevantEvents
     ) {
 
         const eventTime =
             event.date.getTime();
+
 
         const difference =
             now - eventTime;
 
 
         if (
-            difference >= -BLOCK_BEFORE &&
-            difference <= BLOCK_AFTER
+            difference >= -BEFORE &&
+            difference <= AFTER
         ) {
 
-            activeNews =
+            blockedEvent =
                 event;
 
             break;
@@ -1416,16 +1437,14 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // ACTIVE NEWS = TRADING BLOCKED
+    // NEWS BLOCK ACTIVE
     // --------------------------------------------------------
 
-    if (activeNews) {
-
-        const eventTime =
-            activeNews.date.getTime();
+    if (blockedEvent) {
 
         const difference =
-            now - eventTime;
+            now -
+            blockedEvent.date.getTime();
 
 
         if (difference < 0) {
@@ -1439,7 +1458,7 @@ function processNews() {
 
             setText(
                 "newsFilter",
-                `🚫 NEWS BLOCK — ${activeNews.name} IN ${minutes} MIN`
+                `🚫 NEWS BLOCK — ${blockedEvent.name} IN ${minutes} MIN`
             );
 
         } else {
@@ -1453,7 +1472,7 @@ function processNews() {
 
             setText(
                 "newsFilter",
-                `🚫 NEWS BLOCK — ${activeNews.name} (${minutes} MIN AGO)`
+                `🚫 NEWS BLOCK — ${blockedEvent.name} (${minutes} MIN AGO)`
             );
         }
 
@@ -1464,8 +1483,7 @@ function processNews() {
         );
 
 
-        window.newsClear =
-            false;
+        newsClear = false;
 
 
         return;
@@ -1473,7 +1491,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // NEWS WITHIN NEXT 2 HOURS
+    // NEWS WITHIN 2 HOURS
     // --------------------------------------------------------
 
     if (nextEvent) {
@@ -1504,8 +1522,7 @@ function processNews() {
             );
 
 
-            window.newsClear =
-                false;
+            newsClear = false;
 
 
             return;
@@ -1529,8 +1546,7 @@ function processNews() {
     );
 
 
-    window.newsClear =
-        true;
+    newsClear = true;
 }
 
 
@@ -1548,18 +1564,15 @@ function runSniperEngine(
     m15RSI,
     m5RSI,
     emaStructure,
-    levels
+    levels,
+    newsStatus
 ) {
 
-    const newsClear =
-        window.newsClear === true;
-
-
     // --------------------------------------------------------
-    // NEWS MUST BE CLEAR
+    // NEWS CHECK
     // --------------------------------------------------------
 
-    if (!newsClear) {
+    if (!newsStatus) {
 
         setText(
             "sniperStatus",
@@ -1576,25 +1589,21 @@ function runSniperEngine(
         setText("tp1", "—");
         setText("tp2", "—");
         setText("tp3", "—");
-
-        setText(
-            "riskReward",
-            "—"
-        );
+        setText("riskReward", "—");
 
         setText(
             "validity",
-            "H4/H1 direction → M15 confirmation → M5 trigger → news clearance"
+            "NEWS FILTER CLOSED"
         );
 
         setText(
             "trigger",
-            "H4/H1 direction → M15 confirmation → M5 trigger → news clearance"
+            "Wait for EUR/USD economic-news clearance"
         );
 
         setText(
             "invalidation",
-            "No trade while NEWS FILTER is CLOSED"
+            "NO TRADE WHILE NEWS FILTER IS CLOSED"
         );
 
         setText(
@@ -1607,16 +1616,17 @@ function runSniperEngine(
 
 
     // --------------------------------------------------------
-    // H4 / H1 MUST AGREE
+    // RANGE IS NOT A DIRECTION
     // --------------------------------------------------------
 
     if (
-        h4Trend !== h1Trend
+        h4Trend !== "BULLISH" &&
+        h4Trend !== "BEARISH"
     ) {
 
         setText(
             "sniperStatus",
-            "WAIT — HIGHER TIMEFRAME CONFLICT"
+            "WAIT — H4 NO CLEAR DIRECTION"
         );
 
         setText(
@@ -1633,17 +1643,66 @@ function runSniperEngine(
 
         setText(
             "validity",
-            "H4/H1 conflict detected"
+            `H4 is ${h4Trend}. Clear H4 trend required.`
         );
 
         setText(
             "trigger",
-            "H4 and H1 must align → M15 confirmation → M5 trigger"
+            "Wait for H4 directional structure"
         );
 
         setText(
             "invalidation",
-            "No trade while higher timeframes conflict"
+            "No A+ setup while H4 remains RANGE"
+        );
+
+        setText(
+            "setupScore",
+            "—"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // H4 / H1 CONFLICT
+    // --------------------------------------------------------
+
+    if (
+        h1Trend !== h4Trend
+    ) {
+
+        setText(
+            "sniperStatus",
+            "WAIT — H4/H1 CONFLICT"
+        );
+
+        setText(
+            "direction",
+            "WAIT"
+        );
+
+        setText("entry", "—");
+        setText("stopLoss", "—");
+        setText("tp1", "—");
+        setText("tp2", "—");
+        setText("tp3", "—");
+        setText("riskReward", "—");
+
+        setText(
+            "validity",
+            `H4 ${h4Trend} / H1 ${h1Trend}`
+        );
+
+        setText(
+            "trigger",
+            "H4 and H1 must align"
+        );
+
+        setText(
+            "invalidation",
+            "No trade while H4/H1 conflict"
         );
 
         setText(
@@ -1665,7 +1724,6 @@ function runSniperEngine(
     if (
         h4Trend === direction
     ) {
-
         score += 2;
     }
 
@@ -1673,7 +1731,6 @@ function runSniperEngine(
     if (
         h1Trend === direction
     ) {
-
         score += 2;
     }
 
@@ -1681,7 +1738,6 @@ function runSniperEngine(
     if (
         m15Structure === direction
     ) {
-
         score += 2;
     }
 
@@ -1689,7 +1745,6 @@ function runSniperEngine(
     if (
         m5Structure === direction
     ) {
-
         score += 1;
     }
 
@@ -1697,7 +1752,6 @@ function runSniperEngine(
     if (
         emaStructure === direction
     ) {
-
         score += 1;
     }
 
@@ -1707,7 +1761,6 @@ function runSniperEngine(
         h1RSI !== null &&
         h1RSI < 65
     ) {
-
         score += 1;
     }
 
@@ -1717,13 +1770,11 @@ function runSniperEngine(
         h1RSI !== null &&
         h1RSI > 35
     ) {
-
         score += 1;
     }
 
 
-    if (newsClear) {
-
+    if (newsStatus) {
         score += 1;
     }
 
@@ -1760,12 +1811,12 @@ function runSniperEngine(
 
         setText(
             "trigger",
-            "Wait for M15 confirmation and M5 trigger"
+            "Wait for M15 confirmation + M5 trigger"
         );
 
         setText(
             "invalidation",
-            "Setup below required score"
+            "Setup score below A+ requirement"
         );
 
         return;
@@ -1793,8 +1844,9 @@ function createSniperTrade(
     }
 
 
-    let entry =
+    const entry =
         currentPrice;
+
 
     let sl;
     let tp1;
@@ -1811,8 +1863,10 @@ function createSniperTrade(
                 ? levels.support1 - 0.00020
                 : entry - 0.00100;
 
+
         const risk =
             entry - sl;
+
 
         tp1 =
             entry + risk * 2;
@@ -1836,8 +1890,10 @@ function createSniperTrade(
                 ? levels.resistance1 + 0.00020
                 : entry + 0.00100;
 
+
         const risk =
             sl - entry;
+
 
         tp1 =
             entry - risk * 2;
@@ -1861,10 +1917,12 @@ function createSniperTrade(
             entry - sl
         );
 
+
     const reward =
         Math.abs(
             tp1 - entry
         );
+
 
     const rr =
         risk > 0
@@ -1932,14 +1990,15 @@ function runScalpingEngine(
     h1Trend,
     m5Structure,
     m5RSI,
-    levels
+    levels,
+    newsStatus
 ) {
 
-    const newsClear =
-        window.newsClear === true;
+    // --------------------------------------------------------
+    // NEWS
+    // --------------------------------------------------------
 
-
-    if (!newsClear) {
+    if (!newsStatus) {
 
         setText(
             "scalpVerdict",
@@ -1951,35 +2010,12 @@ function runScalpingEngine(
             "WAIT"
         );
 
-        setText(
-            "scalpEntry",
-            "—"
-        );
-
-        setText(
-            "scalpSL",
-            "—"
-        );
-
-        setText(
-            "scalpTP1",
-            "—"
-        );
-
-        setText(
-            "scalpTP2",
-            "—"
-        );
-
-        setText(
-            "scalpRR",
-            "—"
-        );
-
-        setText(
-            "scalpScore",
-            "—"
-        );
+        setText("scalpEntry", "—");
+        setText("scalpSL", "—");
+        setText("scalpTP1", "—");
+        setText("scalpTP2", "—");
+        setText("scalpRR", "—");
+        setText("scalpScore", "—");
 
         setText(
             "scalpValidity",
@@ -1988,12 +2024,61 @@ function runScalpingEngine(
 
         setText(
             "scalpTrigger",
-            "H1 + M5 technical bias detected. Wait for EUR/USD economic-news clearance."
+            "Wait for EUR/USD economic-news clearance."
         );
 
         setText(
             "scalpInvalidation",
             "NO TRADE WHILE NEWS FILTER IS CLOSED"
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // H1 MUST HAVE DIRECTION
+    // --------------------------------------------------------
+
+    if (
+        h1Trend !== "BULLISH" &&
+        h1Trend !== "BEARISH"
+    ) {
+
+        setText(
+            "scalpVerdict",
+            "WAIT — H1 NO CLEAR DIRECTION"
+        );
+
+        setText(
+            "scalpDirection",
+            "WAIT"
+        );
+
+        setText("scalpEntry", "—");
+        setText("scalpSL", "—");
+        setText("scalpTP1", "—");
+        setText("scalpTP2", "—");
+        setText("scalpRR", "—");
+
+        setText(
+            "scalpScore",
+            "—"
+        );
+
+        setText(
+            "scalpValidity",
+            "NEXT 2 HOURS — H1 IS RANGE"
+        );
+
+        setText(
+            "scalpTrigger",
+            "Wait for H1 directional structure"
+        );
+
+        setText(
+            "scalpInvalidation",
+            "No scalp while H1 remains RANGE"
         );
 
         return;
@@ -2060,36 +2145,6 @@ function runScalpingEngine(
     );
 
 
-    if (
-        h1Trend !== "BULLISH" &&
-        h1Trend !== "BEARISH"
-    ) {
-
-        setText(
-            "scalpVerdict",
-            "WAIT — NO CLEAR H1 DIRECTION"
-        );
-
-        setText(
-            "scalpDirection",
-            "WAIT"
-        );
-
-        setText("scalpEntry", "—");
-        setText("scalpSL", "—");
-        setText("scalpTP1", "—");
-        setText("scalpTP2", "—");
-        setText("scalpRR", "—");
-
-        setText(
-            "scalpValidity",
-            "NEXT 2 HOURS — NO CLEAR DIRECTION"
-        );
-
-        return;
-    }
-
-
     if (score < 6) {
 
         setText(
@@ -2134,7 +2189,7 @@ function runScalpingEngine(
 
         setText(
             "scalpTrigger",
-            "Wait for M5 confirmation in the H1 direction."
+            "Wait for M5 confirmation in H1 direction."
         );
 
         setText(
@@ -2170,6 +2225,7 @@ function createScalpTrade(
     const entry =
         currentPrice;
 
+
     let sl;
     let tp1;
     let tp2;
@@ -2184,8 +2240,10 @@ function createScalpTrade(
                 ? levels.support1 - 0.00015
                 : entry - 0.00070;
 
+
         const risk =
             entry - sl;
+
 
         tp1 =
             entry + risk * 1.5;
@@ -2206,8 +2264,10 @@ function createScalpTrade(
                 ? levels.resistance1 + 0.00015
                 : entry + 0.00070;
 
+
         const risk =
             sl - entry;
+
 
         tp1 =
             entry - risk * 1.5;
@@ -2228,10 +2288,12 @@ function createScalpTrade(
             entry - sl
         );
 
+
     const reward =
         Math.abs(
             tp1 - entry
         );
+
 
     const rr =
         risk > 0
@@ -2294,14 +2356,15 @@ function updateProVerdict(
     h4Trend,
     h1Trend,
     m15Structure,
-    m5Structure
+    m5Structure,
+    newsStatus
 ) {
 
-    const newsClear =
-        window.newsClear === true;
+    // --------------------------------------------------------
+    // NEWS
+    // --------------------------------------------------------
 
-
-    if (!newsClear) {
+    if (!newsStatus) {
 
         setText(
             "proVerdict",
@@ -2317,23 +2380,54 @@ function updateProVerdict(
     }
 
 
+    // --------------------------------------------------------
+    // H4 RANGE
+    // --------------------------------------------------------
+
     if (
-        h4Trend !== h1Trend
+        h4Trend !== "BULLISH" &&
+        h4Trend !== "BEARISH"
     ) {
 
         setText(
             "proVerdict",
-            "WAIT — HIGHER-TIMEFRAME CONFLICT"
+            "WAIT — H4 RANGE"
         );
 
         setText(
             "proExplanation",
-            `H4 is ${h4Trend} while H1 is ${h1Trend}. Higher-timeframe direction is not aligned. Scalping is monitored separately using H1 + M5.`
+            "H4 does not currently show a clear directional structure. Wait for a confirmed H4 directional move before looking for an A+ setup."
         );
 
         return;
     }
 
+
+    // --------------------------------------------------------
+    // H1 CONFLICT
+    // --------------------------------------------------------
+
+    if (
+        h1Trend !== h4Trend
+    ) {
+
+        setText(
+            "proVerdict",
+            "WAIT — H4/H1 CONFLICT"
+        );
+
+        setText(
+            "proExplanation",
+            `H4 is ${h4Trend} while H1 is ${h1Trend}. Wait for higher-timeframe alignment.`
+        );
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // M15 CONFIRMATION
+    // --------------------------------------------------------
 
     if (
         m15Structure === h4Trend
@@ -2358,20 +2452,14 @@ function updateProVerdict(
 
         setText(
             "proExplanation",
-            `H4 and H1 are aligned ${h4Trend}, but M15 is ${m15Structure}. Wait for M15 confirmation and an M5 trigger.`
+            `H4 and H1 are aligned ${h4Trend}, but M15 is ${m15Structure}.`
         );
     }
 }
 
 
 // ============================================================
-// MAIN MARKET DATA LOADER
-// ============================================================
-//
-// IMPORTANT FIX:
-// NEWS IS LOADED BEFORE TECHNICAL ANALYSIS.
-// This means Sniper, Scalping and PRO receive the
-// current newsClear value instead of the old false value.
+// MAIN DASHBOARD LOADER
 // ============================================================
 
 async function loadMarketData() {
@@ -2396,24 +2484,22 @@ async function loadMarketData() {
 
 
     // --------------------------------------------------------
-    // 1. LIVE PRICE
+    // 1. PRICE
     // --------------------------------------------------------
 
     await fetchPrice();
 
 
     // --------------------------------------------------------
-    // 2. CANDLE DATA
+    // 2. CANDLES
     // --------------------------------------------------------
 
-    const candlesLoaded =
+    const candleStatus =
         await loadCandles();
 
 
     // --------------------------------------------------------
-    // 3. NEWS / ECONOMIC CALENDAR
-    //
-    // NEWS MUST LOAD BEFORE TECHNICAL ENGINES.
+    // 3. NEWS FIRST
     // --------------------------------------------------------
 
     await loadNews();
@@ -2422,12 +2508,37 @@ async function loadMarketData() {
     // --------------------------------------------------------
     // 4. TECHNICAL ANALYSIS
     //
-    // At this point window.newsClear is already updated.
+    // IMPORTANT:
+    // newsClear is now already known.
     // --------------------------------------------------------
 
-    if (candlesLoaded) {
+    const minimumDataAvailable =
+        marketData.H4.length > 0 &&
+        marketData.H1.length > 0;
+
+
+    if (minimumDataAvailable) {
 
         updateTechnicalAnalysis();
+
+    }
+
+
+    // --------------------------------------------------------
+    // STATUS
+    // --------------------------------------------------------
+
+    const allCandlesLoaded =
+        candleStatus.H4 &&
+        candleStatus.H1 &&
+        candleStatus.M15 &&
+        candleStatus.M5;
+
+
+    if (
+        allCandlesLoaded &&
+        currentPrice !== null
+    ) {
 
         setText(
             "priceStatus",
@@ -2444,10 +2555,9 @@ async function loadMarketData() {
 
 
     console.log(
-        "NEWS CLEAR STATUS:",
-        window.newsClear
+        "FINAL NEWS STATUS:",
+        newsClear
     );
-
 
     console.log(
         "DASHBOARD UPDATE COMPLETE"
@@ -2470,10 +2580,8 @@ document.addEventListener(
 
 
 // ============================================================
-// AUTO REFRESH
+// AUTO REFRESH — 60 SECONDS
 // ============================================================
-
-// Refresh every 60 seconds.
 
 setInterval(
     function () {
