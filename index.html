@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
   <title>EUR/USD Sniper Dashboard</title>
 
   <style>
+
     * {
       box-sizing: border-box;
     }
@@ -136,7 +138,8 @@
     .trade-row {
       display: flex;
       justify-content: space-between;
-      padding: 6px 0;
+      gap: 10px;
+      padding: 7px 0;
       border-bottom: 1px solid #333;
     }
 
@@ -161,6 +164,7 @@
     }
 
     @media (max-width: 600px) {
+
       iframe {
         height: 360px;
       }
@@ -168,30 +172,74 @@
       .grid {
         grid-template-columns: 1fr 1fr;
       }
+
     }
+
   </style>
+
 </head>
+
 
 <body>
 
+
   <h1>EUR/USD Sniper Dashboard</h1>
 
-  <!-- LIVE PRICE -->
+
+  <!-- ======================================================
+       LIVE PRICE
+       ====================================================== -->
+
   <div class="price-box">
-    <div id="price">Loading...</div>
-    <div id="priceStatus">Connecting to market...</div>
+
+    <div id="price">
+      Loading...
+    </div>
+
+    <div id="priceStatus">
+      Connecting to market...
+    </div>
+
   </div>
 
-  <!-- CHART -->
+
+  <!-- ======================================================
+       LIVE CHART
+       ====================================================== -->
+
   <div class="card">
+
     <h2>📊 EUR/USD Live Chart</h2>
 
     <div class="chart-buttons">
-      <button onclick="changeChart('5')" id="btnM5">M5</button>
-      <button onclick="changeChart('15')" id="btnM15" class="active">M15</button>
-      <button onclick="changeChart('60')" id="btnH1">H1</button>
-      <button onclick="changeChart('240')" id="btnH4">H4</button>
+
+      <button
+        onclick="changeChart('5min')"
+        id="btnM5">
+        M5
+      </button>
+
+      <button
+        onclick="changeChart('15min')"
+        id="btnM15"
+        class="active">
+        M15
+      </button>
+
+      <button
+        onclick="changeChart('1h')"
+        id="btnH1">
+        H1
+      </button>
+
+      <button
+        onclick="changeChart('4h')"
+        id="btnH4">
+        H4
+      </button>
+
     </div>
+
 
     <iframe
       id="tradingChart"
@@ -199,168 +247,429 @@
       allowtransparency="true"
       scrolling="no">
     </iframe>
+
   </div>
 
-  <!-- MARKET STRUCTURE -->
+
+  <!-- ======================================================
+       MARKET STRUCTURE
+       ====================================================== -->
+
   <div class="card">
+
     <h2>🏦 Market Structure</h2>
 
     <div class="grid">
-      <div class="item">
-        <div class="label">H4 Trend</div>
-        <div class="value" id="h4Trend">Calculating...</div>
-      </div>
 
       <div class="item">
-        <div class="label">H1 Trend</div>
-        <div class="value" id="h1Trend">Calculating...</div>
+
+        <div class="label">
+          H4 Trend
+        </div>
+
+        <div
+          class="value"
+          id="h4Trend">
+          Calculating...
+        </div>
+
       </div>
 
-      <div class="item">
-        <div class="label">M15 Structure</div>
-        <div class="value" id="m15Structure">Calculating...</div>
-      </div>
 
       <div class="item">
-        <div class="label">M5 Structure</div>
-        <div class="value" id="m5Structure">Calculating...</div>
+
+        <div class="label">
+          H1 Trend
+        </div>
+
+        <div
+          class="value"
+          id="h1Trend">
+          Calculating...
+        </div>
+
       </div>
+
+
+      <div class="item">
+
+        <div class="label">
+          M15 Structure
+        </div>
+
+        <div
+          class="value"
+          id="m15Structure">
+          Calculating...
+        </div>
+
+      </div>
+
+
+      <div class="item">
+
+        <div class="label">
+          M5 Structure
+        </div>
+
+        <div
+          class="value"
+          id="m5Structure">
+          Calculating...
+        </div>
+
+      </div>
+
     </div>
+
   </div>
 
-  <!-- SUPPORT RESISTANCE -->
+
+  <!-- ======================================================
+       SUPPORT / RESISTANCE
+       ====================================================== -->
+
   <div class="card">
+
     <h2>📍 Support / Resistance</h2>
 
     <div class="grid">
-      <div class="item">
-        <div class="label">Resistance 1</div>
-        <div class="value" id="resistance1">Calculating...</div>
-      </div>
 
       <div class="item">
-        <div class="label">Resistance 2</div>
-        <div class="value" id="resistance2">Calculating...</div>
+
+        <div class="label">
+          Resistance 1
+        </div>
+
+        <div
+          class="value"
+          id="resistance1">
+          Calculating...
+        </div>
+
       </div>
 
-      <div class="item">
-        <div class="label">Support 1</div>
-        <div class="value" id="support1">Calculating...</div>
-      </div>
 
       <div class="item">
-        <div class="label">Support 2</div>
-        <div class="value" id="support2">Calculating...</div>
+
+        <div class="label">
+          Resistance 2
+        </div>
+
+        <div
+          class="value"
+          id="resistance2">
+          Calculating...
+        </div>
+
       </div>
+
+
+      <div class="item">
+
+        <div class="label">
+          Support 1
+        </div>
+
+        <div
+          class="value"
+          id="support1">
+          Calculating...
+        </div>
+
+      </div>
+
+
+      <div class="item">
+
+        <div class="label">
+          Support 2
+        </div>
+
+        <div
+          class="value"
+          id="support2">
+          Calculating...
+        </div>
+
+      </div>
+
     </div>
+
   </div>
 
-  <!-- INDICATORS -->
+
+  <!-- ======================================================
+       TECHNICAL INDICATORS
+       ====================================================== -->
+
   <div class="card">
+
     <h2>📈 Technical Indicators</h2>
 
     <div class="grid">
 
-      <div class="item">
-        <div class="label">H4 RSI</div>
-        <div class="value" id="h4Rsi">Calculating...</div>
-      </div>
 
       <div class="item">
-        <div class="label">H1 RSI</div>
-        <div class="value" id="h1Rsi">Calculating...</div>
+
+        <div class="label">
+          H4 RSI
+        </div>
+
+        <div
+          class="value"
+          id="h4Rsi">
+          Calculating...
+        </div>
+
       </div>
+
 
       <div class="item">
-        <div class="label">M15 RSI</div>
-        <div class="value" id="m15Rsi">Calculating...</div>
+
+        <div class="label">
+          H1 RSI
+        </div>
+
+        <div
+          class="value"
+          id="h1Rsi">
+          Calculating...
+        </div>
+
       </div>
+
 
       <div class="item">
-        <div class="label">M5 RSI</div>
-        <div class="value" id="m5Rsi">Calculating...</div>
+
+        <div class="label">
+          M15 RSI
+        </div>
+
+        <div
+          class="value"
+          id="m15Rsi">
+          Calculating...
+        </div>
+
       </div>
 
-      <div class="item" style="grid-column: 1 / -1;">
-        <div class="label">EMA Structure</div>
-        <div class="value" id="emaStructure">Calculating...</div>
+
+      <div class="item">
+
+        <div class="label">
+          M5 RSI
+        </div>
+
+        <div
+          class="value"
+          id="m5Rsi">
+          Calculating...
+        </div>
+
+      </div>
+
+
+      <div
+        class="item"
+        style="grid-column:1/-1;">
+
+        <div class="label">
+          EMA Structure
+        </div>
+
+        <div
+          class="value"
+          id="emaStructure">
+          Calculating...
+        </div>
+
       </div>
 
     </div>
+
   </div>
 
-  <!-- SNIPER -->
+
+  <!-- ======================================================
+       A+ SNIPER
+       ====================================================== -->
+
   <div class="card">
+
     <h2>🎯 A+ Sniper Setup</h2>
 
-    <div id="sniperStatus" class="big-status">Calculating...</div>
+    <div
+      id="sniperStatus"
+      class="big-status">
+      Calculating...
+    </div>
+
 
     <div class="trade-box">
 
-      <div class="trade-row">
-        <span>Direction</span>
-        <strong id="direction">—</strong>
-      </div>
 
       <div class="trade-row">
-        <span>Entry</span>
-        <strong id="entry">—</strong>
+
+        <span>
+          Direction
+        </span>
+
+        <strong id="direction">
+          —
+        </strong>
+
       </div>
 
-      <div class="trade-row">
-        <span>Stop Loss</span>
-        <strong id="stopLoss">—</strong>
-      </div>
 
       <div class="trade-row">
-        <span>TP1</span>
-        <strong id="tp1">—</strong>
+
+        <span>
+          Entry
+        </span>
+
+        <strong id="entry">
+          —
+        </strong>
+
       </div>
 
-      <div class="trade-row">
-        <span>TP2</span>
-        <strong id="tp2">—</strong>
-      </div>
 
       <div class="trade-row">
-        <span>TP3</span>
-        <strong id="tp3">—</strong>
+
+        <span>
+          Stop Loss
+        </span>
+
+        <strong id="stopLoss">
+          —
+        </strong>
+
       </div>
 
-      <div class="trade-row">
-        <span>Risk / Reward</span>
-        <strong id="riskReward">—</strong>
-      </div>
 
       <div class="trade-row">
-        <span>Validity</span>
-        <strong id="validity">—</strong>
+
+        <span>
+          TP1
+        </span>
+
+        <strong id="tp1">
+          —
+        </strong>
+
       </div>
 
-      <div class="trade-row">
-        <span>Trigger</span>
-        <strong id="trigger">—</strong>
-      </div>
 
       <div class="trade-row">
-        <span>Invalidation</span>
-        <strong id="invalidation">—</strong>
+
+        <span>
+          TP2
+        </span>
+
+        <strong id="tp2">
+          —
+        </strong>
+
       </div>
 
+
       <div class="trade-row">
-        <span>Setup Score</span>
-        <strong id="setupScore">—</strong>
+
+        <span>
+          TP3
+        </span>
+
+        <strong id="tp3">
+          —
+        </strong>
+
       </div>
+
+
+      <div class="trade-row">
+
+        <span>
+          Risk / Reward
+        </span>
+
+        <strong id="riskReward">
+          —
+        </strong>
+
+      </div>
+
+
+      <div class="trade-row">
+
+        <span>
+          Validity
+        </span>
+
+        <strong id="validity">
+          —
+        </strong>
+
+      </div>
+
+
+      <div class="trade-row">
+
+        <span>
+          Trigger
+        </span>
+
+        <strong id="trigger">
+          —
+        </strong>
+
+      </div>
+
+
+      <div class="trade-row">
+
+        <span>
+          Invalidation
+        </span>
+
+        <strong id="invalidation">
+          —
+        </strong>
+
+      </div>
+
+
+      <div class="trade-row">
+
+        <span>
+          Setup Score
+        </span>
+
+        <strong id="setupScore">
+          —
+        </strong>
+
+      </div>
+
 
     </div>
+
   </div>
 
-  <!-- ELITE SCALPING -->
+
+  <!-- ======================================================
+       ELITE SCALPING
+       ====================================================== -->
+
   <div class="card">
 
-    <h2>⚡ Elite Scalping Window — Next 2 Hours</h2>
+    <h2>
+      ⚡ Elite Scalping Window — Next 2 Hours
+    </h2>
+
 
     <p class="section-note">
+
       Elite scalping engine uses
       H1 → M15 → M5 alignment,
       M5 EMA20/EMA50 momentum,
@@ -380,169 +689,298 @@
       <br><br>
 
       Only the next 2 hours are considered.
+
     </p>
 
-    <div id="scalpVerdict" class="big-status">
+
+    <div
+      id="scalpVerdict"
+      class="big-status">
       Calculating...
     </div>
+
 
     <div class="trade-box">
 
-      <div class="trade-row">
-        <span>Direction</span>
-        <strong id="scalpDirection">—</strong>
-      </div>
 
       <div class="trade-row">
-        <span>Entry</span>
-        <strong id="scalpEntry">—</strong>
+
+        <span>
+          Direction
+        </span>
+
+        <strong id="scalpDirection">
+          —
+        </strong>
+
       </div>
 
-      <div class="trade-row">
-        <span>Stop Loss</span>
-        <strong id="scalpSL">—</strong>
-      </div>
 
       <div class="trade-row">
-        <span>TP1</span>
-        <strong id="scalpTP1">—</strong>
+
+        <span>
+          Entry
+        </span>
+
+        <strong id="scalpEntry">
+          —
+        </strong>
+
       </div>
 
-      <div class="trade-row">
-        <span>TP2</span>
-        <strong id="scalpTP2">—</strong>
-      </div>
 
       <div class="trade-row">
-        <span>Risk / Reward</span>
-        <strong id="scalpRR">—</strong>
+
+        <span>
+          Stop Loss
+        </span>
+
+        <strong id="scalpSL">
+          —
+        </strong>
+
       </div>
 
-      <div class="trade-row">
-        <span>Score</span>
-        <strong id="scalpScore">—</strong>
-      </div>
 
       <div class="trade-row">
-        <span>Validity</span>
-        <strong id="scalpValidity">—</strong>
+
+        <span>
+          TP1
+        </span>
+
+        <strong id="scalpTP1">
+          —
+        </strong>
+
       </div>
 
-      <div class="trade-row">
-        <span>Trigger</span>
-        <strong id="scalpTrigger">—</strong>
-      </div>
 
       <div class="trade-row">
-        <span>Invalidation</span>
-        <strong id="scalpInvalidation">—</strong>
+
+        <span>
+          TP2
+        </span>
+
+        <strong id="scalpTP2">
+          —
+        </strong>
+
       </div>
+
+
+      <div class="trade-row">
+
+        <span>
+          Risk / Reward
+        </span>
+
+        <strong id="scalpRR">
+          —
+        </strong>
+
+      </div>
+
+
+      <div class="trade-row">
+
+        <span>
+          Score
+        </span>
+
+        <strong id="scalpScore">
+          —
+        </strong>
+
+      </div>
+
+
+      <div class="trade-row">
+
+        <span>
+          Validity
+        </span>
+
+        <strong id="scalpValidity">
+          —
+        </strong>
+
+      </div>
+
+
+      <div class="trade-row">
+
+        <span>
+          Trigger
+        </span>
+
+        <strong id="scalpTrigger">
+          —
+        </strong>
+
+      </div>
+
+
+      <div class="trade-row">
+
+        <span>
+          Invalidation
+        </span>
+
+        <strong id="scalpInvalidation">
+          —
+        </strong>
+
+      </div>
+
 
     </div>
+
   </div>
 
-  <!-- PRO ANALYSIS -->
+
+  <!-- ======================================================
+       PRO ANALYSIS
+       ====================================================== -->
+
   <div class="card">
 
-    <h2>🧠 PRO Analysis</h2>
+    <h2>
+      🧠 PRO Analysis
+    </h2>
 
-    <div id="proVerdict" class="big-status">
+
+    <div
+      id="proVerdict"
+      class="big-status">
       Calculating...
     </div>
 
-    <div id="proExplanation" class="section-note">
+
+    <div
+      id="proExplanation"
+      class="section-note">
       Waiting for market data...
     </div>
 
   </div>
 
-  <!-- NEWS -->
+
+  <!-- ======================================================
+       NEWS
+       ====================================================== -->
+
   <div class="card">
 
-    <h2>📰 High Impact News</h2>
+    <h2>
+      📰 High Impact News
+    </h2>
+
 
     <div class="grid">
 
-      <div class="item">
-        <div class="label">EUR News</div>
-        <div class="value" id="eurNews">Checking...</div>
-      </div>
 
       <div class="item">
-        <div class="label">USD News</div>
-        <div class="value" id="usdNews">Checking...</div>
+
+        <div class="label">
+          EUR News
+        </div>
+
+        <div
+          class="value"
+          id="eurNews">
+          Checking...
+        </div>
+
       </div>
+
 
       <div class="item">
-        <div class="label">News Filter</div>
-        <div class="value" id="newsFilter">Checking...</div>
+
+        <div class="label">
+          USD News
+        </div>
+
+        <div
+          class="value"
+          id="usdNews">
+          Checking...
+        </div>
+
       </div>
+
 
       <div class="item">
-        <div class="label">Next Event</div>
-        <div class="value" id="nextEvent">Checking...</div>
+
+        <div class="label">
+          News Filter
+        </div>
+
+        <div
+          class="value"
+          id="newsFilter">
+          Checking...
+        </div>
+
       </div>
 
-      <div class="item" style="grid-column: 1 / -1;">
-        <div class="label">Trading Risk</div>
-        <div class="value" id="tradingRisk">Checking...</div>
+
+      <div class="item">
+
+        <div class="label">
+          Next Event
+        </div>
+
+        <div
+          class="value"
+          id="nextEvent">
+          Checking...
+        </div>
+
       </div>
+
+
+      <div
+        class="item"
+        style="grid-column:1/-1;">
+
+        <div class="label">
+          Trading Risk
+        </div>
+
+        <div
+          class="value"
+          id="tradingRisk">
+          Checking...
+        </div>
+
+      </div>
+
 
     </div>
 
   </div>
 
-  <button class="refresh-btn" onclick="loadMarketData()">
+
+  <!-- ======================================================
+       REFRESH
+       ====================================================== -->
+
+  <button
+    class="refresh-btn"
+    onclick="loadMarketData()">
+
     🔄 Refresh Market Data
+
   </button>
 
-  <script>
 
-    function changeChart(interval) {
+  <!-- ======================================================
+       SCRIPT
+       ====================================================== -->
 
-      const chart = document.getElementById("tradingChart");
+  <script src="script.js?v=20261003"></script>
 
-      const buttons = document.querySelectorAll(".chart-buttons button");
-
-      buttons.forEach(button => {
-        button.classList.remove("active");
-      });
-
-      if (interval === "5") {
-        document.getElementById("btnM5").classList.add("active");
-      }
-
-      if (interval === "15") {
-        document.getElementById("btnM15").classList.add("active");
-      }
-
-      if (interval === "60") {
-        document.getElementById("btnH1").classList.add("active");
-      }
-
-      if (interval === "240") {
-        document.getElementById("btnH4").classList.add("active");
-      }
-
-      chart.src =
-        "https://www.tradingview.com/widgetembed/?" +
-        "frameElementId=tradingviewChart" +
-        "&symbol=FX:EURUSD" +
-        "&interval=" + interval +
-        "&hidesidetoolbar=1" +
-        "&symboledit=1" +
-        "&saveimage=0" +
-        "&toolbarbg=f1f3f6" +
-        "&studies=[]" +
-        "&hideideas=1" +
-        "&theme=dark" +
-        "&style=1" +
-        "&timezone=Asia%2FKolkata";
-    }
-
-  </script>
-
-  <script src="script.js?v=20261002"></script>
 
 </body>
+
 </html>
