@@ -1,222 +1,45 @@
-/* =========================================================
-   EUR/USD SNIPER DASHBOARD
-   H4 → H1 → M15 → M5
-   A+ SNIPER + 2-HOUR SCALPING ENGINE
-   + EUR/USD ECONOMIC NEWS FILTER
+// ============================================================
+// EUR/USD SNIPER DASHBOARD
+// Complete script.js
+// ============================================================
 
-   MARKET DATA:
-   Twelve Data
+// ================= CONFIG =================
 
-   NEWS DATA:
-   Biquote Economic Calendar
-   EUR + USD
-   No API key required
+const API_KEY = "8908432b6c784bc49aad6ccf64845991";
 
-   NEWS SAFETY:
-   The dashboard remains CLOSED if the news calendar
-   cannot be confirmed.
+const PRICE_URL =
+  `https://api.twelvedata.com/price?symbol=EUR/USD&apikey=${API_KEY}`;
 
-   High-impact news blocks trading:
-   - 30 minutes BEFORE event
-   - Event time
-   - 15 minutes AFTER event
-   ========================================================= */
+const TIME_SERIES_URL =
+  "https://api.twelvedata.com/time_series";
+
+const NEWS_URL =
+  "https://xoomar.com/markets/api/calendar";
 
 
-/* =========================================================
-   CONFIG
-   ========================================================= */
-
-const API_KEY =
-  "8908432b6c784bc49aad6ccf64845991";
-
-const SYMBOL =
-  "EUR/USD";
-
-
-/*
-   Market refresh.
-   5 minutes keeps Twelve Data requests controlled.
-*/
-const REFRESH_MS =
-  300000;
-
-
-/*
-   News refresh.
-
-   Calendar does not need to be fetched
-   every 5 minutes. 5 minutes is sufficient.
-*/
-const NEWS_REFRESH_MS =
-  300000;
-
-
-/*
-   High-impact news protection.
-
-   Trading is blocked this many minutes
-   BEFORE a high-impact event.
-*/
-const NEWS_BLOCK_BEFORE_MINUTES =
-  30;
-
-
-/*
-   Trading remains blocked this many minutes
-   AFTER a high-impact event.
-*/
-const NEWS_BLOCK_AFTER_MINUTES =
-  15;
-
-
-/*
-   A+ SNIPER
-*/
-const MIN_SETUP_SCORE =
-  8;
-
-
-/*
-   SCALPER
-*/
-const MIN_SCALP_SCORE =
-  5;
-
-
-/*
-   Maximum sniper risk.
-*/
-const MAX_RISK =
-  0.0030;
-
-
-/*
-   Scalping maximum risk.
-*/
-const MAX_SCALP_RISK =
-  0.0015;
-
-
-/*
-   Structural SL buffer.
-*/
-const SL_BUFFER =
-  0.00015;
-
-
-/*
-   Scalping window.
-*/
-const SCALP_WINDOW_HOURS =
-  2;
-
-
-/* =========================================================
-   NEWS STATE
-   ========================================================= */
-
-let newsData = {
-
-  events: [],
-
-  eurEvents: [],
-
-  usdEvents: [],
-
-  loaded: false,
-
-  error: null,
-
-  lastUpdate: null,
-
-  nextEvent: null,
-
-  blockedEvent: null,
-
-  newsClear: false
-
-};
-
-
-/* =========================================================
-   GLOBAL MARKET DATA
-   ========================================================= */
+// ================= GLOBAL DATA =================
 
 let marketData = {
-
-  h4: [],
-  h1: [],
-  m15: [],
-  m5: [],
-
-  price: null,
-
-  lastUpdate: null,
-
-  apiError: null
-
+  H4: [],
+  H1: [],
+  M15: [],
+  M5: []
 };
 
-
-window.__dashboardLoading =
-  false;
-
-window.__newsLoading =
-  false;
+let currentPrice = null;
+let newsData = [];
 
 
-/* =========================================================
-   DOM HELPER
-   ========================================================= */
+// ================= HELPERS =================
 
-function setTextAny(ids, value) {
-
-  if (!Array.isArray(ids)) {
-    ids = [ids];
-  }
-
-  for (const id of ids) {
-
-    const el =
-      document.getElementById(id);
-
-    if (el) {
-
-      el.innerText =
-        value;
-
-      return true;
-    }
-  }
-
-  return false;
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
 }
 
 
-/* =========================================================
-   NUMBER HELPERS
-   ========================================================= */
-
-function num(value) {
-
-  const n =
-    Number(value);
-
-  return Number.isFinite(n)
-    ? n
-    : null;
-}
-
-
-function roundPrice(value) {
-
-  if (
-    value === null ||
-    value === undefined ||
-    !Number.isFinite(Number(value))
-  ) {
-
+function formatPrice(value) {
+  if (value === null || value === undefined || isNaN(value)) {
     return "—";
   }
 
@@ -224,1532 +47,269 @@ function roundPrice(value) {
 }
 
 
-function roundRSI(value) {
-
-  if (
-    value === null ||
-    value === undefined ||
-    !Number.isFinite(Number(value))
-  ) {
-
-    return "—";
-  }
-
-  return Number(value).toFixed(1);
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 
-/* =========================================================
-   NEWS TIME HELPERS
-   ========================================================= */
+// ================= FETCH PRICE =================
 
-function formatIST(date) {
-
-  if (!(date instanceof Date)) {
-
-    return "—";
-  }
-
-
-  return date.toLocaleString(
-    "en-IN",
-    {
-
-      timeZone:
-        "Asia/Kolkata",
-
-      day:
-        "2-digit",
-
-      month:
-        "short",
-
-      year:
-        "numeric",
-
-      hour:
-        "2-digit",
-
-      minute:
-        "2-digit",
-
-      hour12:
-        false
-
-    }
-  ) + " IST";
-}
-
-
-function getEventDate(event) {
-
-  if (!event) {
-    return null;
-  }
-
-
-  /*
-     Biquote uses "time".
-  */
-
-  const raw =
-    event.time ||
-    event.scheduledAt ||
-    event.datetime;
-
-
-  if (!raw) {
-    return null;
-  }
-
-
-  const date =
-    new Date(raw);
-
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-
-    return null;
-  }
-
-
-  return date;
-}
-
-
-/* =========================================================
-   NEWS EVENT NAME
-   ========================================================= */
-
-function getEventName(event) {
-
-  return (
-    event.name ||
-    event.eventName ||
-    "Economic Event"
-  );
-}
-
-
-/* =========================================================
-   NEWS CURRENCY
-   ========================================================= */
-
-function getEventCurrency(event) {
-
-  if (
-    event.currency
-  ) {
-
-    return String(
-      event.currency
-    ).toUpperCase();
-  }
-
-
-  if (
-    event.countryCode === "US"
-  ) {
-
-    return "USD";
-  }
-
-
-  if (
-    event.countryCode === "EU"
-  ) {
-
-    return "EUR";
-  }
-
-
-  return "";
-}
-
-
-/* =========================================================
-   NEWS IMPORTANCE
-   ========================================================= */
-
-function isHighImpact(event) {
-
-  return (
-    String(
-      event.importance || ""
-    ).toLowerCase() ===
-    "high"
-  );
-}
-
-
-/* =========================================================
-   NEWS FETCH
-   ========================================================= */
-
-async function loadNewsCalendar() {
-
-  if (
-    window.__newsLoading
-  ) {
-
-    return;
-  }
-
-
-  window.__newsLoading =
-    true;
-
+async function fetchPrice() {
 
   try {
 
-    console.log(
-      "NEWS: Loading EUR/USD economic calendar..."
-    );
-
-
-    /*
-       Biquote calendar.
-
-       EUR + USD only.
-
-       High-impact events only.
-
-       The API is public and requires
-       no API key.
-    */
-
-    const url =
-      "https://biquote.io/api/calendar" +
-      "?countries=US,EU" +
-      "&importance=high" +
-      "&type=event" +
-      "&limit=200";
-
-
-    const response =
-      await fetch(url);
-
+    const response = await fetch(PRICE_URL);
 
     if (!response.ok) {
-
-      throw new Error(
-        `News API HTTP ${response.status}`
-      );
+      throw new Error("Price API HTTP error");
     }
 
+    const data = await response.json();
 
-    const data =
-      await response.json();
-
-
-    if (
-      !Array.isArray(data)
-    ) {
-
-      throw new Error(
-        "News API returned invalid data"
-      );
+    if (!data.price) {
+      throw new Error(data.message || "Price unavailable");
     }
 
+    currentPrice = Number(data.price);
 
-    const events =
-      data
-        .filter(event =>
-          isHighImpact(event)
-        )
-        .filter(event => {
-
-          const currency =
-            getEventCurrency(event);
-
-          return (
-            currency === "EUR" ||
-            currency === "USD"
-          );
-
-        })
-        .filter(event =>
-          getEventDate(event) !== null
-        )
-        .sort(
-          (a, b) =>
-            getEventDate(a) -
-            getEventDate(b)
-        );
-
-
-    newsData.events =
-      events;
-
-
-    newsData.eurEvents =
-      events.filter(
-        event =>
-          getEventCurrency(event) ===
-          "EUR"
-      );
-
-
-    newsData.usdEvents =
-      events.filter(
-        event =>
-          getEventCurrency(event) ===
-          "USD"
-      );
-
-
-    newsData.loaded =
-      true;
-
-
-    newsData.error =
-      null;
-
-
-    newsData.lastUpdate =
-      new Date();
-
-
-    /*
-       Determine whether we are currently
-       inside a news protection window.
-    */
-
-    updateNewsState();
-
-
-    updateNewsUI();
-
-
-    console.log(
-      "NEWS: Calendar loaded",
-      newsData
+    setText(
+      "price",
+      formatPrice(currentPrice)
     );
 
-
-  }
-  catch (error) {
-
-    console.error(
-      "NEWS CALENDAR ERROR:",
-      error
+    setText(
+      "priceStatus",
+      "MARKET DATA LOADED"
     );
 
+    return currentPrice;
 
-    newsData.loaded =
-      false;
+  } catch (error) {
 
+    console.error("Price error:", error);
 
-    newsData.error =
-      error;
-
-
-    /*
-       SAFETY:
-
-       If the calendar cannot be confirmed,
-       trading remains blocked.
-    */
-
-    newsData.newsClear =
-      false;
-
-
-    newsData.blockedEvent =
-      null;
-
-
-    updateNewsUI();
-
-
-  }
-  finally {
-
-    window.__newsLoading =
-      false;
-  }
-}
-
-
-/* =========================================================
-   NEWS STATE ENGINE
-   ========================================================= */
-
-function updateNewsState() {
-
-  /*
-     If calendar isn't loaded,
-     trading is CLOSED.
-  */
-
-  if (
-    !newsData.loaded
-  ) {
-
-    newsData.newsClear =
-      false;
-
-    newsData.blockedEvent =
-      null;
-
-    newsData.nextEvent =
-      null;
-
-    return;
-  }
-
-
-  const now =
-    new Date();
-
-
-  const beforeMs =
-    NEWS_BLOCK_BEFORE_MINUTES *
-    60 *
-    1000;
-
-
-  const afterMs =
-    NEWS_BLOCK_AFTER_MINUTES *
-    60 *
-    1000;
-
-
-  /*
-     Only consider upcoming/recent events.
-
-     Events older than the protection window
-     are ignored.
-  */
-
-  const relevant =
-    newsData.events
-      .filter(event => {
-
-        const eventTime =
-          getEventDate(event);
-
-
-        if (!eventTime) {
-          return false;
-        }
-
-
-        const diff =
-          eventTime.getTime() -
-          now.getTime();
-
-
-        return (
-          diff >= -afterMs &&
-          diff <= 24 * 60 * 60 * 1000
-        );
-
-      })
-      .sort(
-        (a, b) =>
-          getEventDate(a) -
-          getEventDate(b)
-      );
-
-
-  /*
-     Find event currently blocking trading.
-  */
-
-  const blockingEvent =
-    relevant.find(event => {
-
-      const eventTime =
-        getEventDate(event);
-
-
-      const diff =
-        eventTime.getTime() -
-        now.getTime();
-
-
-      return (
-        diff >= -afterMs &&
-        diff <= beforeMs
-      );
-
-    });
-
-
-  if (
-    blockingEvent
-  ) {
-
-    newsData.newsClear =
-      false;
-
-
-    newsData.blockedEvent =
-      blockingEvent;
-
-  }
-  else {
-
-    newsData.newsClear =
-      true;
-
-
-    newsData.blockedEvent =
-      null;
-  }
-
-
-  /*
-     Find next future event.
-  */
-
-  newsData.nextEvent =
-    relevant.find(event => {
-
-      const eventTime =
-        getEventDate(event);
-
-
-      return (
-        eventTime.getTime() >
-        now.getTime()
-      );
-
-    }) || null;
-}
-
-
-/* =========================================================
-   NEWS UI
-   ========================================================= */
-
-function updateNewsUI() {
-
-  /*
-     Calendar failed.
-  */
-
-  if (
-    !newsData.loaded
-  ) {
-
-    setTextAny(
-      "eurNews",
-      "NOT CONNECTED"
+    setText(
+      "priceStatus",
+      "PRICE CONNECTION ERROR"
     );
-
-
-    setTextAny(
-      "usdNews",
-      "NOT CONNECTED"
-    );
-
-
-    setTextAny(
-      "newsFilter",
-      "NEWS CHECK FAILED"
-    );
-
-
-    setTextAny(
-      "nextEvent",
-      "CALENDAR ERROR"
-    );
-
-
-    setTextAny(
-      "tradingRisk",
-      "HIGH — NEWS FILTER CLOSED"
-    );
-
-
-    return;
-  }
-
-
-  /*
-     EUR status
-  */
-
-  if (
-    newsData.eurEvents.length
-  ) {
-
-    setTextAny(
-      "eurNews",
-      `${newsData.eurEvents.length} HIGH-IMPACT EVENT(S)`
-    );
-
-  }
-  else {
-
-    setTextAny(
-      "eurNews",
-      "NO HIGH-IMPACT EVENT"
-    );
-  }
-
-
-  /*
-     USD status
-  */
-
-  if (
-    newsData.usdEvents.length
-  ) {
-
-    setTextAny(
-      "usdNews",
-      `${newsData.usdEvents.length} HIGH-IMPACT EVENT(S)`
-    );
-
-  }
-  else {
-
-    setTextAny(
-      "usdNews",
-      "NO HIGH-IMPACT EVENT"
-    );
-  }
-
-
-  /*
-     Current news block.
-  */
-
-  if (
-    newsData.blockedEvent
-  ) {
-
-    const event =
-      newsData.blockedEvent;
-
-
-    const name =
-      getEventName(event);
-
-
-    const currency =
-      getEventCurrency(event);
-
-
-    const time =
-      formatIST(
-        getEventDate(event)
-      );
-
-
-    setTextAny(
-      "newsFilter",
-      `🔴 NEWS BLOCKED — ${currency}`
-    );
-
-
-    setTextAny(
-      "nextEvent",
-      `${name} — ${time}`
-    );
-
-
-    setTextAny(
-      "tradingRisk",
-      `HIGH — ${currency} HIGH-IMPACT NEWS`
-    );
-
-
-    return;
-  }
-
-
-  /*
-     No active block.
-  */
-
-  setTextAny(
-    "newsFilter",
-    "🟢 NEWS CLEAR"
-  );
-
-
-  if (
-    newsData.nextEvent
-  ) {
-
-    const event =
-      newsData.nextEvent;
-
-
-    const name =
-      getEventName(event);
-
-
-    const currency =
-      getEventCurrency(event);
-
-
-    const time =
-      formatIST(
-        getEventDate(event)
-      );
-
-
-    setTextAny(
-      "nextEvent",
-      `${currency} — ${name} — ${time}`
-    );
-
-  }
-  else {
-
-    setTextAny(
-      "nextEvent",
-      "No high-impact EUR/USD event found"
-    );
-  }
-
-
-  setTextAny(
-    "tradingRisk",
-    "LOW — NEWS CLEAR"
-  );
-}
-
-
-/* =========================================================
-   FETCH CANDLES
-   ========================================================= */
-
-async function getCandles(
-  interval,
-  outputsize = 100
-) {
-
-  const url =
-    "https://api.twelvedata.com/time_series" +
-    "?symbol=" +
-    encodeURIComponent(SYMBOL) +
-    "&interval=" +
-    encodeURIComponent(interval) +
-    "&outputsize=" +
-    outputsize +
-    "&timezone=Asia/Kolkata" +
-    "&apikey=" +
-    encodeURIComponent(API_KEY);
-
-
-  console.log(
-    "Requesting:",
-    interval
-  );
-
-
-  const response =
-    await fetch(url);
-
-
-  if (!response.ok) {
-
-    throw new Error(
-      `${interval}: HTTP ${response.status}`
-    );
-  }
-
-
-  const data =
-    await response.json();
-
-
-  console.log(
-    interval,
-    "API response:",
-    data
-  );
-
-
-  if (
-    data.status === "error"
-  ) {
-
-    throw new Error(
-      `${interval}: ${
-        data.message ||
-        "Twelve Data API error"
-      }`
-    );
-  }
-
-
-  if (
-    !data.values ||
-    !Array.isArray(data.values)
-  ) {
-
-    throw new Error(
-      `No ${interval} candle data received`
-    );
-  }
-
-
-  const candles =
-    data.values
-      .map(c => ({
-
-        datetime:
-          c.datetime,
-
-        open:
-          num(c.open),
-
-        high:
-          num(c.high),
-
-        low:
-          num(c.low),
-
-        close:
-          num(c.close),
-
-        volume:
-          num(c.volume) || 0
-
-      }))
-
-      .filter(c =>
-        c.open !== null &&
-        c.high !== null &&
-        c.low !== null &&
-        c.close !== null
-      )
-      .reverse();
-
-
-  if (!candles.length) {
-
-    throw new Error(
-      `No valid ${interval} candles`
-    );
-  }
-
-
-  return candles;
-}
-
-
-/* =========================================================
-   EMA
-   ========================================================= */
-
-function calculateEMA(
-  candles,
-  period
-) {
-
-  if (
-    !candles ||
-    candles.length < period
-  ) {
 
     return null;
   }
+}
 
+
+// ================= FETCH CANDLES =================
+
+async function fetchCandles(interval, outputsize = 100) {
+
+  const url =
+    `${TIME_SERIES_URL}` +
+    `?symbol=EUR/USD` +
+    `&interval=${interval}` +
+    `&outputsize=${outputsize}` +
+    `&apikey=${API_KEY}`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Candle API HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  if (!data.values) {
+    throw new Error(
+      data.message || `No ${interval} candle data`
+    );
+  }
+
+  return data.values
+    .map(c => ({
+      time: new Date(c.datetime).getTime(),
+      open: Number(c.open),
+      high: Number(c.high),
+      low: Number(c.low),
+      close: Number(c.close)
+    }))
+    .sort((a, b) => a.time - b.time);
+}
+
+
+// ================= LOAD ALL TIMEFRAMES =================
+
+async function loadCandles() {
+
+  try {
+
+    marketData.H4 = await fetchCandles("4h");
+    await sleep(300);
+
+    marketData.H1 = await fetchCandles("1h");
+    await sleep(300);
+
+    marketData.M15 = await fetchCandles("15min");
+    await sleep(300);
+
+    marketData.M5 = await fetchCandles("5min");
+
+    console.log("Candles loaded:", marketData);
+
+    return true;
+
+  } catch (error) {
+
+    console.error("Candle loading error:", error);
+
+    return false;
+  }
+}
+
+
+// ================= EMA =================
+
+function calculateEMA(candles, period) {
+
+  if (!candles || candles.length < period) {
+    return null;
+  }
+
+  const closes =
+    candles.map(c => c.close);
 
   const multiplier =
     2 / (period + 1);
 
-
   let ema =
-    candles
+    closes
       .slice(0, period)
-      .reduce(
-        (sum, c) =>
-          sum + c.close,
-        0
-      ) / period;
+      .reduce((a, b) => a + b, 0) / period;
 
-
-  for (
-    let i = period;
-    i < candles.length;
-    i++
-  ) {
+  for (let i = period; i < closes.length; i++) {
 
     ema =
-      (
-        (candles[i].close - ema) *
-        multiplier
-      ) + ema;
+      (closes[i] - ema) * multiplier + ema;
   }
-
 
   return ema;
 }
 
 
-/* =========================================================
-   RSI
-   ========================================================= */
+// ================= RSI =================
 
-function calculateRSI(
-  candles,
-  period = 14
-) {
+function calculateRSI(candles, period = 14) {
 
-  if (
-    !candles ||
-    candles.length < period + 1
-  ) {
-
+  if (!candles || candles.length < period + 1) {
     return null;
   }
 
+  const closes =
+    candles.map(c => c.close);
 
   let gains = 0;
   let losses = 0;
 
-
-  for (
-    let i = 1;
-    i <= period;
-    i++
-  ) {
+  for (let i = 1; i <= period; i++) {
 
     const change =
-      candles[i].close -
-      candles[i - 1].close;
-
+      closes[i] - closes[i - 1];
 
     if (change >= 0) {
-
       gains += change;
-
     } else {
-
-      losses += Math.abs(change);
+      losses -= change;
     }
   }
 
-
-  let averageGain =
+  let avgGain =
     gains / period;
 
-
-  let averageLoss =
+  let avgLoss =
     losses / period;
-
 
   for (
     let i = period + 1;
-    i < candles.length;
+    i < closes.length;
     i++
   ) {
 
     const change =
-      candles[i].close -
-      candles[i - 1].close;
-
+      closes[i] - closes[i - 1];
 
     const gain =
-      Math.max(change, 0);
-
+      change > 0 ? change : 0;
 
     const loss =
-      Math.max(-change, 0);
+      change < 0 ? -change : 0;
 
+    avgGain =
+      ((avgGain * (period - 1)) + gain) / period;
 
-    averageGain =
-      (
-        averageGain * (period - 1) +
-        gain
-      ) / period;
-
-
-    averageLoss =
-      (
-        averageLoss * (period - 1) +
-        loss
-      ) / period;
+    avgLoss =
+      ((avgLoss * (period - 1)) + loss) / period;
   }
 
-
-  if (averageLoss === 0) {
-
+  if (avgLoss === 0) {
     return 100;
   }
 
-
   const rs =
-    averageGain / averageLoss;
+    avgGain / avgLoss;
 
-
-  return 100 -
-    (
-      100 / (1 + rs)
-    );
+  return 100 - (100 / (1 + rs));
 }
 
 
-/* =========================================================
-   CANDLE HELPERS
-   ========================================================= */
+// ================= MARKET STRUCTURE =================
 
-function candleDirection(candle) {
+function getStructure(candles) {
 
-  if (!candle) {
-    return "NEUTRAL";
-  }
-
-
-  if (
-    candle.close >
-    candle.open
-  ) {
-
-    return "BULLISH";
-  }
-
-
-  if (
-    candle.close <
-    candle.open
-  ) {
-
-    return "BEARISH";
-  }
-
-
-  return "NEUTRAL";
-}
-
-
-function candleBody(candle) {
-
-  if (!candle) {
-    return 0;
-  }
-
-
-  return Math.abs(
-    candle.close -
-    candle.open
-  );
-}
-
-
-function candleRange(candle) {
-
-  if (!candle) {
-    return 0;
-  }
-
-
-  return (
-    candle.high -
-    candle.low
-  );
-}
-
-
-function candleStrength(candle) {
-
-  const range =
-    candleRange(candle);
-
-
-  if (range <= 0) {
-    return 0;
-  }
-
-
-  return (
-    candleBody(candle) /
-    range
-  );
-}
-
-
-/* =========================================================
-   SWINGS
-   ========================================================= */
-
-function isSwingHigh(
-  candles,
-  index
-) {
-
-  if (
-    index < 2 ||
-    index > candles.length - 3
-  ) {
-
-    return false;
-  }
-
-
-  const c =
-    candles[index];
-
-
-  return (
-    c.high >
-      candles[index - 1].high &&
-    c.high >
-      candles[index - 2].high &&
-    c.high >
-      candles[index + 1].high &&
-    c.high >
-      candles[index + 2].high
-  );
-}
-
-
-function isSwingLow(
-  candles,
-  index
-) {
-
-  if (
-    index < 2 ||
-    index > candles.length - 3
-  ) {
-
-    return false;
-  }
-
-
-  const c =
-    candles[index];
-
-
-  return (
-    c.low <
-      candles[index - 1].low &&
-    c.low <
-      candles[index - 2].low &&
-    c.low <
-      candles[index + 1].low &&
-    c.low <
-      candles[index + 2].low
-  );
-}
-
-
-function getSwingLevels(
-  candles,
-  lookback = 80
-) {
-
-  if (
-    !candles ||
-    candles.length < 10
-  ) {
-
-    return {
-      swingHighs: [],
-      swingLows: []
-    };
-  }
-
-
-  const data =
-    candles.slice(-lookback);
-
-
-  const swingHighs = [];
-  const swingLows = [];
-
-
-  for (
-    let i = 2;
-    i < data.length - 2;
-    i++
-  ) {
-
-    if (
-      isSwingHigh(data, i)
-    ) {
-
-      swingHighs.push(
-        data[i].high
-      );
-    }
-
-
-    if (
-      isSwingLow(data, i)
-    ) {
-
-      swingLows.push(
-        data[i].low
-      );
-    }
-  }
-
-
-  return {
-    swingHighs,
-    swingLows
-  };
-}
-
-
-/* =========================================================
-   LEVEL CLUSTERING
-   ========================================================= */
-
-function clusterLevels(
-  levels,
-  tolerance = 0.00025
-) {
-
-  if (
-    !levels ||
-    !levels.length
-  ) {
-
-    return [];
-  }
-
-
-  const sorted =
-    [...levels].sort(
-      (a, b) => a - b
-    );
-
-
-  const clusters = [];
-
-
-  for (
-    const level of sorted
-  ) {
-
-    let found = null;
-
-
-    for (
-      const cluster of clusters
-    ) {
-
-      if (
-        Math.abs(
-          level -
-          cluster.mean
-        ) <= tolerance
-      ) {
-
-        cluster.values.push(
-          level
-        );
-
-
-        cluster.mean =
-          cluster.values.reduce(
-            (a, b) => a + b,
-            0
-          ) /
-          cluster.values.length;
-
-
-        found =
-          cluster;
-
-        break;
-      }
-    }
-
-
-    if (!found) {
-
-      clusters.push({
-
-        mean: level,
-
-        values: [
-          level
-        ]
-
-      });
-    }
-  }
-
-
-  return clusters
-    .sort(
-      (a, b) =>
-        b.values.length -
-        a.values.length
-    )
-    .map(
-      c => c.mean
-    );
-}
-
-
-/* =========================================================
-   SUPPORT / RESISTANCE
-   ========================================================= */
-
-function calculateSupportResistance(
-  candles
-) {
-
-  if (
-    !candles ||
-    candles.length < 20
-  ) {
-
-    return {
-
-      resistance1: null,
-      resistance2: null,
-
-      support1: null,
-      support2: null
-    };
-  }
-
-
-  const current =
-    candles[
-      candles.length - 1
-    ].close;
-
-
-  const swings =
-    getSwingLevels(
-      candles,
-      80
-    );
-
-
-  const resistanceLevels =
-    clusterLevels(
-      swings.swingHighs
-    );
-
-
-  const supportLevels =
-    clusterLevels(
-      swings.swingLows
-    );
-
-
-  let resistances =
-    resistanceLevels
-      .filter(
-        level =>
-          level > current
-      )
-      .sort(
-        (a, b) => a - b
-      );
-
-
-  let supports =
-    supportLevels
-      .filter(
-        level =>
-          level < current
-      )
-      .sort(
-        (a, b) => b - a
-      );
-
-
-  if (
-    resistances.length < 2
-  ) {
-
-    const historicalHighs =
-      candles
-        .map(c => c.high)
-        .filter(
-          h => h > current
-        )
-        .sort(
-          (a, b) => a - b
-        );
-
-
-    for (
-      const level of historicalHighs
-    ) {
-
-      if (
-        !resistances.some(
-          r =>
-            Math.abs(
-              r - level
-            ) < 0.00005
-        )
-      ) {
-
-        resistances.push(
-          level
-        );
-      }
-
-
-      if (
-        resistances.length >= 2
-      ) {
-
-        break;
-      }
-    }
-  }
-
-
-  if (
-    supports.length < 2
-  ) {
-
-    const historicalLows =
-      candles
-        .map(c => c.low)
-        .filter(
-          l => l < current
-        )
-        .sort(
-          (a, b) => b - a
-        );
-
-
-    for (
-      const level of historicalLows
-    ) {
-
-      if (
-        !supports.some(
-          s =>
-            Math.abs(
-              s - level
-            ) < 0.00005
-        )
-      ) {
-
-        supports.push(
-          level
-        );
-      }
-
-
-      if (
-        supports.length >= 2
-      ) {
-
-        break;
-      }
-    }
-  }
-
-
-  return {
-
-    resistance1:
-      resistances[0] ??
-      null,
-
-    resistance2:
-      resistances[1] ??
-      null,
-
-    support1:
-      supports[0] ??
-      null,
-
-    support2:
-      supports[1] ??
-      null
-  };
-}
-
-
-/* =========================================================
-   MARKET STRUCTURE
-   ========================================================= */
-
-function calculateStructure(
-  candles
-) {
-
-  if (
-    !candles ||
-    candles.length < 30
-  ) {
-
+  if (!candles || candles.length < 10) {
     return "INSUFFICIENT DATA";
   }
 
+  const recent =
+    candles.slice(-10);
 
-  const swings =
-    getSwingLevels(
-      candles,
-      60
-    );
+  const first =
+    recent.slice(0, 5);
 
+  const last =
+    recent.slice(-5);
 
-  const highs =
-    swings.swingHighs;
-
-
-  const lows =
-    swings.swingLows;
-
-
-  if (
-    highs.length < 2 ||
-    lows.length < 2
-  ) {
-
-    return "RANGE";
-  }
-
+  const firstHigh =
+    Math.max(...first.map(c => c.high));
 
   const lastHigh =
-    highs[
-      highs.length - 1
-    ];
+    Math.max(...last.map(c => c.high));
 
-
-  const previousHigh =
-    highs[
-      highs.length - 2
-    ];
-
+  const firstLow =
+    Math.min(...first.map(c => c.low));
 
   const lastLow =
-    lows[
-      lows.length - 1
-    ];
+    Math.min(...last.map(c => c.low));
 
+  const firstClose =
+    first[first.length - 1].close;
 
-  const previousLow =
-    lows[
-      lows.length - 2
-    ];
+  const lastClose =
+    last[last.length - 1].close;
 
 
   if (
-    lastHigh > previousHigh &&
-    lastLow > previousLow
+    lastHigh < firstHigh &&
+    lastLow < firstLow &&
+    lastClose < firstClose
   ) {
-
-    return "BULLISH";
+    return "BEARISH";
   }
 
 
   if (
-    lastHigh < previousHigh &&
-    lastLow < previousLow
+    lastHigh > firstHigh &&
+    lastLow > firstLow &&
+    lastClose > firstClose
   ) {
-
-    return "BEARISH";
+    return "BULLISH";
   }
 
 
@@ -1757,2245 +317,1191 @@ function calculateStructure(
 }
 
 
-/* =========================================================
-   EMA ANALYSIS
-   ========================================================= */
+// ================= SUPPORT / RESISTANCE =================
 
-function getEMAAnalysis(
-  candles
-) {
+function calculateLevels(candles) {
 
-  const ema20 =
-    calculateEMA(
-      candles,
-      20
-    );
-
-
-  const ema50 =
-    calculateEMA(
-      candles,
-      50
-    );
-
-
-  const ema200 =
-    calculateEMA(
-      candles,
-      200
-    );
-
-
-  if (
-    ema20 === null ||
-    ema50 === null
-  ) {
-
+  if (!candles || candles.length < 20) {
     return {
-
-      text:
-        "CALCULATING",
-
-      ema20,
-      ema50,
-      ema200
+      resistance1: null,
+      resistance2: null,
+      support1: null,
+      support2: null
     };
   }
 
+  const recent =
+    candles.slice(-50);
 
-  let text =
-    "MIXED";
+  const highs =
+    recent.map(c => c.high);
 
+  const lows =
+    recent.map(c => c.low);
 
-  if (
-    ema20 > ema50 &&
-    (
-      ema200 === null ||
-      ema50 > ema200
-    )
-  ) {
+  const sortedHighs =
+    [...highs].sort((a, b) => b - a);
 
-    text =
-      "BULLISH";
-  }
-
-
-  else if (
-    ema20 < ema50 &&
-    (
-      ema200 === null ||
-      ema50 < ema200
-    )
-  ) {
-
-    text =
-      "BEARISH";
-  }
-
+  const sortedLows =
+    [...lows].sort((a, b) => a - b);
 
   return {
 
-    text,
+    resistance1:
+      sortedHighs[0],
 
-    ema20,
+    resistance2:
+      sortedHighs[1],
 
-    ema50,
+    support1:
+      sortedLows[0],
 
-    ema200
+    support2:
+      sortedLows[1]
   };
 }
 
 
-/* =========================================================
-   TIMEFRAME ANALYSIS
-   ========================================================= */
+// ================= UPDATE TECHNICALS =================
 
-function analyzeTimeframe(
-  candles
-) {
+function updateTechnicalAnalysis() {
 
-  if (
-    !candles ||
-    candles.length < 20
-  ) {
+  const h4 = marketData.H4;
+  const h1 = marketData.H1;
+  const m15 = marketData.M15;
+  const m5 = marketData.M5;
 
-    return {
 
-      price: null,
+  // ---------- STRUCTURE ----------
 
-      structure:
-        "INSUFFICIENT DATA",
+  const h4Trend =
+    getStructure(h4);
 
-      candle:
-        "NEUTRAL",
+  const h1Trend =
+    getStructure(h1);
 
-      candleStrength:
-        0,
+  const m15Structure =
+    getStructure(m15);
 
-      rsi:
-        null,
+  const m5Structure =
+    getStructure(m5);
 
-      ema: {
 
-        text:
-          "CALCULATING"
-      },
+  setText("h4Trend", h4Trend);
+  setText("h1Trend", h1Trend);
+  setText("m15Structure", m15Structure);
+  setText("m5Structure", m5Structure);
 
-      sr: {
 
-        resistance1: null,
-        resistance2: null,
+  // ---------- RSI ----------
 
-        support1: null,
-        support2: null
-      }
-    };
-  }
+  const h4RSI =
+    calculateRSI(h4);
 
+  const h1RSI =
+    calculateRSI(h1);
 
-  const last =
-    candles[
-      candles.length - 1
-    ];
+  const m15RSI =
+    calculateRSI(m15);
 
+  const m5RSI =
+    calculateRSI(m5);
 
-  return {
 
-    price:
-      last.close,
-
-    structure:
-      calculateStructure(
-        candles
-      ),
-
-    candle:
-      candleDirection(
-        last
-      ),
-
-    candleStrength:
-      candleStrength(
-        last
-      ),
-
-    rsi:
-      calculateRSI(
-        candles
-      ),
-
-    ema:
-      getEMAAnalysis(
-        candles
-      ),
-
-    sr:
-      calculateSupportResistance(
-        candles
-      )
-  };
-}
-
-
-/* =========================================================
-   COMPLETE ANALYSIS
-   ========================================================= */
-
-function buildAnalysis() {
-
-  return {
-
-    H4:
-      analyzeTimeframe(
-        marketData.h4
-      ),
-
-    H1:
-      analyzeTimeframe(
-        marketData.h1
-      ),
-
-    M15:
-      analyzeTimeframe(
-        marketData.m15
-      ),
-
-    M5:
-      analyzeTimeframe(
-        marketData.m5
-      )
-  };
-}
-
-
-/* =========================================================
-   M5 CONFIRMATION
-   ========================================================= */
-
-function bullishCandleConfirmation(
-  candles
-) {
-
-  if (
-    !candles ||
-    candles.length < 3
-  ) {
-
-    return false;
-  }
-
-
-  const last =
-    candles[
-      candles.length - 1
-    ];
-
-
-  const previous =
-    candles[
-      candles.length - 2
-    ];
-
-
-  return (
-    last.close >
-      last.open &&
-
-    last.close >
-      previous.high &&
-
-    candleStrength(last) >=
-      0.45
-  );
-}
-
-
-function bearishCandleConfirmation(
-  candles
-) {
-
-  if (
-    !candles ||
-    candles.length < 3
-  ) {
-
-    return false;
-  }
-
-
-  const last =
-    candles[
-      candles.length - 1
-    ];
-
-
-  const previous =
-    candles[
-      candles.length - 2
-    ];
-
-
-  return (
-    last.close <
-      last.open &&
-
-    last.close <
-      previous.low &&
-
-    candleStrength(last) >=
-      0.45
-  );
-}
-
-
-/* =========================================================
-   A+ BUY SCORE
-   ========================================================= */
-
-function calculateBuyScore(a) {
-
-  let score = 0;
-
-
-  if (
-    a.H4.structure ===
-    "BULLISH"
-  ) score += 2;
-
-
-  if (
-    a.H1.structure ===
-    "BULLISH"
-  ) score += 2;
-
-
-  if (
-    a.M15.structure ===
-    "BULLISH"
-  ) score += 2;
-
-
-  if (
-    a.M5.structure ===
-    "BULLISH"
-  ) score += 1;
-
-
-  if (
-    bullishCandleConfirmation(
-      marketData.m5
-    )
-  ) score += 2;
-
-
-  if (
-    a.M5.rsi !== null &&
-    a.M5.rsi >= 45 &&
-    a.M5.rsi <= 70
-  ) score += 1;
-
-
-  if (
-    a.M15.ema.text ===
-    "BULLISH"
-  ) score += 1;
-
-
-  return score;
-}
-
-
-/* =========================================================
-   A+ SELL SCORE
-   ========================================================= */
-
-function calculateSellScore(a) {
-
-  let score = 0;
-
-
-  if (
-    a.H4.structure ===
-    "BEARISH"
-  ) score += 2;
-
-
-  if (
-    a.H1.structure ===
-    "BEARISH"
-  ) score += 2;
-
-
-  if (
-    a.M15.structure ===
-    "BEARISH"
-  ) score += 2;
-
-
-  if (
-    a.M5.structure ===
-    "BEARISH"
-  ) score += 1;
-
-
-  if (
-    bearishCandleConfirmation(
-      marketData.m5
-    )
-  ) score += 2;
-
-
-  if (
-    a.M5.rsi !== null &&
-    a.M5.rsi >= 30 &&
-    a.M5.rsi <= 55
-  ) score += 1;
-
-
-  if (
-    a.M15.ema.text ===
-    "BEARISH"
-  ) score += 1;
-
-
-  return score;
-}
-
-
-/* =========================================================
-   A+ BUY SETUP
-   ========================================================= */
-
-function calculateBuySetup(
-  a,
-  price
-) {
-
-  const score =
-    calculateBuyScore(a);
-
-
-  if (
-    score < MIN_SETUP_SCORE
-  ) return null;
-
-
-  if (
-    a.H4.structure !== "BULLISH" ||
-    a.H1.structure !== "BULLISH" ||
-    a.M15.structure !== "BULLISH" ||
-    a.M5.structure !== "BULLISH"
-  ) return null;
-
-
-  if (
-    !bullishCandleConfirmation(
-      marketData.m5
-    )
-  ) return null;
-
-
-  if (
-    a.M5.rsi === null ||
-    a.M5.rsi < 45 ||
-    a.M5.rsi > 70
-  ) return null;
-
-
-  const entry =
-    price;
-
-
-  let structuralSL =
-    a.M15.sr.support1;
-
-
-  if (
-    !structuralSL ||
-    structuralSL >= entry
-  ) {
-
-    const lows =
-      getSwingLevels(
-        marketData.m5,
-        30
-      ).swingLows;
-
-
-    structuralSL =
-      lows.length
-        ? lows[lows.length - 1]
-        : entry - 0.0010;
-  }
-
-
-  const sl =
-    structuralSL -
-    SL_BUFFER;
-
-
-  const risk =
-    entry - sl;
-
-
-  if (
-    risk <= 0 ||
-    risk > MAX_RISK
-  ) return null;
-
-
-  return {
-
-    direction:
-      "BUY",
-
-    entry,
-
-    sl,
-
-    tp1:
-      entry + risk,
-
-    tp2:
-      entry + risk * 2,
-
-    tp3:
-      entry + risk * 3,
-
-    score,
-
-    rr:
-      "1:3",
-
-    validity:
-      "Valid while H4/H1 bullish structure remains intact",
-
-    trigger:
-      "H4 + H1 bullish → M15 confirmation → M5 bullish breakout",
-
-    invalidation:
-      `M5 closes below ${roundPrice(sl)}`,
-
-    verdict:
-      "BUY — A+ PRICE ACTION ALIGNMENT"
-  };
-}
-
-
-/* =========================================================
-   A+ SELL SETUP
-   ========================================================= */
-
-function calculateSellSetup(
-  a,
-  price
-) {
-
-  const score =
-    calculateSellScore(a);
-
-
-  if (
-    score < MIN_SETUP_SCORE
-  ) return null;
-
-
-  if (
-    a.H4.structure !== "BEARISH" ||
-    a.H1.structure !== "BEARISH" ||
-    a.M15.structure !== "BEARISH" ||
-    a.M5.structure !== "BEARISH"
-  ) return null;
-
-
-  if (
-    !bearishCandleConfirmation(
-      marketData.m5
-    )
-  ) return null;
-
-
-  if (
-    a.M5.rsi === null ||
-    a.M5.rsi < 30 ||
-    a.M5.rsi > 55
-  ) return null;
-
-
-  const entry =
-    price;
-
-
-  let structuralSL =
-    a.M15.sr.resistance1;
-
-
-  if (
-    !structuralSL ||
-    structuralSL <= entry
-  ) {
-
-    const highs =
-      getSwingLevels(
-        marketData.m5,
-        30
-      ).swingHighs;
-
-
-    structuralSL =
-      highs.length
-        ? highs[highs.length - 1]
-        : entry + 0.0010;
-  }
-
-
-  const sl =
-    structuralSL +
-    SL_BUFFER;
-
-
-  const risk =
-    sl - entry;
-
-
-  if (
-    risk <= 0 ||
-    risk > MAX_RISK
-  ) return null;
-
-
-  return {
-
-    direction:
-      "SELL",
-
-    entry,
-
-    sl,
-
-    tp1:
-      entry - risk,
-
-    tp2:
-      entry - risk * 2,
-
-    tp3:
-      entry - risk * 3,
-
-    score,
-
-    rr:
-      "1:3",
-
-    validity:
-      "Valid while H4/H1 bearish structure remains intact",
-
-    trigger:
-      "H4 + H1 bearish → M15 confirmation → M5 bearish breakdown",
-
-    invalidation:
-      `M5 closes above ${roundPrice(sl)}`,
-
-    verdict:
-      "SELL — A+ PRICE ACTION ALIGNMENT"
-  };
-}
-
-
-/* =========================================================
-   FINAL A+ SNIPER ENGINE
-   ========================================================= */
-
-function calculateSniperSetup(
-  analysis,
-  price
-) {
-
-  const buyScore =
-    calculateBuyScore(
-      analysis
-    );
-
-
-  const sellScore =
-    calculateSellScore(
-      analysis
-    );
-
-
-  const bestScore =
-    Math.max(
-      buyScore,
-      sellScore
-    );
-
-
-  /*
-     H4/H1 conflict.
-  */
-
-  if (
-    analysis.H4.structure !==
-    analysis.H1.structure
-  ) {
-
-    return {
-
-      direction:
-        "WAIT",
-
-      entry: null,
-      sl: null,
-      tp1: null,
-      tp2: null,
-      tp3: null,
-
-      rr: null,
-
-      score:
-        `${bestScore} / 11`,
-
-      validity:
-        "H4/H1 conflict detected.",
-
-      trigger:
-        "H4/H1 direction → M15 confirmation → M5 trigger → news clearance",
-
-      invalidation:
-        "No trade while H4/H1 conflict exists",
-
-      verdict:
-        "WAIT — HIGHER-TIMEFRAME CONFLICT"
-    };
-  }
-
-
-  /*
-     NEWS SAFETY GATE
-  */
-
-  if (
-    !newsData.newsClear
-  ) {
-
-    let validity =
-      "Trading blocked because economic news is not clear.";
-
-
-    if (
-      newsData.blockedEvent
-    ) {
-
-      const event =
-        newsData.blockedEvent;
-
-
-      validity =
-        `Trading blocked around ${getEventCurrency(event)} high-impact news: ${getEventName(event)}`;
-    }
-
-
-    return {
-
-      direction:
-        "WAIT",
-
-      entry: null,
-      sl: null,
-      tp1: null,
-      tp2: null,
-      tp3: null,
-
-      rr: null,
-
-      score:
-        `${bestScore} / 11`,
-
-      validity,
-
-      trigger:
-        "H4/H1 direction → M15 confirmation → M5 trigger → NEWS CLEARANCE",
-
-      invalidation:
-        "NO TRADE WHILE NEWS FILTER IS CLOSED",
-
-      verdict:
-        "WAIT — NEWS FILTER CLOSED"
-    };
-  }
-
-
-  const buy =
-    calculateBuySetup(
-      analysis,
-      price
-    );
-
-
-  const sell =
-    calculateSellSetup(
-      analysis,
-      price
-    );
-
-
-  if (buy && sell) {
-
-    return buy.score >= sell.score
-      ? buy
-      : sell;
-  }
-
-
-  if (buy) return buy;
-
-  if (sell) return sell;
-
-
-  return {
-
-    direction:
-      "WAIT",
-
-    entry: null,
-    sl: null,
-    tp1: null,
-    tp2: null,
-    tp3: null,
-
-    rr: null,
-
-    score:
-      `${bestScore} / 11`,
-
-    validity:
-      "No valid A+ setup currently",
-
-    trigger:
-      "Wait for H4/H1 direction → M15 confirmation → M5 trigger",
-
-    invalidation:
-      "—",
-
-    verdict:
-      "WAIT — NO A+ MULTI-TIMEFRAME ALIGNMENT"
-  };
-}
-
-
-/* =========================================================
-   SCALPING BUY SCORE
-   ========================================================= */
-
-function calculateScalpBuyScore(
-  a,
-  price
-) {
-
-  let score = 0;
-
-
-  if (
-    a.H1.structure ===
-    "BULLISH"
-  ) {
-
-    score += 2;
-  }
-
-
-  if (
-    a.H1.ema.text ===
-    "BULLISH"
-  ) {
-
-    score += 1;
-  }
-
-
-  if (
-    a.M5.structure ===
-    "BULLISH"
-  ) {
-
-    score += 2;
-  }
-
-
-  if (
-    bullishCandleConfirmation(
-      marketData.m5
-    )
-  ) {
-
-    score += 1;
-  }
-
-
-  if (
-    a.M5.rsi !== null &&
-    a.M5.rsi >= 45 &&
-    a.M5.rsi <= 68
-  ) {
-
-    score += 1;
-  }
-
-
-  if (
-    a.H1.sr.support1 !== null &&
-    price >
-    a.H1.sr.support1
-  ) {
-
-    score += 1;
-  }
-
-
-  return score;
-}
-
-
-/* =========================================================
-   SCALPING SELL SCORE
-   ========================================================= */
-
-function calculateScalpSellScore(
-  a,
-  price
-) {
-
-  let score = 0;
-
-
-  if (
-    a.H1.structure ===
-    "BEARISH"
-  ) {
-
-    score += 2;
-  }
-
-
-  if (
-    a.H1.ema.text ===
-    "BEARISH"
-  ) {
-
-    score += 1;
-  }
-
-
-  if (
-    a.M5.structure ===
-    "BEARISH"
-  ) {
-
-    score += 2;
-  }
-
-
-  if (
-    bearishCandleConfirmation(
-      marketData.m5
-    )
-  ) {
-
-    score += 1;
-  }
-
-
-  if (
-    a.M5.rsi !== null &&
-    a.M5.rsi >= 32 &&
-    a.M5.rsi <= 55
-  ) {
-
-    score += 1;
-  }
-
-
-  if (
-    a.H1.sr.resistance1 !== null &&
-    price <
-    a.H1.sr.resistance1
-  ) {
-
-    score += 1;
-  }
-
-
-  return score;
-}
-
-
-/* =========================================================
-   SCALP BUY
-   ========================================================= */
-
-function calculateScalpBuy(
-  a,
-  price
-) {
-
-  const score =
-    calculateScalpBuyScore(
-      a,
-      price
-    );
-
-
-  if (
-    score < MIN_SCALP_SCORE
-  ) {
-
-    return null;
-  }
-
-
-  const entry =
-    price;
-
-
-  let structuralSL =
-    a.H1.sr.support1;
-
-
-  if (
-    !structuralSL ||
-    structuralSL >= entry
-  ) {
-
-    const lows =
-      getSwingLevels(
-        marketData.m5,
-        30
-      ).swingLows;
-
-
-    structuralSL =
-      lows.length
-        ? lows[lows.length - 1]
-        : entry - 0.00070;
-  }
-
-
-  let sl =
-    structuralSL -
-    SL_BUFFER;
-
-
-  let risk =
-    entry - sl;
-
-
-  if (
-    risk <= 0 ||
-    risk > MAX_SCALP_RISK
-  ) {
-
-    sl =
-      entry - 0.00070;
-
-    risk =
-      0.00070;
-  }
-
-
-  return {
-
-    direction:
-      "BUY",
-
-    entry,
-
-    sl,
-
-    tp1:
-      entry + risk * 1.2,
-
-    tp2:
-      entry + risk * 2,
-
-    score,
-
-    rr:
-      "1:2",
-
-    validity:
-      "NEXT 2 HOURS ONLY",
-
-    trigger:
-      "H1 bullish bias + M5 bullish momentum / breakout",
-
-    invalidation:
-      `M5 closes below ${roundPrice(sl)}`,
-
-    verdict:
-      "BUY — 2-HOUR SCALPING WINDOW"
-  };
-}
-
-
-/* =========================================================
-   SCALP SELL
-   ========================================================= */
-
-function calculateScalpSell(
-  a,
-  price
-) {
-
-  const score =
-    calculateScalpSellScore(
-      a,
-      price
-    );
-
-
-  if (
-    score < MIN_SCALP_SCORE
-  ) {
-
-    return null;
-  }
-
-
-  const entry =
-    price;
-
-
-  let structuralSL =
-    a.H1.sr.resistance1;
-
-
-  if (
-    !structuralSL ||
-    structuralSL <= entry
-  ) {
-
-    const highs =
-      getSwingLevels(
-        marketData.m5,
-        30
-      ).swingHighs;
-
-
-    structuralSL =
-      highs.length
-        ? highs[highs.length - 1]
-        : entry + 0.00070;
-  }
-
-
-  let sl =
-    structuralSL +
-    SL_BUFFER;
-
-
-  let risk =
-    sl - entry;
-
-
-  if (
-    risk <= 0 ||
-    risk > MAX_SCALP_RISK
-  ) {
-
-    sl =
-      entry + 0.00070;
-
-    risk =
-      0.00070;
-  }
-
-
-  return {
-
-    direction:
-      "SELL",
-
-    entry,
-
-    sl,
-
-    tp1:
-      entry - risk * 1.2,
-
-    tp2:
-      entry - risk * 2,
-
-    score,
-
-    rr:
-      "1:2",
-
-    validity:
-      "NEXT 2 HOURS ONLY",
-
-    trigger:
-      "H1 bearish bias + M5 bearish momentum / breakdown",
-
-    invalidation:
-      `M5 closes above ${roundPrice(sl)}`,
-
-    verdict:
-      "SELL — 2-HOUR SCALPING WINDOW"
-  };
-}
-
-
-/* =========================================================
-   SCALPING ENGINE
-   ========================================================= */
-
-function calculateScalpingSetup(
-  analysis,
-  price
-) {
-
-  const buyScore =
-    calculateScalpBuyScore(
-      analysis,
-      price
-    );
-
-
-  const sellScore =
-    calculateScalpSellScore(
-      analysis,
-      price
-    );
-
-
-  const bestScore =
-    Math.max(
-      buyScore,
-      sellScore
-    );
-
-
-  /*
-     NEWS SAFETY GATE
-  */
-
-  if (
-    !newsData.newsClear
-  ) {
-
-    return {
-
-      direction:
-        "WAIT",
-
-      entry: null,
-      sl: null,
-      tp1: null,
-      tp2: null,
-
-      rr: null,
-
-      score:
-        `${bestScore} / 8`,
-
-      validity:
-        "NEXT 2 HOURS — NEWS CHECK REQUIRED",
-
-      trigger:
-        "H1 + M5 technical bias detected. Wait for EUR/USD economic-news clearance.",
-
-      invalidation:
-        "NO TRADE WHILE NEWS FILTER IS CLOSED",
-
-      verdict:
-        "WAIT — NEWS CHECK REQUIRED"
-    };
-  }
-
-
-  const buy =
-    calculateScalpBuy(
-      analysis,
-      price
-    );
-
-
-  const sell =
-    calculateScalpSell(
-      analysis,
-      price
-    );
-
-
-  if (buy && sell) {
-
-    return buy.score >= sell.score
-      ? buy
-      : sell;
-  }
-
-
-  if (buy) return buy;
-
-  if (sell) return sell;
-
-
-  return {
-
-    direction:
-      "WAIT",
-
-    entry: null,
-    sl: null,
-    tp1: null,
-    tp2: null,
-
-    rr: null,
-
-    score:
-      `${bestScore} / 8`,
-
-    validity:
-      "NEXT 2 HOURS ONLY",
-
-    trigger:
-      "Wait for H1 direction + M5 confirmation.",
-
-    invalidation:
-      "—",
-
-    verdict:
-      "WAIT — NO VALID SCALPING SETUP"
-  };
-}
-
-
-/* =========================================================
-   UPDATE PRICE
-   ========================================================= */
-
-function updatePriceUI(price) {
-
-  setTextAny(
-    [
-      "price",
-      "livePrice",
-      "currentPrice",
-      "live-price"
-    ],
-    roundPrice(price)
-  );
-
-
-  setTextAny(
-    [
-      "priceStatus",
-      "trend",
-      "status",
-      "marketStatus"
-    ],
-    "MARKET DATA LOADED"
-  );
-}
-
-
-/* =========================================================
-   STRUCTURE UI
-   ========================================================= */
-
-function updateStructureUI(a) {
-
-  setTextAny(
-    "h4Trend",
-    a.H4.structure
-  );
-
-
-  setTextAny(
-    "h1Trend",
-    a.H1.structure
-  );
-
-
-  setTextAny(
-    "m15Structure",
-    a.M15.structure
-  );
-
-
-  setTextAny(
-    "m5Structure",
-    a.M5.structure
-  );
-}
-
-
-/* =========================================================
-   S/R UI
-   ========================================================= */
-
-function updateSRUI(a) {
-
-  const sr =
-    a.H1.sr;
-
-
-  setTextAny(
-    "resistance1",
-    roundPrice(
-      sr.resistance1
-    )
-  );
-
-
-  setTextAny(
-    "resistance2",
-    roundPrice(
-      sr.resistance2
-    )
-  );
-
-
-  setTextAny(
-    "support1",
-    roundPrice(
-      sr.support1
-    )
-  );
-
-
-  setTextAny(
-    "support2",
-    roundPrice(
-      sr.support2
-    )
-  );
-}
-
-
-/* =========================================================
-   INDICATORS UI
-   ========================================================= */
-
-function updateIndicatorsUI(a) {
-
-  setTextAny(
+  setText(
     "h4Rsi",
-    roundRSI(
-      a.H4.rsi
-    )
+    h4RSI !== null
+      ? h4RSI.toFixed(1)
+      : "—"
   );
 
-
-  setTextAny(
+  setText(
     "h1Rsi",
-    roundRSI(
-      a.H1.rsi
-    )
+    h1RSI !== null
+      ? h1RSI.toFixed(1)
+      : "—"
   );
 
-
-  setTextAny(
+  setText(
     "m15Rsi",
-    roundRSI(
-      a.M15.rsi
-    )
+    m15RSI !== null
+      ? m15RSI.toFixed(1)
+      : "—"
   );
 
-
-  setTextAny(
+  setText(
     "m5Rsi",
-    roundRSI(
-      a.M5.rsi
-    )
+    m5RSI !== null
+      ? m5RSI.toFixed(1)
+      : "—"
   );
 
 
-  setTextAny(
+  // ---------- EMA ----------
+
+  const h1EMA20 =
+    calculateEMA(h1, 20);
+
+  const h1EMA50 =
+    calculateEMA(h1, 50);
+
+  let emaStructure =
+    "NEUTRAL";
+
+  if (
+    h1EMA20 !== null &&
+    h1EMA50 !== null
+  ) {
+
+    if (h1EMA20 > h1EMA50) {
+      emaStructure = "BULLISH";
+    }
+
+    else if (h1EMA20 < h1EMA50) {
+      emaStructure = "BEARISH";
+    }
+  }
+
+  setText(
     "emaStructure",
-    a.H1.ema.text
+    emaStructure
+  );
+
+
+  // ---------- S/R ----------
+
+  const levels =
+    calculateLevels(h1);
+
+  setText(
+    "resistance1",
+    formatPrice(levels.resistance1)
+  );
+
+  setText(
+    "resistance2",
+    formatPrice(levels.resistance2)
+  );
+
+  setText(
+    "support1",
+    formatPrice(levels.support1)
+  );
+
+  setText(
+    "support2",
+    formatPrice(levels.support2)
+  );
+
+
+  // ---------- ENGINES ----------
+
+  runSniperEngine(
+    h4Trend,
+    h1Trend,
+    m15Structure,
+    m5Structure,
+    h4RSI,
+    h1RSI,
+    m15RSI,
+    m5RSI,
+    emaStructure,
+    levels
+  );
+
+
+  runScalpingEngine(
+    h1Trend,
+    m5Structure,
+    m5RSI,
+    levels
+  );
+
+
+  updateProVerdict(
+    h4Trend,
+    h1Trend,
+    m15Structure,
+    m5Structure
   );
 }
 
 
-/* =========================================================
-   SNIPER UI
-   ========================================================= */
+// ================= NEWS =================
 
-function updateSniperUI(setup) {
-
-  setTextAny(
-    "sniperStatus",
-    setup.verdict
-  );
-
-
-  setTextAny(
-    "direction",
-    setup.direction
-  );
-
-
-  setTextAny(
-    "entry",
-    roundPrice(
-      setup.entry
-    )
-  );
-
-
-  setTextAny(
-    "stopLoss",
-    roundPrice(
-      setup.sl
-    )
-  );
-
-
-  setTextAny(
-    "tp1",
-    roundPrice(
-      setup.tp1
-    )
-  );
-
-
-  setTextAny(
-    "tp2",
-    roundPrice(
-      setup.tp2
-    )
-  );
-
-
-  setTextAny(
-    "tp3",
-    roundPrice(
-      setup.tp3
-    )
-  );
-
-
-  setTextAny(
-    "riskReward",
-    setup.rr ||
-    "—"
-  );
-
-
-  setTextAny(
-    "validity",
-    setup.validity
-  );
-
-
-  setTextAny(
-    "trigger",
-    setup.trigger
-  );
-
-
-  setTextAny(
-    "invalidation",
-    setup.invalidation
-  );
-
-
-  setTextAny(
-    "setupScore",
-    setup.score
-  );
-}
-
-
-/* =========================================================
-   SCALPING UI
-   ========================================================= */
-
-function updateScalpingUI(
-  setup
-) {
-
-  setTextAny(
-    "scalpVerdict",
-    setup.verdict
-  );
-
-
-  setTextAny(
-    "scalpDirection",
-    setup.direction
-  );
-
-
-  setTextAny(
-    "scalpEntry",
-    roundPrice(
-      setup.entry
-    )
-  );
-
-
-  setTextAny(
-    "scalpSL",
-    roundPrice(
-      setup.sl
-    )
-  );
-
-
-  setTextAny(
-    "scalpTP1",
-    roundPrice(
-      setup.tp1
-    )
-  );
-
-
-  setTextAny(
-    "scalpTP2",
-    roundPrice(
-      setup.tp2
-    )
-  );
-
-
-  setTextAny(
-    "scalpRR",
-    setup.rr ||
-    "—"
-  );
-
-
-  setTextAny(
-    "scalpScore",
-    setup.score
-  );
-
-
-  setTextAny(
-    "scalpValidity",
-    setup.validity
-  );
-
-
-  setTextAny(
-    "scalpTrigger",
-    setup.trigger
-  );
-
-
-  setTextAny(
-    "scalpInvalidation",
-    setup.invalidation
-  );
-}
-
-
-/* =========================================================
-   PRO VERDICT
-   ========================================================= */
-
-function updateProVerdictUI(
-  setup,
-  scalp
-) {
-
-  /*
-     NEWS CLOSED FIRST.
-  */
-
-  if (
-    !newsData.newsClear
-  ) {
-
-    setTextAny(
-      "proVerdict",
-      "WAIT — NEWS FILTER CLOSED"
-    );
-
-
-    let explanation =
-      "Trading is blocked until the EUR/USD economic calendar is clear.";
-
-
-    if (
-      newsData.blockedEvent
-    ) {
-
-      const event =
-        newsData.blockedEvent;
-
-
-      explanation =
-        `STAY OUT — ${getEventCurrency(event)} high-impact event: ${getEventName(event)} at ${formatIST(getEventDate(event))}.`;
-    }
-
-
-    else if (
-      newsData.error
-    ) {
-
-      explanation =
-        "STAY OUT — Economic calendar could not be confirmed.";
-    }
-
-
-    setTextAny(
-      "proExplanation",
-      explanation
-    );
-
-
-    return;
-  }
-
-
-  /*
-     Real BUY.
-  */
-
-  if (
-    setup.direction ===
-    "BUY"
-  ) {
-
-    setTextAny(
-      "proVerdict",
-      setup.verdict
-    );
-
-
-    setTextAny(
-      "proExplanation",
-      "A+ BUY: H4 + H1 bullish structure, M15 confirmation, M5 trigger and NEWS CLEAR."
-    );
-
-
-    return;
-  }
-
-
-  /*
-     Real SELL.
-  */
-
-  if (
-    setup.direction ===
-    "SELL"
-  ) {
-
-    setTextAny(
-      "proVerdict",
-      setup.verdict
-    );
-
-
-    setTextAny(
-      "proExplanation",
-      "A+ SELL: H4 + H1 bearish structure, M15 confirmation, M5 trigger and NEWS CLEAR."
-    );
-
-
-    return;
-  }
-
-
-  /*
-     H4/H1 conflict.
-  */
-
-  if (
-    marketData.h4.length &&
-    marketData.h1.length
-  ) {
-
-    const h4 =
-      calculateStructure(
-        marketData.h4
-      );
-
-
-    const h1 =
-      calculateStructure(
-        marketData.h1
-      );
-
-
-    if (
-      h4 !== h1
-    ) {
-
-      setTextAny(
-        "proVerdict",
-        "WAIT — HIGHER-TIMEFRAME CONFLICT"
-      );
-
-
-      setTextAny(
-        "proExplanation",
-        `STAY OUT — H4 is ${h4} while H1 is ${h1}.`
-      );
-
-
-      return;
-    }
-  }
-
-
-  setTextAny(
-    "proVerdict",
-    setup.verdict
-  );
-
-
-  setTextAny(
-    "proExplanation",
-    `Sniper: ${setup.direction}. Scalping window: ${scalp.direction}.`
-  );
-}
-
-
-/* =========================================================
-   TIMESTAMP
-   ========================================================= */
-
-function updateTimestamp() {
-
-  const now =
-    new Date();
-
-
-  const text =
-    now.toLocaleString(
-      "en-IN",
-      {
-
-        timeZone:
-          "Asia/Kolkata",
-
-        day:
-          "2-digit",
-
-        month:
-          "2-digit",
-
-        year:
-          "numeric",
-
-        hour:
-          "2-digit",
-
-        minute:
-          "2-digit",
-
-        second:
-          "2-digit",
-
-        hour12:
-          false
-      }
-    );
-
-
-  setTextAny(
-    [
-      "lastUpdate",
-      "updateTime"
-    ],
-    `Updated: ${text} IST`
-  );
-}
-
-
-/* =========================================================
-   ERROR HANDLER
-   ========================================================= */
-
-function showDashboardError(
-  error
-) {
-
-  console.error(
-    "EUR/USD DASHBOARD ERROR:",
-    error
-  );
-
-
-  const message =
-    error &&
-    error.message
-      ? error.message
-      : String(error);
-
-
-  setTextAny(
-    [
-      "priceStatus",
-      "trend",
-      "status",
-      "marketStatus"
-    ],
-    `ERROR: ${message}`
-  );
-
-
-  setTextAny(
-    "sniperStatus",
-    "WAIT — MARKET DATA ERROR"
-  );
-
-
-  setTextAny(
-    "scalpVerdict",
-    "WAIT — MARKET DATA ERROR"
-  );
-
-
-  setTextAny(
-    "proVerdict",
-    "WAIT — DATA ERROR"
-  );
-
-
-  setTextAny(
-    "proExplanation",
-    message
-  );
-}
-
-
-/* =========================================================
-   LOAD MARKET DATA
-   ========================================================= */
-
-async function loadMarketData() {
-
-  if (
-    window.__dashboardLoading
-  ) {
-
-    return;
-  }
-
-
-  window.__dashboardLoading =
-    true;
-
-
-  setTextAny(
-    [
-      "priceStatus",
-      "trend",
-      "status",
-      "marketStatus"
-    ],
-    "CONNECTING TO MARKET DATA..."
-  );
-
+async function loadNews() {
 
   try {
 
-    console.log(
-      "EUR/USD DASHBOARD UPDATE START"
+    setText(
+      "eurNews",
+      "CHECKING..."
     );
 
+    setText(
+      "usdNews",
+      "CHECKING..."
+    );
 
-    /*
-       FOUR EXISTING MARKET REQUESTS.
-    */
+    setText(
+      "newsFilter",
+      "CHECKING..."
+    );
 
-    const h4 =
-      await getCandles(
-        "4h",
-        100
+    const response =
+      await fetch(NEWS_URL, {
+        cache: "no-store"
+      });
+
+    if (!response.ok) {
+      throw new Error(
+        `News API HTTP ${response.status}`
       );
+    }
 
+    const data =
+      await response.json();
 
-    const h1 =
-      await getCandles(
-        "1h",
-        100
-      );
+    if (!data.data || !Array.isArray(data.data)) {
+      throw new Error("Invalid news response");
+    }
 
-
-    const m15 =
-      await getCandles(
-        "15min",
-        100
-      );
-
-
-    const m5 =
-      await getCandles(
-        "5min",
-        100
-      );
-
-
-    marketData.h4 =
-      h4;
-
-
-    marketData.h1 =
-      h1;
-
-
-    marketData.m15 =
-      m15;
-
-
-    marketData.m5 =
-      m5;
-
-
-    marketData.price =
-      m5[
-        m5.length - 1
-      ].close;
-
-
-    marketData.lastUpdate =
-      new Date();
-
-
-    const analysis =
-      buildAnalysis();
-
-
-    /*
-       Update news state again immediately
-       before calculating the trade.
-    */
-
-    updateNewsState();
-
-
-    /*
-       A+ sniper.
-    */
-
-    const sniper =
-      calculateSniperSetup(
-        analysis,
-        marketData.price
-      );
-
-
-    /*
-       H1 + M5 scalper.
-    */
-
-    const scalp =
-      calculateScalpingSetup(
-        analysis,
-        marketData.price
-      );
-
+    newsData =
+      data.data;
 
     console.log(
-      "SNIPER:",
-      sniper
+      "Economic calendar loaded:",
+      newsData
     );
 
+    processNews();
 
-    console.log(
-      "SCALPING:",
-      scalp
-    );
+  } catch (error) {
 
-
-    updatePriceUI(
-      marketData.price
-    );
-
-
-    updateStructureUI(
-      analysis
-    );
-
-
-    updateSRUI(
-      analysis
-    );
-
-
-    updateIndicatorsUI(
-      analysis
-    );
-
-
-    updateNewsUI();
-
-
-    updateSniperUI(
-      sniper
-    );
-
-
-    updateScalpingUI(
-      scalp
-    );
-
-
-    updateProVerdictUI(
-      sniper,
-      scalp
-    );
-
-
-    updateTimestamp();
-
-
-    setTextAny(
-      [
-        "priceStatus",
-        "trend",
-        "status",
-        "marketStatus"
-      ],
-      "MARKET DATA LOADED"
-    );
-
-
-    console.log(
-      "EUR/USD DASHBOARD UPDATE COMPLETE"
-    );
-
-  }
-
-
-  catch (error) {
-
-    marketData.apiError =
-      error;
-
-
-    showDashboardError(
+    console.error(
+      "News loading error:",
       error
     );
 
-  }
+    setText(
+      "eurNews",
+      "NOT CONNECTED"
+    );
 
+    setText(
+      "usdNews",
+      "NOT CONNECTED"
+    );
 
-  finally {
+    setText(
+      "newsFilter",
+      "NEWS CHECK REQUIRED"
+    );
 
-    window.__dashboardLoading =
-      false;
+    setText(
+      "nextEvent",
+      "ECONOMIC CALENDAR REQUIRED"
+    );
+
+    setText(
+      "tradingRisk",
+      "HIGH — NEWS FILTER CLOSED"
+    );
+
+    // Keep both engines closed if news cannot be verified.
+    window.newsClear = false;
   }
 }
 
 
-/* =========================================================
-   START DASHBOARD
-   ========================================================= */
+// ================= PROCESS NEWS =================
 
-function startDashboard() {
+function processNews() {
 
-  console.log(
-    "EUR/USD SNIPER DASHBOARD STARTING..."
+  const now =
+    Date.now();
+
+  const next2Hours =
+    now + (2 * 60 * 60 * 1000);
+
+
+  const upcoming =
+    newsData
+      .filter(event => {
+
+        if (!event.scheduledAt) {
+          return false;
+        }
+
+        const eventTime =
+          new Date(event.scheduledAt).getTime();
+
+        return (
+          eventTime >= now &&
+          eventTime <= next2Hours
+        );
+      })
+      .filter(event =>
+        event.importance === "high"
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.scheduledAt) -
+          new Date(b.scheduledAt)
+      );
+
+
+  // Find EUR/USD-relevant high-impact events.
+  const relevant =
+    upcoming.filter(event => {
+
+      const name =
+        (event.eventName || "")
+          .toLowerCase();
+
+      const source =
+        (event.source || "")
+          .toLowerCase();
+
+      return (
+        source === "ecb" ||
+        source === "fed" ||
+        source === "bls" ||
+        source === "bea" ||
+        source === "dol" ||
+        source === "census" ||
+        name.includes("fed") ||
+        name.includes("fomc") ||
+        name.includes("cpi") ||
+        name.includes("payroll") ||
+        name.includes("employment") ||
+        name.includes("pce") ||
+        name.includes("jobless")
+      );
+    });
+
+
+  // Determine EUR/USD exposure.
+  const eurEvents =
+    relevant.filter(event => {
+
+      const name =
+        (event.eventName || "")
+          .toLowerCase();
+
+      return (
+        name.includes("ecb") ||
+        name.includes("euro") ||
+        name.includes("eur")
+      );
+    });
+
+
+  const usdEvents =
+    relevant.filter(event => {
+
+      const source =
+        (event.source || "")
+          .toLowerCase();
+
+      const name =
+        (event.eventName || "")
+          .toLowerCase();
+
+      return (
+        source === "fed" ||
+        source === "bls" ||
+        source === "bea" ||
+        source === "dol" ||
+        source === "census" ||
+        name.includes("fed") ||
+        name.includes("fomc") ||
+        name.includes("cpi") ||
+        name.includes("payroll") ||
+        name.includes("employment") ||
+        name.includes("pce") ||
+        name.includes("jobless")
+      );
+    });
+
+
+  setText(
+    "eurNews",
+    eurEvents.length
+      ? `${eurEvents.length} HIGH-IMPACT`
+      : "NO HIGH-IMPACT"
   );
 
 
-  /*
-     Load news immediately.
-  */
-
-  loadNewsCalendar();
-
-
-  /*
-     Load market data immediately.
-  */
-
-  loadMarketData();
-
-
-  /*
-     Refresh market data.
-  */
-
-  setInterval(
-    loadMarketData,
-    REFRESH_MS
+  setText(
+    "usdNews",
+    usdEvents.length
+      ? `${usdEvents.length} HIGH-IMPACT`
+      : "NO HIGH-IMPACT"
   );
 
 
-  /*
-     Refresh news calendar.
-  */
+  if (relevant.length > 0) {
 
-  setInterval(
-    async () => {
+    const event =
+      relevant[0];
 
-      await loadNewsCalendar();
+    const eventTime =
+      new Date(event.scheduledAt);
+
+    setText(
+      "newsFilter",
+      "⚠️ HIGH-IMPACT NEWS WINDOW"
+    );
+
+    setText(
+      "nextEvent",
+      `${event.eventName} — ${eventTime.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      })} IST`
+    );
+
+    setText(
+      "tradingRisk",
+      "HIGH — WAIT FOR NEWS CLEARANCE"
+    );
+
+    window.newsClear = false;
+
+  } else {
+
+    setText(
+      "newsFilter",
+      "✅ NEWS CLEAR"
+    );
+
+    setText(
+      "nextEvent",
+      "No high-impact EUR/USD event in next 2 hours"
+    );
+
+    setText(
+      "tradingRisk",
+      "NORMAL — TECHNICAL FILTER ACTIVE"
+    );
+
+    window.newsClear = true;
+  }
 
 
-      /*
-         Recalculate current setup after
-         news state changes.
-      */
-
-      if (
-        marketData.m5.length
-      ) {
-
-        const analysis =
-          buildAnalysis();
-
-
-        const sniper =
-          calculateSniperSetup(
-            analysis,
-            marketData.price
-          );
-
-
-        const scalp =
-          calculateScalpingSetup(
-            analysis,
-            marketData.price
-          );
-
-
-        updateSniperUI(
-          sniper
-        );
-
-
-        updateScalpingUI(
-          scalp
-        );
-
-
-        updateProVerdictUI(
-          sniper,
-          scalp
-        );
-
-      }
-
-    },
-    NEWS_REFRESH_MS
-  );
+  // Re-run engines after news status changes.
+  if (
+    marketData.H1.length &&
+    marketData.M5.length
+  ) {
+    updateTechnicalAnalysis();
+  }
 }
 
 
-/* =========================================================
-   START
-   ========================================================= */
+// ================= SNIPER ENGINE =================
 
-if (
-  document.readyState ===
-  "loading"
+function runSniperEngine(
+  h4Trend,
+  h1Trend,
+  m15Structure,
+  m5Structure,
+  h4RSI,
+  h1RSI,
+  m15RSI,
+  m5RSI,
+  emaStructure,
+  levels
 ) {
 
-  document.addEventListener(
-    "DOMContentLoaded",
-    startDashboard
+  const newsClear =
+    window.newsClear === true;
+
+
+  // Always require news clearance.
+  if (!newsClear) {
+
+    setText(
+      "sniperStatus",
+      "WAIT — NEWS FILTER NOT CONFIRMED"
+    );
+
+    setText("direction", "WAIT");
+    setText("entry", "—");
+    setText("stopLoss", "—");
+    setText("tp1", "—");
+    setText("tp2", "—");
+    setText("tp3", "—");
+    setText("riskReward", "—");
+
+    setText(
+      "validity",
+      "NEWS FILTER CLOSED"
+    );
+
+    setText(
+      "trigger",
+      "H4/H1 direction → M15 confirmation → M5 trigger → news clearance"
+    );
+
+    setText(
+      "invalidation",
+      "No trade while NEWS FILTER is CLOSED"
+    );
+
+    return;
+  }
+
+
+  // H4 + H1 must agree.
+  if (h4Trend !== h1Trend) {
+
+    setText(
+      "sniperStatus",
+      "WAIT — HIGHER TIMEFRAME CONFLICT"
+    );
+
+    setText("direction", "WAIT");
+    setText("entry", "—");
+    setText("stopLoss", "—");
+    setText("tp1", "—");
+    setText("tp2", "—");
+    setText("tp3", "—");
+    setText("riskReward", "—");
+
+    setText(
+      "validity",
+      "H4/H1 conflict detected"
+    );
+
+    setText(
+      "trigger",
+      "H4 and H1 must align → M15 confirmation → M5 trigger"
+    );
+
+    setText(
+      "invalidation",
+      "No trade while higher timeframes conflict"
+    );
+
+    return;
+  }
+
+
+  const direction =
+    h4Trend;
+
+
+  let score = 0;
+
+
+  if (h4Trend === direction) {
+    score += 2;
+  }
+
+  if (h1Trend === direction) {
+    score += 2;
+  }
+
+  if (m15Structure === direction) {
+    score += 2;
+  }
+
+  if (m5Structure === direction) {
+    score += 1;
+  }
+
+  if (emaStructure === direction) {
+    score += 1;
+  }
+
+
+  if (
+    direction === "BULLISH" &&
+    h1RSI !== null &&
+    h1RSI < 65
+  ) {
+    score += 1;
+  }
+
+
+  if (
+    direction === "BEARISH" &&
+    h1RSI !== null &&
+    h1RSI > 35
+  ) {
+    score += 1;
+  }
+
+
+  if (newsClear) {
+    score += 1;
+  }
+
+
+  setText(
+    "setupScore",
+    `${score} / 11`
   );
 
-} else {
 
-  startDashboard();
+  // Require strong alignment.
+  if (score < 8) {
+
+    setText(
+      "sniperStatus",
+      "WAIT — A+ CONDITIONS NOT COMPLETE"
+    );
+
+    setText(
+      "direction",
+      direction
+    );
+
+    setText("entry", "—");
+    setText("stopLoss", "—");
+    setText("tp1", "—");
+    setText("tp2", "—");
+    setText("tp3", "—");
+    setText("riskReward", "—");
+
+    setText(
+      "validity",
+      "A+ alignment required"
+    );
+
+    setText(
+      "trigger",
+      "Wait for M15 confirmation and M5 trigger"
+    );
+
+    setText(
+      "invalidation",
+      "Setup invalid below required score"
+    );
+
+    return;
+  }
+
+
+  createSniperTrade(
+    direction,
+    levels
+  );
 }
+
+
+// ================= CREATE SNIPER TRADE =================
+
+function createSniperTrade(
+  direction,
+  levels
+) {
+
+  if (!currentPrice) {
+    return;
+  }
+
+
+  let entry;
+  let sl;
+  let tp1;
+  let tp2;
+  let tp3;
+
+
+  if (direction === "BULLISH") {
+
+    entry =
+      currentPrice;
+
+    sl =
+      levels.support1
+        ? levels.support1 - 0.00020
+        : currentPrice - 0.00100;
+
+    const risk =
+      entry - sl;
+
+    tp1 =
+      entry + risk * 2;
+
+    tp2 =
+      entry + risk * 3;
+
+    tp3 =
+      entry + risk * 4;
+
+
+    setText(
+      "sniperStatus",
+      "🟢 A+ BUY SETUP"
+    );
+
+  } else {
+
+    entry =
+      currentPrice;
+
+    sl =
+      levels.resistance1
+        ? levels.resistance1 + 0.00020
+        : currentPrice + 0.00100;
+
+    const risk =
+      sl - entry;
+
+    tp1 =
+      entry - risk * 2;
+
+    tp2 =
+      entry - risk * 3;
+
+    tp3 =
+      entry - risk * 4;
+
+
+    setText(
+      "sniperStatus",
+      "🔴 A+ SELL SETUP"
+    );
+  }
+
+
+  const risk =
+    Math.abs(entry - sl);
+
+  const reward =
+    Math.abs(tp1 - entry);
+
+  const rr =
+    risk > 0
+      ? reward / risk
+      : 0;
+
+
+  setText(
+    "direction",
+    direction
+  );
+
+  setText(
+    "entry",
+    formatPrice(entry)
+  );
+
+  setText(
+    "stopLoss",
+    formatPrice(sl)
+  );
+
+  setText(
+    "tp1",
+    formatPrice(tp1)
+  );
+
+  setText(
+    "tp2",
+    formatPrice(tp2)
+  );
+
+  setText(
+    "tp3",
+    formatPrice(tp3)
+  );
+
+  setText(
+    "riskReward",
+    `1 : ${rr.toFixed(1)}`
+  );
+
+  setText(
+    "validity",
+    "Valid while H4/H1/M15/M5 alignment remains intact"
+  );
+
+  setText(
+    "trigger",
+    "M15 confirmation + M5 price-action trigger"
+  );
+
+  setText(
+    "invalidation",
+    formatPrice(sl)
+  );
+}
+
+
+// ================= SCALPING ENGINE =================
+
+function runScalpingEngine(
+  h1Trend,
+  m5Structure,
+  m5RSI,
+  levels
+) {
+
+  const newsClear =
+    window.newsClear === true;
+
+
+  if (!newsClear) {
+
+    setText(
+      "scalpVerdict",
+      "WAIT — NEWS CHECK REQUIRED"
+    );
+
+    setText(
+      "scalpDirection",
+      "WAIT"
+    );
+
+    setText("scalpEntry", "—");
+    setText("scalpSL", "—");
+    setText("scalpTP1", "—");
+    setText("scalpTP2", "—");
+    setText("scalpRR", "—");
+
+    setText(
+      "scalpValidity",
+      "NEXT 2 HOURS — NEWS CHECK REQUIRED"
+    );
+
+    setText(
+      "scalpTrigger",
+      "H1 + M5 technical bias detected. Wait for EUR/USD economic-news clearance."
+    );
+
+    setText(
+      "scalpInvalidation",
+      "NO TRADE WHILE NEWS FILTER IS CLOSED"
+    );
+
+    return;
+  }
+
+
+  let score = 0;
+
+  if (
+    h1Trend === "BULLISH" ||
+    h1Trend === "BEARISH"
+  ) {
+    score += 2;
+  }
+
+  if (
+    m5Structure === h1Trend
+  ) {
+    score += 2;
+  }
+
+  if (
+    m5RSI !== null
+  ) {
+
+    if (
+      h1Trend === "BULLISH" &&
+      m5RSI > 40 &&
+      m5RSI < 70
+    ) {
+      score += 2;
+    }
+
+    if (
+      h1Trend === "BEARISH" &&
+      m5RSI > 30 &&
+      m5RSI < 60
+    ) {
+      score += 2;
+    }
+  }
+
+
+  if (
+    levels.support1 &&
+    levels.resistance1
+  ) {
+    score += 2;
+  }
+
+
+  setText(
+    "scalpScore",
+    `${score} / 8`
+  );
+
+
+  if (
+    h1Trend !== "BULLISH" &&
+    h1Trend !== "BEARISH"
+  ) {
+
+    setText(
+      "scalpVerdict",
+      "WAIT — NO CLEAR H1 DIRECTION"
+    );
+
+    setText(
+      "scalpDirection",
+      "WAIT"
+    );
+
+    setText("scalpEntry", "—");
+    setText("scalpSL", "—");
+    setText("scalpTP1", "—");
+    setText("scalpTP2", "—");
+    setText("scalpRR", "—");
+
+    setText(
+      "scalpValidity",
+      "NEXT 2 HOURS — NO CLEAR DIRECTION"
+    );
+
+    return;
+  }
+
+
+  if (score < 6) {
+
+    setText(
+      "scalpVerdict",
+      "WAIT — SCALP CONDITIONS INCOMPLETE"
+    );
+
+    setText(
+      "scalpDirection",
+      h1Trend
+    );
+
+    setText("scalpEntry", "—");
+    setText("scalpSL", "—");
+    setText("scalpTP1", "—");
+    setText("scalpTP2", "—");
+    setText("scalpRR", "—");
+
+    setText(
+      "scalpValidity",
+      "NEXT 2 HOURS"
+    );
+
+    setText(
+      "scalpTrigger",
+      "Wait for M5 confirmation in the H1 direction."
+    );
+
+    setText(
+      "scalpInvalidation",
+      "Technical conditions below required score"
+    );
+
+    return;
+  }
+
+
+  createScalpTrade(
+    h1Trend,
+    levels
+  );
+}
+
+
+// ================= CREATE SCALP TRADE =================
+
+function createScalpTrade(
+  direction,
+  levels
+) {
+
+  if (!currentPrice) {
+    return;
+  }
+
+
+  let entry =
+    currentPrice;
+
+  let sl;
+  let tp1;
+  let tp2;
+
+
+  if (direction === "BULLISH") {
+
+    sl =
+      levels.support1
+        ? levels.support1 - 0.00015
+        : entry - 0.00070;
+
+    const risk =
+      entry - sl;
+
+    tp1 =
+      entry + risk * 1.5;
+
+    tp2 =
+      entry + risk * 2;
+
+
+    setText(
+      "scalpVerdict",
+      "🟢 SCALP BUY BIAS"
+    );
+
+  } else {
+
+    sl =
+      levels.resistance1
+        ? levels.resistance1 + 0.00015
+        : entry + 0.00070;
+
+    const risk =
+      sl - entry;
+
+    tp1 =
+      entry - risk * 1.5;
+
+    tp2 =
+      entry - risk * 2;
+
+
+    setText(
+      "scalpVerdict",
+      "🔴 SCALP SELL BIAS"
+    );
+  }
+
+
+  const risk =
+    Math.abs(entry - sl);
+
+  const reward =
+    Math.abs(tp1 - entry);
+
+  const rr =
+    risk > 0
+      ? reward / risk
+      : 0;
+
+
+  setText(
+    "scalpDirection",
+    direction
+  );
+
+  setText(
+    "scalpEntry",
+    formatPrice(entry)
+  );
+
+  setText(
+    "scalpSL",
+    formatPrice(sl)
+  );
+
+  setText(
+    "scalpTP1",
+    formatPrice(tp1)
+  );
+
+  setText(
+    "scalpTP2",
+    formatPrice(tp2)
+  );
+
+  setText(
+    "scalpRR",
+    `1 : ${rr.toFixed(1)}`
+  );
+
+  setText(
+    "scalpValidity",
+    "NEXT 2 HOURS — VALID WHILE H1 + M5 BIAS REMAINS INTACT"
+  );
+
+  setText(
+    "scalpTrigger",
+    "M5 price-action confirmation in H1 direction"
+  );
+
+  setText(
+    "scalpInvalidation",
+    formatPrice(sl)
+  );
+}
+
+
+// ================= PRO VERDICT =================
+
+function updateProVerdict(
+  h4Trend,
+  h1Trend,
+  m15Structure,
+  m5Structure
+) {
+
+  const newsClear =
+    window.newsClear === true;
+
+
+  if (!newsClear) {
+
+    setText(
+      "proVerdict",
+      "WAIT — NEWS FILTER NOT CONFIRMED"
+    );
+
+    setText(
+      "proExplanation",
+      "Technical analysis is loaded, but trading remains closed until the EUR/USD economic-news filter is confirmed clear."
+    );
+
+    return;
+  }
+
+
+  if (
+    h4Trend !== h1Trend
+  ) {
+
+    setText(
+      "proVerdict",
+      "WAIT — HIGHER-TIMEFRAME CONFLICT"
+    );
+
+    setText(
+      "proExplanation",
+      `H4 is ${h4Trend} while H1 is ${h1Trend}. M15 is ${m15Structure} and M5 is ${m5Structure}. No A+ sniper trade until the higher-timeframe direction aligns.`
+    );
+
+    return;
+  }
+
+
+  if (
+    m15Structure === h4Trend
+  ) {
+
+    setText(
+      "proVerdict",
+      `WATCH — ${h4Trend} ALIGNMENT`
+    );
+
+    setText(
+      "proExplanation",
+      `H4 and H1 are aligned ${h4Trend}. M15 confirms the same direction. Wait for the M5 price-action trigger before considering an entry.`
+    );
+
+  } else {
+
+    setText(
+      "proVerdict",
+      "WAIT — M15 CONFIRMATION REQUIRED"
+    );
+
+    set
