@@ -2489,4 +2489,41 @@ function formatPrice(value) {
         value === null ||
         value === undefined ||
         !Number.isFinite(
-           
+            Number(value)
+        )
+    ) {
+        return "—";
+    }
+
+    return Number(value)
+        .toFixed(5);
+}
+
+function formatNumber(value) {
+
+    if (
+        value === null ||
+        value === undefined ||
+        !Number.isFinite(
+            Number(value)
+        )
+    ) {
+        return "—";
+    }
+
+    return Number(value)
+        .toFixed(1);
+}
+
+function setText(
+    id,
+    value
+) {
+
+    const element =
+        document.getElementById(id);
+
+    if (element) {
+        element.textContent = value;
+    }
+}
