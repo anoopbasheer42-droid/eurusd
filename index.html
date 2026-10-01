@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
 
 <title>EUR/USD Sniper Dashboard</title>
 
 <style>
+
 *{
   box-sizing:border-box;
 }
@@ -25,13 +30,10 @@ body{
   justify-content:space-between;
   align-items:center;
   border-bottom:1px solid #26313d;
-  position:sticky;
-  top:0;
-  z-index:20;
 }
 
 .logo{
-  font-size:20px;
+  font-size:21px;
   font-weight:bold;
 }
 
@@ -81,19 +83,6 @@ body{
   font-size:13px;
 }
 
-.error-box{
-  color:#ff7070;
-  font-size:12px;
-  margin-top:8px;
-  word-break:break-word;
-}
-
-.section-title{
-  font-size:19px;
-  font-weight:bold;
-  margin-bottom:15px;
-}
-
 .grid{
   display:grid;
   grid-template-columns:repeat(4,1fr);
@@ -104,6 +93,27 @@ body{
   display:grid;
   grid-template-columns:repeat(2,1fr);
   gap:14px;
+}
+
+@media(max-width:900px){
+
+  .grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+}
+
+@media(max-width:600px){
+
+  .grid,
+  .grid-2{
+    grid-template-columns:1fr;
+  }
+
+  .price{
+    font-size:34px;
+  }
+
 }
 
 .quick-card{
@@ -125,13 +135,19 @@ body{
   font-weight:bold;
 }
 
+.section-title{
+  font-size:19px;
+  font-weight:bold;
+  margin-bottom:15px;
+}
+
 .row{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  gap:15px;
   padding:11px 0;
   border-bottom:1px solid #222d38;
+  gap:15px;
 }
 
 .row:last-child{
@@ -177,18 +193,15 @@ body{
 
 .chart-wrap{
   width:100%;
-  height:520px;
+  height:500px;
   overflow:hidden;
   border-radius:10px;
   background:#0b0f14;
-  border:1px solid #26313d;
 }
 
-.chart-wrap iframe{
-  display:block;
+#tradingview_chart{
   width:100%;
-  height:100%;
-  border:0;
+  height:500px;
 }
 
 .signal{
@@ -230,6 +243,14 @@ body{
   margin-top:18px;
 }
 
+@media(max-width:800px){
+
+  .gate-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+}
+
 .gate-box{
   background:#10161c;
   padding:12px;
@@ -247,11 +268,46 @@ body{
   font-size:15px;
 }
 
+.checklist{
+  background:#151d26;
+  border-radius:10px;
+  padding:14px;
+}
+
+.check-row{
+  padding:9px 0;
+  border-bottom:1px solid #26313d;
+  font-size:13px;
+}
+
+.check-row:last-child{
+  border-bottom:none;
+}
+
+.check-good{
+  color:#4dff9a;
+}
+
+.check-bad{
+  color:#ff6262;
+}
+
+.check-wait{
+  color:#ffc857;
+}
+
 .news-event{
   background:#151d26;
   padding:12px;
   border-radius:9px;
   margin-bottom:8px;
+}
+
+.error-box{
+  color:#ff7070;
+  font-size:12px;
+  margin-top:8px;
+  word-break:break-word;
 }
 
 button.refresh{
@@ -266,11 +322,6 @@ button.refresh{
   cursor:pointer;
 }
 
-button.refresh:disabled{
-  opacity:.6;
-  cursor:not-allowed;
-}
-
 .small{
   font-size:12px;
   color:#7f8c98;
@@ -278,81 +329,32 @@ button.refresh:disabled{
   line-height:1.5;
 }
 
-.checklist{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:8px;
-  margin-top:15px;
-  text-align:left;
-}
-
-.check{
-  background:#10161c;
-  padding:10px;
-  border-radius:8px;
-  font-size:12px;
-  color:#aeb9c4;
-}
-
-.check.ok{
-  color:#4dff9a;
-}
-
-.check.fail{
-  color:#ff6262;
-}
-
-.check.wait{
-  color:#ffc857;
-}
-
-@media(max-width:900px){
-  .grid{
-    grid-template-columns:repeat(2,1fr);
-  }
-
-  .gate-grid{
-    grid-template-columns:repeat(2,1fr);
-  }
-}
-
-@media(max-width:600px){
-  .logo{
-    font-size:15px;
-  }
-
-  .price{
-    font-size:34px;
-  }
-
-  .grid,
-  .grid-2{
-    grid-template-columns:1fr;
-  }
-
-  .gate-grid{
-    grid-template-columns:repeat(2,1fr);
-  }
-
-  .chart-wrap{
-    height:430px;
-  }
-
-  .checklist{
-    grid-template-columns:1fr;
-  }
-}
 </style>
+
 </head>
 
 <body>
 
+
+<!-- =====================================================
+     TOP BAR
+===================================================== -->
+
 <div class="topbar">
-  <div class="logo">EUR/USD SNIPER DASHBOARD</div>
-  <div class="live-badge">● LIVE</div>
+
+  <div class="logo">
+    EUR/USD SNIPER DASHBOARD
+  </div>
+
+  <div class="live-badge">
+    ● LIVE
+  </div>
+
 </div>
 
+
 <div class="container">
+
 
 <!-- =====================================================
      LIVE PRICE
@@ -415,43 +417,6 @@ button.refresh:disabled{
 
 
 <!-- =====================================================
-     QUICK ANALYSIS
-===================================================== -->
-
-<div class="card">
-
-  <div class="section-title">
-    QUICK MARKET ANALYSIS
-  </div>
-
-  <div class="grid">
-
-    <div class="quick-card">
-      <div class="label">H4 TREND</div>
-      <div id="quickH4Trend" class="value">--</div>
-    </div>
-
-    <div class="quick-card">
-      <div class="label">H1 TREND</div>
-      <div id="quickH1Trend" class="value">--</div>
-    </div>
-
-    <div class="quick-card">
-      <div class="label">EMA STRUCTURE</div>
-      <div id="quickEmaStructure" class="value">--</div>
-    </div>
-
-    <div class="quick-card">
-      <div class="label">SETUP SCORE</div>
-      <div id="setupScore" class="value">--</div>
-    </div>
-
-  </div>
-
-</div>
-
-
-<!-- =====================================================
      EUR/USD LIVE CHART
 ===================================================== -->
 
@@ -464,12 +429,12 @@ button.refresh:disabled{
   <div class="chart-buttons">
 
     <button id="btnM5"
+            class="active"
             onclick="changeChart('5')">
       M5
     </button>
 
     <button id="btnM15"
-            class="active"
             onclick="changeChart('15')">
       M15
     </button>
@@ -488,13 +453,79 @@ button.refresh:disabled{
 
   <div class="chart-wrap">
 
-    <iframe
-      id="tradingChart"
-      title="EUR/USD TradingView Chart"
-      src="https://www.tradingview.com/widgetembed/?symbol=FX%3AEURUSD&interval=15&hidesidetoolbar=1&symboledit=1&saveimage=0&toolbarbg=111820&hideideas=1&theme=dark&style=1&timezone=Asia%2FKolkata"
-      allowtransparency="true"
-      scrolling="no">
-    </iframe>
+    <div id="tradingview_chart"></div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     QUICK MARKET ANALYSIS
+===================================================== -->
+
+<div class="card">
+
+  <div class="section-title">
+    QUICK MARKET ANALYSIS
+  </div>
+
+  <div class="grid">
+
+    <div class="quick-card">
+
+      <div class="label">
+        H4 TREND
+      </div>
+
+      <div id="quickH4Trend"
+           class="value">
+        --
+      </div>
+
+    </div>
+
+
+    <div class="quick-card">
+
+      <div class="label">
+        H1 TREND
+      </div>
+
+      <div id="quickH1Trend"
+           class="value">
+        --
+      </div>
+
+    </div>
+
+
+    <div class="quick-card">
+
+      <div class="label">
+        EMA STRUCTURE
+      </div>
+
+      <div id="quickEmaStructure"
+           class="value">
+        --
+      </div>
+
+    </div>
+
+
+    <div class="quick-card">
+
+      <div class="label">
+        SETUP SCORE
+      </div>
+
+      <div id="setupScore"
+           class="value">
+        --
+      </div>
+
+    </div>
 
   </div>
 
@@ -516,26 +547,27 @@ button.refresh:disabled{
     <div>
 
       <div class="row">
-        <span>Resistance 2</span>
+        <span>R2</span>
         <strong id="resistance2">--</strong>
       </div>
 
       <div class="row">
-        <span>Resistance 1</span>
+        <span>R1</span>
         <strong id="resistance1">--</strong>
       </div>
 
     </div>
 
+
     <div>
 
       <div class="row">
-        <span>Support 1</span>
+        <span>S1</span>
         <strong id="support1">--</strong>
       </div>
 
       <div class="row">
-        <span>Support 2</span>
+        <span>S2</span>
         <strong id="support2">--</strong>
       </div>
 
@@ -580,9 +612,16 @@ button.refresh:disabled{
 
   </div>
 
-  <div class="row" style="margin-top:12px;">
-    <span>EMA STRUCTURE</span>
-    <strong id="emaStructure">--</strong>
+  <div class="row">
+
+    <span>
+      EMA STRUCTURE
+    </span>
+
+    <strong id="emaStructure">
+      --
+    </strong>
+
   </div>
 
 </div>
@@ -745,13 +784,22 @@ button.refresh:disabled{
   <div class="signal">
 
     <div class="row">
-      <span>Verdict</span>
-      <strong id="proVerdict">WAIT</strong>
+
+      <span>
+        Verdict
+      </span>
+
+      <strong id="proVerdict">
+        WAIT
+      </strong>
+
     </div>
 
     <div id="proExplanation"
          class="small">
+
       Waiting for complete market data...
+
     </div>
 
   </div>
@@ -773,83 +821,137 @@ button.refresh:disabled{
 
     <div class="gate-verdict warn"
          id="tradeGateVerdict">
+
       STAY AWAY
+
     </div>
 
-    <div class="gate-reason"
-         id="tradeGateReason">
+    <div id="tradeGateReason"
+         class="gate-reason">
+
       Waiting for market data...
+
     </div>
 
     <div id="tradeGateAction"
          class="small">
+
       Do NOT execute until all required conditions align.
+
     </div>
+
 
     <div class="gate-grid">
 
       <div class="gate-box">
-        <div class="gate-label">SESSION</div>
+
+        <div class="gate-label">
+          SESSION
+        </div>
+
         <div id="tradeGateSession"
              class="gate-value">
           --
         </div>
+
       </div>
 
+
       <div class="gate-box">
-        <div class="gate-label">DIRECTION</div>
+
+        <div class="gate-label">
+          DIRECTION
+        </div>
+
         <div id="tradeGateDirection"
              class="gate-value">
           --
         </div>
+
       </div>
 
+
       <div class="gate-box">
-        <div class="gate-label">ENTRY</div>
+
+        <div class="gate-label">
+          ENTRY
+        </div>
+
         <div id="tradeGateEntry"
              class="gate-value">
           --
         </div>
+
       </div>
 
+
       <div class="gate-box">
-        <div class="gate-label">STOP LOSS</div>
+
+        <div class="gate-label">
+          STOP LOSS
+        </div>
+
         <div id="tradeGateSL"
              class="gate-value">
           --
         </div>
+
       </div>
 
+
       <div class="gate-box">
-        <div class="gate-label">TP1</div>
+
+        <div class="gate-label">
+          TP1
+        </div>
+
         <div id="tradeGateTP1"
              class="gate-value">
           --
         </div>
+
       </div>
 
+
       <div class="gate-box">
-        <div class="gate-label">TP2</div>
+
+        <div class="gate-label">
+          TP2
+        </div>
+
         <div id="tradeGateTP2"
              class="gate-value">
           --
         </div>
+
       </div>
 
+
       <div class="gate-box">
-        <div class="gate-label">RR</div>
+
+        <div class="gate-label">
+          RR
+        </div>
+
         <div id="tradeGateRR"
              class="gate-value">
           --
         </div>
+
       </div>
 
+
       <div class="gate-box">
-        <div class="gate-label">RISK</div>
+
+        <div class="gate-label">
+          RISK
+        </div>
+
         <div id="tradeGateRisk"
              class="gate-value">
           --
         </div>
+
       </div>
 
     </div>
@@ -872,62 +974,62 @@ button.refresh:disabled{
   <div class="checklist">
 
     <div id="checkSession"
-         class="check wait">
+         class="check-row check-wait">
       — Active London / New York session
     </div>
 
     <div id="checkNews"
-         class="check wait">
+         class="check-row check-wait">
       — EUR/USD high-impact news clear
     </div>
 
-    <div id="checkHtf"
-         class="check wait">
+    <div id="checkHTF"
+         class="check-row check-wait">
       — H4 + H1 directional alignment
     </div>
 
     <div id="checkM15"
-         class="check wait">
+         class="check-row check-wait">
       — M15 confirmation
     </div>
 
     <div id="checkM5"
-         class="check wait">
+         class="check-row check-wait">
       — M5 confirmation
     </div>
 
     <div id="checkEMA"
-         class="check wait">
+         class="check-row check-wait">
       — M5 EMA20 / EMA50 alignment
     </div>
 
     <div id="checkRSI"
-         class="check wait">
+         class="check-row check-wait">
       — M5 RSI confirmation
     </div>
 
     <div id="checkMomentum"
-         class="check wait">
+         class="check-row check-wait">
       — Completed M5 momentum candle
     </div>
 
     <div id="checkExtension"
-         class="check wait">
+         class="check-row check-wait">
       — No excessive EMA extension
     </div>
 
     <div id="checkRisk"
-         class="check wait">
+         class="check-row check-wait">
       — 3–15 pip structural risk
     </div>
 
     <div id="checkRR"
-         class="check wait">
+         class="check-row check-wait">
       — Minimum 1:2 Risk / Reward
     </div>
 
-    <div id="checkSR"
-         class="check wait">
+    <div id="checkTP"
+         class="check-row check-wait">
       — Higher-timeframe S/R does not block TP2
     </div>
 
@@ -937,7 +1039,7 @@ button.refresh:disabled{
 
 
 <!-- =====================================================
-     NEWS FILTER
+     EUR/USD NEWS FILTER
 ===================================================== -->
 
 <div class="card">
@@ -961,6 +1063,7 @@ button.refresh:disabled{
 
     </div>
 
+
     <div>
 
       <div class="label">
@@ -976,19 +1079,43 @@ button.refresh:disabled{
 
   </div>
 
-  <div class="row">
-    <span>NEWS FILTER</span>
-    <strong id="newsFilter">--</strong>
-  </div>
 
   <div class="row">
-    <span>NEXT EVENT</span>
-    <strong id="nextEvent">--</strong>
+
+    <span>
+      NEWS FILTER
+    </span>
+
+    <strong id="newsFilter">
+      --
+    </strong>
+
   </div>
 
+
   <div class="row">
-    <span>TRADING RISK</span>
-    <strong id="tradingRisk">--</strong>
+
+    <span>
+      NEXT EVENT
+    </span>
+
+    <strong id="nextEvent">
+      --
+    </strong>
+
+  </div>
+
+
+  <div class="row">
+
+    <span>
+      TRADING RISK
+    </span>
+
+    <strong id="tradingRisk">
+      --
+    </strong>
+
   </div>
 
 </div>
@@ -1003,16 +1130,30 @@ button.refresh:disabled{
   <button class="refresh"
           id="refreshBtn"
           onclick="loadMarketData()">
+
     🔄 REFRESH MARKET DATA
+
   </button>
 
   <div class="small">
-    EUR/USD Sniper Dashboard • Data refreshes automatically every 2 minutes.
+
+    EUR/USD Sniper Dashboard • Data refreshes automatically
+
   </div>
 
 </div>
 
+
 </div>
+
+
+<!-- =====================================================
+     TRADINGVIEW LIBRARY
+===================================================== -->
+
+<script
+src="https://s3.tradingview.com/tv.js">
+</script>
 
 
 <script>
@@ -1021,9 +1162,11 @@ button.refresh:disabled{
    CONFIGURATION
 ========================================================= */
 
-const API_KEY = "8908432b6c784bc49aad6ccf64845991";
+const API_KEY =
+  "8908432b6c784bc49aad6ccf64845991";
 
-const SYMBOL = "EUR/USD";
+const SYMBOL =
+  "EUR/USD";
 
 const PRICE_URL =
   "https://api.twelvedata.com/price";
@@ -1053,7 +1196,7 @@ const ENGINE = {
 
 
 /* =========================================================
-   DATA
+   MARKET DATA
 ========================================================= */
 
 let marketData = {
@@ -1092,9 +1235,9 @@ let marketData = {
   news:{
     risk:"UNKNOWN",
     clear:false,
+    events:[],
     eur:[],
     usd:[],
-    events:[],
     nextEvent:null
   }
 
@@ -1116,6 +1259,15 @@ document.addEventListener(
       ENGINE.refreshMs
     );
 
+    setTimeout(
+      function(){
+
+        loadTradingViewChart("5");
+
+      },
+      800
+    );
+
   }
 );
 
@@ -1124,29 +1276,77 @@ document.addEventListener(
    TRADINGVIEW CHART
 ========================================================= */
 
-function changeChart(interval){
+function loadTradingViewChart(interval){
 
-  const iframe =
+  const container =
     document.getElementById(
-      "tradingChart"
+      "tradingview_chart"
     );
 
-  if(!iframe){
+  if(!container){
     return;
   }
 
-  iframe.src =
-    "https://www.tradingview.com/widgetembed/?" +
-    "symbol=FX%3AEURUSD" +
-    "&interval=" + interval +
-    "&hidesidetoolbar=1" +
-    "&symboledit=1" +
-    "&saveimage=0" +
-    "&toolbarbg=111820" +
-    "&hideideas=1" +
-    "&theme=dark" +
-    "&style=1" +
-    "&timezone=Asia%2FKolkata";
+  container.innerHTML = "";
+
+  try{
+
+    new TradingView.widget({
+
+      autosize:true,
+
+      symbol:"FX:EURUSD",
+
+      interval:interval,
+
+      timezone:"Asia/Kolkata",
+
+      theme:"dark",
+
+      style:"1",
+
+      locale:"en",
+
+      enable_publishing:false,
+
+      allow_symbol_change:false,
+
+      hide_top_toolbar:false,
+
+      hide_legend:false,
+
+      save_image:false,
+
+      container_id:
+        "tradingview_chart"
+
+    });
+
+  }
+  catch(error){
+
+    console.error(
+      "TradingView error:",
+      error
+    );
+
+    container.innerHTML =
+      '<div style="padding:30px;text-align:center;color:#ff6262;">' +
+      'TradingView chart could not be loaded.' +
+      '</div>';
+
+  }
+
+}
+
+
+/* =========================================================
+   CHART BUTTONS
+========================================================= */
+
+function changeChart(interval){
+
+  loadTradingViewChart(interval);
 
   document
     .querySelectorAll(
@@ -1154,55 +1354,54 @@ function changeChart(interval){
     )
     .forEach(
       function(button){
+
         button.classList.remove(
           "active"
         );
+
       }
     );
 
   if(interval === "5"){
+
     document
       .getElementById("btnM5")
       .classList.add("active");
+
   }
 
   if(interval === "15"){
+
     document
       .getElementById("btnM15")
       .classList.add("active");
+
   }
 
   if(interval === "60"){
+
     document
       .getElementById("btnH1")
       .classList.add("active");
+
   }
 
   if(interval === "240"){
+
     document
       .getElementById("btnH4")
       .classList.add("active");
+
   }
 
 }
 
 
 /* =========================================================
-   MAIN DATA LOAD
+   MAIN LOAD
 ========================================================= */
 
 async function loadMarketData(){
-
-  const refreshButton =
-    document.getElementById(
-      "refreshBtn"
-    );
-
-  if(refreshButton){
-    refreshButton.disabled = true;
-    refreshButton.textContent =
-      "⏳ LOADING MARKET DATA...";
-  }
 
   setText(
     "priceStatus",
@@ -1216,25 +1415,10 @@ async function loadMarketData(){
 
   try{
 
-    if(
-      !API_KEY ||
-      API_KEY.length < 10
-    ){
-      throw new Error(
-        "Twelve Data API key is missing."
-      );
-    }
-
-
-    const price =
-      await getPrice();
-
-    marketData.price =
-      price;
-
-
     const results =
       await Promise.all([
+
+        getPrice(),
 
         getCandles("4h",100),
 
@@ -1247,13 +1431,20 @@ async function loadMarketData(){
       ]);
 
 
-    marketData.h4 = results[0];
+    marketData.price =
+      results[0];
 
-    marketData.h1 = results[1];
+    marketData.h4 =
+      results[1];
 
-    marketData.m15 = results[2];
+    marketData.h1 =
+      results[2];
 
-    marketData.m5 = results[3];
+    marketData.m15 =
+      results[3];
+
+    marketData.m5 =
+      results[4];
 
 
     if(
@@ -1269,8 +1460,6 @@ async function loadMarketData(){
 
     }
 
-
-    /* STRUCTURE */
 
     marketData.h4Structure =
       getMarketStructure(
@@ -1293,8 +1482,6 @@ async function loadMarketData(){
       );
 
 
-    /* RSI */
-
     marketData.h4Rsi =
       calculateRSI(
         marketData.h4
@@ -1315,8 +1502,6 @@ async function loadMarketData(){
         marketData.m5
       );
 
-
-    /* EMA */
 
     marketData.h4Ema =
       calculateEMA(
@@ -1347,19 +1532,13 @@ async function loadMarketData(){
       getEMAStructure();
 
 
-    /* LEVELS */
-
     marketData.levels =
       calculateSupportResistance();
 
 
-    /* NEWS */
-
     marketData.news =
       await getNews();
 
-
-    /* UPDATE UI */
 
     updateDashboard();
 
@@ -1378,13 +1557,12 @@ async function loadMarketData(){
 
     setText(
       "priceStatus",
-      "Market data loaded • " +
-      new Date()
-        .toLocaleTimeString()
+      "Completed market data updated • " +
+      new Date().toLocaleTimeString()
     );
 
-
   }
+
   catch(error){
 
     console.error(
@@ -1392,11 +1570,9 @@ async function loadMarketData(){
       error
     );
 
-    clearMarketData();
-
     setText(
       "priceStatus",
-      "Data load failed"
+      "DATA LOAD FAILED"
     );
 
     setText(
@@ -1405,22 +1581,11 @@ async function loadMarketData(){
       "Unknown market-data error."
     );
 
-    setTradeGateError(
-      error.message ||
-      "Market data unavailable."
+    showTradeGateError(
+      "STAY AWAY",
+      "Market data could not be loaded.",
+      error.message
     );
-
-  }
-  finally{
-
-    if(refreshButton){
-
-      refreshButton.disabled = false;
-
-      refreshButton.textContent =
-        "🔄 REFRESH MARKET DATA";
-
-    }
 
   }
 
@@ -1440,24 +1605,8 @@ async function getPrice(){
     "&apikey=" +
     encodeURIComponent(API_KEY);
 
-
   const response =
-    await fetch(
-      url,
-      {
-        cache:"no-store"
-      }
-    );
-
-
-  if(response.status === 429){
-
-    throw new Error(
-      "Twelve Data rate limit reached (HTTP 429). Wait before refreshing."
-    );
-
-  }
-
+    await fetch(url);
 
   if(!response.ok){
 
@@ -1468,10 +1617,8 @@ async function getPrice(){
 
   }
 
-
   const data =
     await response.json();
-
 
   if(
     !data ||
@@ -1486,10 +1633,8 @@ async function getPrice(){
 
   }
 
-
   const price =
     Number(data.price);
-
 
   if(!Number.isFinite(price)){
 
@@ -1498,7 +1643,6 @@ async function getPrice(){
     );
 
   }
-
 
   return price;
 
@@ -1526,40 +1670,21 @@ async function getCandles(
     "&apikey=" +
     encodeURIComponent(API_KEY);
 
-
   const response =
-    await fetch(
-      url,
-      {
-        cache:"no-store"
-      }
-    );
-
-
-  if(response.status === 429){
-
-    throw new Error(
-      interval +
-      " request hit Twelve Data rate limit (HTTP 429)."
-    );
-
-  }
-
+    await fetch(url);
 
   if(!response.ok){
 
     throw new Error(
       interval +
-      " candle request HTTP " +
+      " request HTTP " +
       response.status
     );
 
   }
 
-
   const data =
     await response.json();
-
 
   if(
     !data ||
@@ -1570,45 +1695,57 @@ async function getCandles(
     throw new Error(
       data.message ||
       interval +
-      ": invalid candle response."
+      " candle data unavailable."
     );
 
   }
 
+  const candles =
+    data.values
+      .map(
+        function(x){
 
-  return data.values
-    .map(function(x){
+          return {
 
-      return {
+            datetime:x.datetime,
 
-        datetime:x.datetime,
+            open:Number(x.open),
 
-        open:Number(x.open),
+            high:Number(x.high),
 
-        high:Number(x.high),
+            low:Number(x.low),
 
-        low:Number(x.low),
+            close:Number(x.close)
 
-        close:Number(x.close)
+          };
 
-      };
+        }
+      )
+      .filter(
+        function(x){
 
-    })
-    .filter(function(x){
+          return (
 
-      return (
+            Number.isFinite(x.open) &&
+            Number.isFinite(x.high) &&
+            Number.isFinite(x.low) &&
+            Number.isFinite(x.close)
 
-        Number.isFinite(x.open) &&
+          );
 
-        Number.isFinite(x.high) &&
-
-        Number.isFinite(x.low) &&
-
-        Number.isFinite(x.close)
-
+        }
       );
 
-    });
+  if(!candles.length){
+
+    throw new Error(
+      interval +
+      ": no valid candles."
+    );
+
+  }
+
+  return candles;
 
 }
 
@@ -1623,74 +1760,74 @@ function getMarketStructure(candles){
     !candles ||
     candles.length < 10
   ){
-    return "RANGE";
-  }
 
+    return "RANGE";
+
+  }
 
   const recent =
     candles.slice(-10);
 
+  const highs =
+    recent.map(
+      function(x){
+        return x.high;
+      }
+    );
 
-  const first =
+  const lows =
+    recent.map(
+      function(x){
+        return x.low;
+      }
+    );
+
+  const firstClose =
     recent[0].close;
 
-
-  const last =
+  const lastClose =
     recent[
       recent.length - 1
     ].close;
 
-
-  const highs =
-    recent.map(
-      x => x.high
-    );
-
-
-  const lows =
-    recent.map(
-      x => x.low
-    );
-
-
   const highest =
-    Math.max(...highs);
-
+    Math.max.apply(
+      null,
+      highs
+    );
 
   const lowest =
-    Math.min(...lows);
-
+    Math.min.apply(
+      null,
+      lows
+    );
 
   const range =
     highest - lowest;
 
-
   if(range <= 0){
+
     return "RANGE";
+
   }
 
-
   const movement =
-    last - first;
-
+    lastClose - firstClose;
 
   const threshold =
     range * 0.20;
 
+  if(movement > threshold){
 
-  if(
-    movement > threshold
-  ){
     return "BULLISH";
+
   }
 
+  if(movement < -threshold){
 
-  if(
-    movement < -threshold
-  ){
     return "BEARISH";
-  }
 
+  }
 
   return "RANGE";
 
@@ -1698,7 +1835,7 @@ function getMarketStructure(candles){
 
 
 /* =========================================================
-   SUPPORT / RESISTANCE
+   SUPPORT & RESISTANCE
 ========================================================= */
 
 function calculateSupportResistance(){
@@ -1706,70 +1843,78 @@ function calculateSupportResistance(){
   const candles =
     marketData.h1;
 
+  const current =
+    marketData.price;
 
   if(
     !candles ||
-    candles.length < 10
+    candles.length < 10 ||
+    !Number.isFinite(current)
   ){
 
     return {
 
       resistance1:null,
-
       resistance2:null,
-
       support1:null,
-
       support2:null
 
     };
 
   }
 
-
   const recent =
     candles.slice(-50);
 
-
-  const current =
-    marketData.price;
-
-
-  const highs =
+  const resistance =
     recent
-      .map(x => x.high)
+      .map(
+        function(x){
+          return x.high;
+        }
+      )
       .filter(
-        x => x > current
+        function(x){
+          return x > current;
+        }
       )
       .sort(
-        (a,b) => a-b
+        function(a,b){
+          return a-b;
+        }
       );
 
-
-  const lows =
+  const support =
     recent
-      .map(x => x.low)
+      .map(
+        function(x){
+          return x.low;
+        }
+      )
       .filter(
-        x => x < current
+        function(x){
+          return x < current;
+        }
       )
       .sort(
-        (a,b) => b-a
+        function(a,b){
+          return b-a;
+        }
       );
-
 
   return {
 
     resistance1:
-      highs[0] ?? null,
+      resistance[0] || null,
 
     resistance2:
-      highs[1] ?? null,
+      resistance[1] || null,
 
     support1:
-      lows[0] ?? null,
+      support[0] || null,
 
     support2:
-      lows[1] ?? null
+      support[1] || null
 
   };
 
@@ -1789,20 +1934,20 @@ function calculateRSI(
     !candles ||
     candles.length <= period
   ){
-    return null;
-  }
 
+    return null;
+
+  }
 
   const closes =
     candles.map(
-      x => x.close
+      function(x){
+        return x.close;
+      }
     );
 
-
   let gains = 0;
-
   let losses = 0;
-
 
   for(
     let i=1;
@@ -1813,7 +1958,6 @@ function calculateRSI(
     const change =
       closes[i] -
       closes[i-1];
-
 
     if(change > 0){
 
@@ -1829,14 +1973,11 @@ function calculateRSI(
 
   }
 
-
   let avgGain =
     gains / period;
 
-
   let avgLoss =
     losses / period;
-
 
   for(
     let i=period+1;
@@ -1848,48 +1989,43 @@ function calculateRSI(
       closes[i] -
       closes[i-1];
 
-
     const gain =
       change > 0
         ? change
         : 0;
-
 
     const loss =
       change < 0
         ? Math.abs(change)
         : 0;
 
-
     avgGain =
       (
-        avgGain *
-        (period-1) +
+        avgGain * (period-1) +
         gain
       ) / period;
 
-
     avgLoss =
       (
-        avgLoss *
-        (period-1) +
+        avgLoss * (period-1) +
         loss
       ) / period;
 
   }
 
-
   if(avgLoss === 0){
-    return 100;
-  }
 
+    return 100;
+
+  }
 
   const rs =
     avgGain / avgLoss;
 
-
-  return 100 -
-    (100 / (1 + rs));
+  return (
+    100 -
+    100 / (1 + rs)
+  );
 
 }
 
@@ -1907,29 +2043,30 @@ function calculateEMA(
     !candles ||
     candles.length < period
   ){
-    return null;
-  }
 
+    return null;
+
+  }
 
   const closes =
     candles.map(
-      x => x.close
+      function(x){
+        return x.close;
+      }
     );
-
 
   let ema =
     closes
       .slice(0,period)
       .reduce(
-        (a,b) => a+b,
+        function(a,b){
+          return a+b;
+        },
         0
       ) / period;
 
-
   const multiplier =
-    2 /
-    (period + 1);
-
+    2 / (period + 1);
 
   for(
     let i=period;
@@ -1945,7 +2082,6 @@ function calculateEMA(
 
   }
 
-
   return ema;
 
 }
@@ -1960,28 +2096,39 @@ function getEMAStructure(){
   const price =
     marketData.price;
 
-
-  const ema =
+  const h1 =
     marketData.h1Ema;
 
+  const m15 =
+    marketData.m15Ema;
 
   if(
     !Number.isFinite(price) ||
-    !Number.isFinite(ema)
+    !Number.isFinite(h1) ||
+    !Number.isFinite(m15)
   ){
+
     return "UNKNOWN";
+
   }
 
+  if(
+    price > h1 &&
+    price > m15
+  ){
 
-  if(price > ema){
     return "BULLISH";
+
   }
 
+  if(
+    price < h1 &&
+    price < m15
+  ){
 
-  if(price < ema){
     return "BEARISH";
-  }
 
+  }
 
   return "MIXED";
 
@@ -1997,50 +2144,42 @@ function getM5MomentumTrigger(){
   const candles =
     marketData.m5;
 
-
   if(
     !candles ||
     candles.length < 3
   ){
+
     return "WAIT";
+
   }
 
-
-  const previous =
+  const a =
     candles[
       candles.length - 2
     ];
 
-
-  const current =
+  const b =
     candles[
       candles.length - 1
     ];
 
-
   if(
-    current.close >
-    current.open &&
-    current.close >
-    previous.high
+    b.close > b.open &&
+    b.close > a.high
   ){
 
     return "BULLISH BREAKOUT";
 
   }
 
-
   if(
-    current.close <
-    current.open &&
-    current.close <
-    previous.low
+    b.close < b.open &&
+    b.close < a.low
   ){
 
     return "BEARISH BREAKDOWN";
 
   }
-
 
   return "WAIT";
 
@@ -2052,77 +2191,96 @@ function getM5MomentumTrigger(){
 ========================================================= */
 
 function calculateSetupScore(
-  direction
+  direction,
+  momentum
 ){
 
   let score = 0;
-
 
   if(
     direction === "BUY" &&
     marketData.h4Structure === "BULLISH"
   ){
-    score += 20;
-  }
 
+    score += 20;
+
+  }
 
   if(
     direction === "SELL" &&
     marketData.h4Structure === "BEARISH"
   ){
-    score += 20;
-  }
 
+    score += 20;
+
+  }
 
   if(
     direction === "BUY" &&
     marketData.h1Structure === "BULLISH"
   ){
-    score += 20;
-  }
 
+    score += 20;
+
+  }
 
   if(
     direction === "SELL" &&
     marketData.h1Structure === "BEARISH"
   ){
+
     score += 20;
+
   }
-
-
-  if(
-    direction === "BUY" &&
-    marketData.m15Structure === "BULLISH"
-  ){
-    score += 20;
-  }
-
-
-  if(
-    direction === "SELL" &&
-    marketData.m15Structure === "BEARISH"
-  ){
-    score += 20;
-  }
-
 
   if(
     direction === "BUY" &&
     marketData.emaStructure === "BULLISH"
   ){
-    score += 20;
-  }
 
+    score += 20;
+
+  }
 
   if(
     direction === "SELL" &&
     marketData.emaStructure === "BEARISH"
   ){
+
     score += 20;
+
   }
 
+  if(
+    direction === "BUY" &&
+    momentum === "BULLISH BREAKOUT"
+  ){
 
-  return score;
+    score += 20;
+
+  }
+
+  if(
+    direction === "SELL" &&
+    momentum === "BEARISH BREAKDOWN"
+  ){
+
+    score += 20;
+
+  }
+
+  if(
+    marketData.news.clear
+  ){
+
+    score += 20;
+
+  }
+
+  return Math.min(
+    score,
+    100
+  );
 
 }
 
@@ -2133,9 +2291,39 @@ function calculateSetupScore(
 
 function runSniperEngine(){
 
-  const direction =
-    getAlignedDirection();
+  const h4 =
+    marketData.h4Structure;
 
+  const h1 =
+    marketData.h1Structure;
+
+  const ema =
+    marketData.emaStructure;
+
+  const price =
+    marketData.price;
+
+  let direction = null;
+
+  if(
+    h4 === "BULLISH" &&
+    h1 === "BULLISH" &&
+    ema === "BULLISH"
+  ){
+
+    direction = "BUY";
+
+  }
+
+  if(
+    h4 === "BEARISH" &&
+    h1 === "BEARISH" &&
+    ema === "BEARISH"
+  ){
+
+    direction = "SELL";
+
+  }
 
   if(!direction){
 
@@ -2152,118 +2340,93 @@ function runSniperEngine(){
 
   }
 
+  const r1 =
+    marketData.levels.resistance1;
 
-  const price =
-    marketData.price;
-
+  const s1 =
+    marketData.levels.support1;
 
   let sl;
-
   let tp1;
-
   let tp2;
-
   let tp3;
-
 
   if(direction === "BUY"){
 
     sl =
-      Number.isFinite(
-        marketData.levels.support1
-      )
-      ? marketData.levels.support1 -
-        ENGINE.buffer
-      : price - 0.001;
-
+      Number.isFinite(s1)
+        ? s1 - ENGINE.buffer
+        : price - 0.00100;
 
     tp1 =
-      Number.isFinite(
-        marketData.levels.resistance1
-      )
-      ? marketData.levels.resistance1
-      : price + 0.0015;
-
+      Number.isFinite(r1)
+        ? r1
+        : price + 0.00150;
 
     const risk =
       price - sl;
 
-
     tp2 =
-      price +
-      risk * 2;
-
+      price + risk * 2;
 
     tp3 =
-      price +
-      risk * 3;
+      price + risk * 3;
 
   }
   else{
 
     sl =
-      Number.isFinite(
-        marketData.levels.resistance1
-      )
-      ? marketData.levels.resistance1 +
-        ENGINE.buffer
-      : price + 0.001;
-
+      Number.isFinite(r1)
+        ? r1 + ENGINE.buffer
+        : price + 0.00100;
 
     tp1 =
-      Number.isFinite(
-        marketData.levels.support1
-      )
-      ? marketData.levels.support1
-      : price - 0.0015;
-
+      Number.isFinite(s1)
+        ? s1
+        : price - 0.00150;
 
     const risk =
       sl - price;
 
-
     tp2 =
-      price -
-      risk * 2;
-
+      price - risk * 2;
 
     tp3 =
-      price -
-      risk * 3;
+      price - risk * 3;
 
   }
 
-
   const risk =
-    Math.abs(
-      price - sl
-    );
+    Math.abs(price - sl);
 
+  const reward =
+    Math.abs(tp2 - price);
 
   const rr =
     risk > 0
-      ? Math.abs(tp2-price)/risk
+      ? reward / risk
       : 0;
 
+  const score =
+    calculateSetupScore(
+      direction,
+      getM5MomentumTrigger()
+    );
 
-  if(
-    rr < ENGINE.minRR
-  ){
+  setText(
+    "setupScore",
+    score + "/100"
+  );
+
+  if(rr < ENGINE.minRR){
 
     showSniperWait(
-      "Risk/reward below 1:2."
+      "Risk/reward below 1:2"
     );
 
     return;
 
   }
-
-
-  const score =
-    calculateSetupScore(
-      direction
-    );
-
 
   setText(
     "sniperStatus",
@@ -2274,7 +2437,6 @@ function runSniperEngine(){
     "sniperStatus",
     "good"
   );
-
 
   setText(
     "direction",
@@ -2308,8 +2470,7 @@ function runSniperEngine(){
 
   setText(
     "riskReward",
-    "1:" +
-    rr.toFixed(2)
+    "1:" + rr.toFixed(2)
   );
 
   setText(
@@ -2327,11 +2488,6 @@ function runSniperEngine(){
   setText(
     "invalidation",
     formatPrice(sl)
-  );
-
-  setText(
-    "setupScore",
-    score + "/100"
   );
 
 }
@@ -2353,34 +2509,23 @@ function showSniperWait(reason){
     "warn"
   );
 
-
-  [
-    "direction",
-    "entry",
-    "stopLoss",
-    "tp1",
-    "tp2",
-    "tp3",
-    "riskReward"
-  ]
-  .forEach(
-    id => setText(id,"--")
-  );
-
+  setText("direction","--");
+  setText("entry","--");
+  setText("stopLoss","--");
+  setText("tp1","--");
+  setText("tp2","--");
+  setText("tp3","--");
+  setText("riskReward","--");
+  setText("validity","--");
 
   setText(
-    "validity",
+    "trigger",
     reason
   );
 
   setText(
-    "trigger",
-    "Wait for complete directional alignment."
-  );
-
-  setText(
     "invalidation",
-    "Any H4/H1/M15 structure disagreement invalidates the setup."
+    "--"
   );
 
 }
@@ -2392,110 +2537,122 @@ function showSniperWait(reason){
 
 function runEliteScalpingEngine(){
 
-  const direction =
-    getScalpDirection();
+  const price =
+    marketData.price;
 
+  const h1 =
+    marketData.h1Structure;
+
+  const m15 =
+    marketData.m15Structure;
+
+  const ema =
+    marketData.emaStructure;
+
+  let direction = null;
+
+  if(
+    h1 === "BULLISH" &&
+    m15 === "BULLISH" &&
+    ema === "BULLISH"
+  ){
+
+    direction = "BUY";
+
+  }
+
+  if(
+    h1 === "BEARISH" &&
+    m15 === "BEARISH" &&
+    ema === "BEARISH"
+  ){
+
+    direction = "SELL";
+
+  }
 
   if(!direction){
 
     showScalpWait(
-      "Higher timeframe alignment missing"
+      "M5/M15/H1 alignment is not confirmed."
     );
 
     return;
 
   }
 
+  const r1 =
+    marketData.levels.resistance1;
 
-  const price =
-    marketData.price;
-
+  const s1 =
+    marketData.levels.support1;
 
   let sl;
-
   let tp1;
-
   let tp2;
-
 
   if(direction === "BUY"){
 
     sl =
-      Number.isFinite(
-        marketData.levels.support1
-      )
-      ? marketData.levels.support1 -
-        ENGINE.buffer
-      : price - 0.0008;
-
+      Number.isFinite(s1)
+        ? s1 - ENGINE.buffer
+        : price - 0.00080;
 
     tp1 =
-      Number.isFinite(
-        marketData.levels.resistance1
-      )
-      ? marketData.levels.resistance1
-      : price + 0.001;
+      Number.isFinite(r1)
+        ? r1
+        : price + 0.00100;
 
+    const risk =
+      price - sl;
 
     tp2 =
-      price +
-      Math.abs(price-sl)*2;
+      price + risk * 2;
 
   }
   else{
 
     sl =
-      Number.isFinite(
-        marketData.levels.resistance1
-      )
-      ? marketData.levels.resistance1 +
-        ENGINE.buffer
-      : price + 0.0008;
-
+      Number.isFinite(r1)
+        ? r1 + ENGINE.buffer
+        : price + 0.00080;
 
     tp1 =
-      Number.isFinite(
-        marketData.levels.support1
-      )
-      ? marketData.levels.support1
-      : price - 0.001;
+      Number.isFinite(s1)
+        ? s1
+        : price - 0.00100;
 
+    const risk =
+      sl - price;
 
     tp2 =
-      price -
-      Math.abs(price-sl)*2;
+      price - risk * 2;
 
   }
 
-
   const risk =
-    Math.abs(price-sl);
-
+    Math.abs(price - sl);
 
   const rr =
     risk > 0
-      ? Math.abs(tp2-price)/risk
+      ? Math.abs(tp2-price) / risk
       : 0;
-
 
   const score =
     calculateSetupScore(
-      direction
+      direction,
+      getM5MomentumTrigger()
     );
 
-
-  if(
-    rr < ENGINE.minRR
-  ){
+  if(rr < ENGINE.minRR){
 
     showScalpWait(
-      "Minimum 1:2 RR not available."
+      "Scalping setup does not meet minimum 1:2 RR."
     );
 
     return;
 
   }
-
 
   setText(
     "scalpVerdict",
@@ -2504,14 +2661,12 @@ function runEliteScalpingEngine(){
       : "WAIT"
   );
 
-
   setClass(
     "scalpVerdict",
     score >= 80
       ? "good"
       : "warn"
   );
-
 
   setText(
     "scalpDirection",
@@ -2540,8 +2695,7 @@ function runEliteScalpingEngine(){
 
   setText(
     "scalpRR",
-    "1:" +
-    rr.toFixed(2)
+    "1:" + rr.toFixed(2)
   );
 
   setText(
@@ -2583,103 +2737,28 @@ function showScalpWait(reason){
     "warn"
   );
 
-
-  [
-    "scalpDirection",
-    "scalpEntry",
-    "scalpSL",
-    "scalpTP1",
-    "scalpTP2",
-    "scalpRR",
-    "scalpScore"
-  ]
-  .forEach(
-    id => setText(id,"--")
-  );
-
+  setText("scalpDirection","--");
+  setText("scalpEntry","--");
+  setText("scalpSL","--");
+  setText("scalpTP1","--");
+  setText("scalpTP2","--");
+  setText("scalpRR","--");
+  setText("scalpScore","--");
 
   setText(
     "scalpValidity",
-    reason
+    "Higher timeframe alignment missing"
   );
 
   setText(
     "scalpTrigger",
-    "Wait."
+    reason
   );
 
   setText(
     "scalpInvalidation",
-    "No valid scalp until directional structure aligns."
+    "--"
   );
-
-}
-
-
-/* =========================================================
-   DIRECTION
-========================================================= */
-
-function getAlignedDirection(){
-
-  if(
-    marketData.h4Structure === "BULLISH" &&
-    marketData.h1Structure === "BULLISH" &&
-    marketData.m15Structure === "BULLISH" &&
-    marketData.emaStructure === "BULLISH"
-  ){
-
-    return "BUY";
-
-  }
-
-
-  if(
-    marketData.h4Structure === "BEARISH" &&
-    marketData.h1Structure === "BEARISH" &&
-    marketData.m15Structure === "BEARISH" &&
-    marketData.emaStructure === "BEARISH"
-  ){
-
-    return "SELL";
-
-  }
-
-
-  return null;
-
-}
-
-
-/* =========================================================
-   SCALP DIRECTION
-========================================================= */
-
-function getScalpDirection(){
-
-  if(
-    marketData.h1Structure === "BULLISH" &&
-    marketData.m15Structure === "BULLISH" &&
-    marketData.m5Structure === "BULLISH"
-  ){
-
-    return "BUY";
-
-  }
-
-
-  if(
-    marketData.h1Structure === "BEARISH" &&
-    marketData.m15Structure === "BEARISH" &&
-    marketData.m5Structure === "BEARISH"
-  ){
-
-    return "SELL";
-
-  }
-
-
-  return null;
 
 }
 
@@ -2690,48 +2769,79 @@ function getScalpDirection(){
 
 function runProAnalysis(){
 
-  const direction =
-    getAlignedDirection();
+  const h4 =
+    marketData.h4Structure;
 
+  const h1 =
+    marketData.h1Structure;
 
-  if(direction){
+  const m15 =
+    marketData.m15Structure;
 
-    setText(
-      "proVerdict",
-      direction === "BUY"
-        ? "BULLISH ALIGNMENT"
-        : "BEARISH ALIGNMENT"
-    );
+  const ema =
+    marketData.emaStructure;
 
-    setClass(
-      "proVerdict",
-      "good"
-    );
+  let verdict =
+    "WAIT";
 
-    setText(
-      "proExplanation",
-      "H4, H1 and M15 structure are aligned with EMA direction."
-    );
+  let explanation =
+    "Timeframes are not sufficiently aligned for an A+ setup.";
 
-  }
-  else{
+  if(
+    h4 === "BULLISH" &&
+    h1 === "BULLISH" &&
+    m15 === "BULLISH" &&
+    ema === "BULLISH"
+  ){
 
-    setText(
-      "proVerdict",
-      "WAIT"
-    );
+    verdict =
+      "BULLISH ALIGNMENT";
 
-    setClass(
-      "proVerdict",
-      "warn"
-    );
-
-    setText(
-      "proExplanation",
-      "Higher-timeframe structure is not fully aligned. H4, H1, M15 and EMA should agree before an A+ execution."
-    );
+    explanation =
+      "H4, H1, M15 and EMA structure are bullish.";
 
   }
+
+  if(
+    h4 === "BEARISH" &&
+    h1 === "BEARISH" &&
+    m15 === "BEARISH" &&
+    ema === "BEARISH"
+  ){
+
+    verdict =
+      "BEARISH ALIGNMENT";
+
+    explanation =
+      "H4, H1, M15 and EMA structure are bearish.";
+
+  }
+
+  if(Number.isFinite(marketData.h1Rsi)){
+
+    explanation +=
+      " H1 RSI: " +
+      marketData.h1Rsi.toFixed(1) +
+      ".";
+
+  }
+
+  setText(
+    "proVerdict",
+    verdict
+  );
+
+  setClass(
+    "proVerdict",
+    verdict === "WAIT"
+      ? "warn"
+      : "good"
+  );
+
+  setText(
+    "proExplanation",
+    explanation
+  );
 
 }
 
@@ -2745,34 +2855,30 @@ function runEliteTradeGate(){
   const session =
     getTradingSession();
 
-
   setText(
     "tradeGateSession",
     session
   );
 
+  const price =
+    marketData.price;
 
-  if(
-    !Number.isFinite(
-      marketData.price
-    )
-  ){
+  if(!Number.isFinite(price)){
 
     setTradeGateWait(
-      "Waiting for market data..."
+      "Market price is unavailable."
     );
 
     return;
 
   }
 
-
   if(
     marketData.news.risk === "HIGH"
   ){
 
     setTradeGateWait(
-      "High-impact EUR/USD news risk detected."
+      "High-impact EUR/USD news is within the danger window."
     );
 
     setText(
@@ -2783,7 +2889,6 @@ function runEliteTradeGate(){
     return;
 
   }
-
 
   if(
     marketData.news.risk === "UNKNOWN"
@@ -2802,13 +2907,12 @@ function runEliteTradeGate(){
 
   }
 
-
   if(
     session === "OFF SESSION"
   ){
 
     setTradeGateWait(
-      "Outside active London/New York session."
+      "Outside London/New York session."
     );
 
     setText(
@@ -2820,10 +2924,41 @@ function runEliteTradeGate(){
 
   }
 
+  const h4 =
+    marketData.h4Structure;
 
-  const direction =
-    getAlignedDirection();
+  const h1 =
+    marketData.h1Structure;
 
+  const m15 =
+    marketData.m15Structure;
+
+  const ema =
+    marketData.emaStructure;
+
+  let direction = null;
+
+  if(
+    h4 === "BULLISH" &&
+    h1 === "BULLISH" &&
+    m15 === "BULLISH" &&
+    ema === "BULLISH"
+  ){
+
+    direction = "BUY";
+
+  }
+
+  if(
+    h4 === "BEARISH" &&
+    h1 === "BEARISH" &&
+    m15 === "BEARISH" &&
+    ema === "BEARISH"
+  ){
+
+    direction = "SELL";
+
+  }
 
   if(!direction){
 
@@ -2831,118 +2966,82 @@ function runEliteTradeGate(){
       "H4 / H1 / M15 / EMA alignment missing."
     );
 
-    return;
-
-  }
-
-
-  const momentum =
-    getM5MomentumTrigger();
-
-
-  if(
-    direction === "BUY" &&
-    momentum !== "BULLISH BREAKOUT"
-  ){
-
-    setTradeGateWait(
-      "BUY setup requires completed bullish M5 confirmation."
+    setText(
+      "tradeGateRisk",
+      "WAIT"
     );
 
     return;
 
   }
 
+  const r1 =
+    marketData.levels.resistance1;
 
-  if(
-    direction === "SELL" &&
-    momentum !== "BEARISH BREAKDOWN"
-  ){
-
-    setTradeGateWait(
-      "SELL setup requires completed bearish M5 confirmation."
-    );
-
-    return;
-
-  }
-
-
-  const price =
-    marketData.price;
-
+  const s1 =
+    marketData.levels.support1;
 
   let sl;
-
   let tp1;
-
   let tp2;
-
 
   if(direction === "BUY"){
 
     sl =
-      Number.isFinite(
-        marketData.levels.support1
-      )
-      ? marketData.levels.support1 -
-        ENGINE.buffer
-      : price - 0.001;
-
+      Number.isFinite(s1)
+        ? s1 - ENGINE.buffer
+        : price - 0.00100;
 
     tp1 =
-      Number.isFinite(
-        marketData.levels.resistance1
-      )
-      ? marketData.levels.resistance1
-      : price + 0.0015;
+      Number.isFinite(r1)
+        ? r1
+        : price + 0.00150;
 
+    const risk =
+      price - sl;
 
     tp2 =
-      price +
-      Math.abs(price-sl)*2;
+      price + risk * 2;
 
   }
   else{
 
     sl =
-      Number.isFinite(
-        marketData.levels.resistance1
-      )
-      ? marketData.levels.resistance1 +
-        ENGINE.buffer
-      : price + 0.001;
-
+      Number.isFinite(r1)
+        ? r1 + ENGINE.buffer
+        : price + 0.00100;
 
     tp1 =
-      Number.isFinite(
-        marketData.levels.support1
-      )
-      ? marketData.levels.support1
-      : price - 0.0015;
+      Number.isFinite(s1)
+        ? s1
+        : price - 0.00150;
 
+    const risk =
+      sl - price;
 
     tp2 =
-      price -
-      Math.abs(price-sl)*2;
+      price - risk * 2;
 
   }
 
-
   const risk =
     Math.abs(price-sl);
-
 
   const rr =
     risk > 0
       ? Math.abs(tp2-price)/risk
       : 0;
 
+  const score =
+    calculateSetupScore(
+      direction,
+      getM5MomentumTrigger()
+    );
 
-  if(rr < 2){
+  if(rr < ENGINE.minRR){
 
     setTradeGateWait(
-      "Risk/reward is below the required 1:2."
+      "Risk/reward is below 1:2."
     );
 
     setText(
@@ -2954,6 +3053,49 @@ function runEliteTradeGate(){
 
   }
 
+  if(score < 80){
+
+    setTradeGateWait(
+      "Setup score is below A+ threshold."
+    );
+
+    setText(
+      "tradeGateRisk",
+      "SETUP < 80"
+    );
+
+    return;
+
+  }
+
+  const momentum =
+    getM5MomentumTrigger();
+
+  if(
+    direction === "BUY" &&
+    momentum !== "BULLISH BREAKOUT"
+  ){
+
+    setTradeGateWait(
+      "BUY setup needs bullish M5 confirmation."
+    );
+
+    return;
+
+  }
+
+  if(
+    direction === "SELL" &&
+    momentum !== "BEARISH BREAKDOWN"
+  ){
+
+    setTradeGateWait(
+      "SELL setup needs bearish M5 confirmation."
+    );
+
+    return;
+
+  }
 
   showTradeGateDecision(
     direction,
@@ -2991,21 +3133,15 @@ function setTradeGateWait(reason){
 
   setText(
     "tradeGateAction",
-    "Do NOT execute. Wait for all required conditions to align."
+    "NO TRADE — wait for all filters to align."
   );
 
-
-  [
-    "tradeGateDirection",
-    "tradeGateEntry",
-    "tradeGateSL",
-    "tradeGateTP1",
-    "tradeGateTP2",
-    "tradeGateRR"
-  ]
-  .forEach(
-    id => setText(id,"--")
-  );
+  setText("tradeGateDirection","--");
+  setText("tradeGateEntry","--");
+  setText("tradeGateSL","--");
+  setText("tradeGateTP1","--");
+  setText("tradeGateTP2","--");
+  setText("tradeGateRR","--");
 
 }
 
@@ -3034,18 +3170,15 @@ function showTradeGateDecision(
     "good"
   );
 
-
   setText(
     "tradeGateReason",
-    "All primary structure, momentum, session, news and RR conditions are aligned."
+    "All primary filters are aligned."
   );
-
 
   setText(
     "tradeGateAction",
-    "Execute only after the completed M5 confirmation candle."
+    "Wait for the stated M5 confirmation before execution."
   );
-
 
   setText(
     "tradeGateSession",
@@ -3079,8 +3212,7 @@ function showTradeGateDecision(
 
   setText(
     "tradeGateRR",
-    "1:" +
-    rr.toFixed(2)
+    "1:" + rr.toFixed(2)
   );
 
   setText(
@@ -3092,14 +3224,18 @@ function showTradeGateDecision(
 
 
 /* =========================================================
-   ERROR
+   TRADE GATE ERROR
 ========================================================= */
 
-function setTradeGateError(message){
+function showTradeGateError(
+  verdict,
+  reason,
+  detail
+){
 
   setText(
     "tradeGateVerdict",
-    "STAY AWAY"
+    verdict
   );
 
   setClass(
@@ -3109,18 +3245,22 @@ function setTradeGateError(message){
 
   setText(
     "tradeGateReason",
-    "Market data could not be loaded."
+    reason
   );
 
   setText(
     "tradeGateAction",
-    message
+    detail ||
+    "Check market-data connection."
   );
 
-  setText(
-    "tradeGateRisk",
-    "DATA ERROR"
-  );
+  setText("tradeGateDirection","--");
+  setText("tradeGateEntry","--");
+  setText("tradeGateSL","--");
+  setText("tradeGateTP1","--");
+  setText("tradeGateTP2","--");
+  setText("tradeGateRR","--");
+  setText("tradeGateRisk","DATA ERROR");
 
 }
 
@@ -3134,309 +3274,72 @@ function getTradingSession(){
   const now =
     new Date();
 
+  const london =
+    new Intl.DateTimeFormat(
+      "en-GB",
+      {
+        timeZone:"Europe/London",
+        hour:"2-digit",
+        minute:"2-digit",
+        hour12:false
+      }
+    ).formatToParts(now);
+
+  const newYork =
+    new Intl.DateTimeFormat(
+      "en-GB",
+      {
+        timeZone:"America/New_York",
+        hour:"2-digit",
+        minute:"2-digit",
+        hour12:false
+      }
+    ).formatToParts(now);
 
   const londonHour =
     Number(
-      new Intl.DateTimeFormat(
-        "en-GB",
-        {
-          timeZone:"Europe/London",
-          hour:"2-digit",
-          hour12:false
-        }
-      ).format(now)
+      london.find(
+        x => x.type === "hour"
+      ).value
     );
-
 
   const nyHour =
     Number(
-      new Intl.DateTimeFormat(
-        "en-GB",
-        {
-          timeZone:"America/New_York",
-          hour:"2-digit",
-          hour12:false
-        }
-      ).format(now)
+      newYork.find(
+        x => x.type === "hour"
+      ).value
     );
 
-
-  const london =
+  const londonActive =
     londonHour >= 8 &&
     londonHour < 17;
 
-
-  const newYork =
+  const nyActive =
     nyHour >= 8 &&
     nyHour < 17;
 
-
-  if(london && newYork){
-    return "LONDON / NEW YORK OVERLAP";
-  }
-
-
-  if(london){
-    return "LONDON";
-  }
-
-
-  if(newYork){
-    return "NEW YORK";
-  }
-
-
-  return "OFF SESSION";
-
-}
-
-
-/* =========================================================
-   NEWS
-========================================================= */
-
-async function getNews(){
-
-  try{
-
-    const response =
-      await fetch(
-        NEWS_URL,
-        {
-          cache:"no-store"
-        }
-      );
-
-
-    if(!response.ok){
-
-      throw new Error(
-        "News HTTP " +
-        response.status
-      );
-
-    }
-
-
-    const raw =
-      await response.json();
-
-
-    let events = [];
-
-
-    if(Array.isArray(raw)){
-      events = raw;
-    }
-    else if(
-      Array.isArray(raw.events)
-    ){
-      events = raw.events;
-    }
-    else if(
-      Array.isArray(raw.data)
-    ){
-      events = raw.data;
-    }
-
-
-    const now =
-      new Date();
-
-
-    const relevant =
-      events
-        .map(
-          function(event){
-
-            return {
-
-              raw:event,
-
-              time:
-                parseEventTime(event)
-
-            };
-
-          }
-        )
-        .filter(
-          item => {
-
-            if(!item.time){
-              return false;
-            }
-
-
-            const diff =
-              (
-                item.time -
-                now
-              ) / 60000;
-
-
-            return (
-              diff >= 0 &&
-              diff <=
-              ENGINE.maxNewsMinutes
-            );
-
-          }
-        )
-        .filter(
-          item => {
-
-            const text =
-              JSON.stringify(
-                item.raw
-              ).toLowerCase();
-
-
-            return (
-              text.includes("eur") ||
-              text.includes("euro") ||
-              text.includes("usd") ||
-              text.includes("dollar") ||
-              text.includes("united states")
-            );
-
-          }
-        );
-
-
-    relevant.sort(
-      (a,b) =>
-        a.time - b.time
-    );
-
-
-    const eur =
-      relevant.filter(
-        item =>
-          JSON.stringify(
-            item.raw
-          )
-          .toLowerCase()
-          .includes("eur")
-      );
-
-
-    const usd =
-      relevant.filter(
-        item =>
-          JSON.stringify(
-            item.raw
-          )
-          .toLowerCase()
-          .includes("usd")
-      );
-
-
-    return {
-
-      risk:
-        relevant.length
-          ? "HIGH"
-          : "LOW",
-
-      clear:
-        relevant.length === 0,
-
-      eur:eur,
-
-      usd:usd,
-
-      events:relevant,
-
-      nextEvent:
-        relevant[0] || null
-
-    };
-
-  }
-  catch(error){
-
-    console.warn(
-      "News error:",
-      error
-    );
-
-
-    return {
-
-      risk:"UNKNOWN",
-
-      clear:false,
-
-      eur:[],
-
-      usd:[],
-
-      events:[],
-
-      nextEvent:null
-
-    };
-
-  }
-
-}
-
-
-/* =========================================================
-   NEWS TIME
-========================================================= */
-
-function parseEventTime(event){
-
-  const fields = [
-
-    event.datetime,
-
-    event.date,
-
-    event.time,
-
-    event.timestamp,
-
-    event.datetime_utc,
-
-    event.dateTime,
-
-    event.release_time,
-
-    event.event_time
-
-  ];
-
-
-  for(
-    const value of fields
+  if(
+    londonActive &&
+    nyActive
   ){
 
-    if(!value){
-      continue;
-    }
-
-
-    const date =
-      new Date(value);
-
-
-    if(
-      !isNaN(
-        date.getTime()
-      )
-    ){
-
-      return date;
-
-    }
+    return "LONDON / NEW YORK OVERLAP";
 
   }
 
+  if(londonActive){
 
-  return null;
+    return "LONDON";
+
+  }
+
+  if(nyActive){
+
+    return "NEW YORK";
+
+  }
+
+  return "OFF SESSION";
 
 }
 
@@ -3453,7 +3356,6 @@ function updateDashboard(){
       marketData.price
     )
   );
-
 
   setText(
     "h4Trend",
@@ -3475,7 +3377,6 @@ function updateDashboard(){
     marketData.m5Structure
   );
 
-
   setText(
     "quickH4Trend",
     marketData.h4Structure
@@ -3491,12 +3392,10 @@ function updateDashboard(){
     marketData.emaStructure
   );
 
-
   setText(
     "emaStructure",
     marketData.emaStructure
   );
-
 
   setText(
     "resistance1",
@@ -3525,7 +3424,6 @@ function updateDashboard(){
       marketData.levels.support2
     )
   );
-
 
   setText(
     "h4Rsi",
@@ -3559,6 +3457,272 @@ function updateDashboard(){
 
 
 /* =========================================================
+   NEWS
+========================================================= */
+
+async function getNews(){
+
+  try{
+
+    const response =
+      await fetch(
+        NEWS_URL,
+        {
+          cache:"no-store"
+        }
+      );
+
+    if(!response.ok){
+
+      throw new Error(
+        "News HTTP " +
+        response.status
+      );
+
+    }
+
+    const raw =
+      await response.json();
+
+    let events = [];
+
+    if(Array.isArray(raw)){
+
+      events = raw;
+
+    }
+    else if(
+      Array.isArray(raw.events)
+    ){
+
+      events = raw.events;
+
+    }
+    else if(
+      Array.isArray(raw.data)
+    ){
+
+      events = raw.data;
+
+    }
+    else if(
+      raw.data &&
+      Array.isArray(raw.data.events)
+    ){
+
+      events =
+        raw.data.events;
+
+    }
+
+    const now =
+      new Date();
+
+    const relevant =
+      events
+        .map(
+          function(event){
+
+            return {
+
+              raw:event,
+
+              time:
+                parseEventTime(event)
+
+            };
+
+          }
+        )
+        .filter(
+          function(item){
+
+            if(!item.time){
+              return false;
+            }
+
+            const diff =
+              (
+                item.time.getTime() -
+                now.getTime()
+              ) / 60000;
+
+            return (
+              diff >= 0 &&
+              diff <=
+                ENGINE.maxNewsMinutes
+            );
+
+          }
+        )
+        .filter(
+          function(item){
+
+            const text =
+              JSON.stringify(
+                item.raw
+              ).toLowerCase();
+
+            return (
+
+              text.includes("eur") ||
+              text.includes("euro") ||
+              text.includes("usd") ||
+              text.includes("dollar") ||
+              text.includes("united states")
+
+            );
+
+          }
+        );
+
+    relevant.sort(
+      function(a,b){
+
+        return a.time - b.time;
+
+      }
+    );
+
+    const eur =
+      relevant.filter(
+        function(item){
+
+          const text =
+            JSON.stringify(
+              item.raw
+            ).toLowerCase();
+
+          return (
+            text.includes("eur") ||
+            text.includes("euro")
+          );
+
+        }
+      );
+
+    const usd =
+      relevant.filter(
+        function(item){
+
+          const text =
+            JSON.stringify(
+              item.raw
+            ).toLowerCase();
+
+          return (
+            text.includes("usd") ||
+            text.includes("dollar") ||
+            text.includes("united states")
+          );
+
+        }
+      );
+
+    return {
+
+      risk:
+        relevant.length
+          ? "HIGH"
+          : "LOW",
+
+      clear:
+        relevant.length === 0,
+
+      events:relevant,
+
+      eur:eur,
+
+      usd:usd,
+
+      nextEvent:
+        relevant.length
+          ? relevant[0]
+          : null
+
+    };
+
+  }
+  catch(error){
+
+    console.warn(
+      "News unavailable:",
+      error
+    );
+
+    return {
+
+      risk:"UNKNOWN",
+
+      clear:false,
+
+      events:[],
+
+      eur:[],
+
+      usd:[],
+
+      nextEvent:null
+
+    };
+
+  }
+
+}
+
+
+/* =========================================================
+   EVENT TIME
+========================================================= */
+
+function parseEventTime(event){
+
+  const possible = [
+
+    event.datetime,
+    event.date,
+    event.time,
+    event.timestamp,
+    event.datetime_utc,
+    event.dateTime,
+    event.release_time,
+    event.event_time
+
+  ];
+
+  for(
+    let i=0;
+    i<possible.length;
+    i++
+  ){
+
+    if(!possible[i]){
+      continue;
+    }
+
+    const date =
+      new Date(
+        possible[i]
+      );
+
+    if(
+      !isNaN(
+        date.getTime()
+      )
+    ){
+
+      return date;
+
+    }
+
+  }
+
+  return null;
+
+}
+
+
+/* =========================================================
    NEWS DASHBOARD
 ========================================================= */
 
@@ -3567,11 +3731,9 @@ function updateNewsDashboard(){
   const news =
     marketData.news;
 
-
   if(!news){
     return;
   }
-
 
   setText(
     "eurNews",
@@ -3579,9 +3741,8 @@ function updateNewsDashboard(){
       ? news.eur
           .map(formatNewsEvent)
           .join(" | ")
-      : "No relevant EUR events found."
+      : "No high-impact EUR event detected"
   );
-
 
   setText(
     "usdNews",
@@ -3589,9 +3750,8 @@ function updateNewsDashboard(){
       ? news.usd
           .map(formatNewsEvent)
           .join(" | ")
-      : "No relevant USD events found."
+      : "No high-impact USD event detected"
   );
-
 
   setText(
     "newsFilter",
@@ -3602,7 +3762,6 @@ function updateNewsDashboard(){
         : "UNKNOWN"
   );
 
-
   setClass(
     "newsFilter",
     news.clear
@@ -3612,16 +3771,14 @@ function updateNewsDashboard(){
         : "warn"
   );
 
-
   setText(
     "nextEvent",
     news.nextEvent
       ? formatNewsEvent(
           news.nextEvent
         )
-      : "No high-impact event detected"
+      : "No upcoming high-impact event found"
   );
-
 
   setText(
     "tradingRisk",
@@ -3641,10 +3798,8 @@ function formatNewsEvent(item){
     return "--";
   }
 
-
   const event =
     item.raw || item;
-
 
   const name =
     event.title ||
@@ -3653,12 +3808,10 @@ function formatNewsEvent(item){
     event.description ||
     "High-impact event";
 
-
   const currency =
     event.currency ||
     event.country ||
     "";
-
 
   const time =
     item.time
@@ -3670,7 +3823,6 @@ function formatNewsEvent(item){
           }
         )
       : "";
-
 
   return (
     currency +
@@ -3687,7 +3839,7 @@ function formatNewsEvent(item){
 
 
 /* =========================================================
-   CHECKLIST
+   EXECUTION CHECKLIST
 ========================================================= */
 
 function updateChecklist(){
@@ -3695,10 +3847,12 @@ function updateChecklist(){
   const session =
     getTradingSession();
 
+  const activeSession =
+    session !== "OFF SESSION";
 
   setCheck(
     "checkSession",
-    session !== "OFF SESSION",
+    activeSession,
     "Active London / New York session"
   );
 
@@ -3710,7 +3864,7 @@ function updateChecklist(){
   );
 
 
-  const htf =
+  const htfAligned =
     (
       marketData.h4Structure ===
       marketData.h1Structure
@@ -3722,50 +3876,63 @@ function updateChecklist(){
       "BEARISH"
     );
 
-
   setCheck(
-    "checkHtf",
-    htf,
+    "checkHTF",
+    htfAligned,
     "H4 + H1 directional alignment"
   );
 
 
+  const m15Aligned =
+    (
+      marketData.m15Structure ===
+      marketData.h1Structure
+    ) &&
+    (
+      marketData.m15Structure ===
+      "BULLISH" ||
+      marketData.m15Structure ===
+      "BEARISH"
+    );
+
   setCheck(
     "checkM15",
-    marketData.m15Structure ===
-      marketData.h1Structure &&
-      (
-        marketData.m15Structure ===
-        "BULLISH" ||
-        marketData.m15Structure ===
-        "BEARISH"
-      ),
+    m15Aligned,
     "M15 confirmation"
   );
 
 
-  const m5Direction =
-    getM5MomentumTrigger();
-
+  const m5Aligned =
+    (
+      marketData.m5Structure ===
+      marketData.m15Structure
+    ) &&
+    (
+      marketData.m5Structure ===
+      "BULLISH" ||
+      marketData.m5Structure ===
+      "BEARISH"
+    );
 
   setCheck(
     "checkM5",
-    (
-      m5Direction ===
-      "BULLISH BREAKOUT" ||
-      m5Direction ===
-      "BEARISH BREAKDOWN"
-    ),
+    m5Aligned,
     "M5 confirmation"
   );
 
 
   setCheck(
     "checkEMA",
-    marketData.emaStructure !==
-      "MIXED" &&
-    marketData.emaStructure !==
-      "UNKNOWN",
+    (
+      marketData.emaStructure ===
+      marketData.h1Structure
+    ) &&
+    (
+      marketData.emaStructure ===
+      "BULLISH" ||
+      marketData.emaStructure ===
+      "BEARISH"
+    ),
     "M5 EMA20 / EMA50 alignment"
   );
 
@@ -3773,25 +3940,50 @@ function updateChecklist(){
   const rsi =
     marketData.m5Rsi;
 
-
-  const rsiConfirm =
+  const rsiOK =
     Number.isFinite(rsi) &&
     (
-      rsi >= 50 ||
-      rsi <= 50
+      (
+        marketData.h1Structure ===
+        "BULLISH" &&
+        rsi >= 50
+      )
+      ||
+      (
+        marketData.h1Structure ===
+        "BEARISH" &&
+        rsi <= 50
+      )
     );
-
 
   setCheck(
     "checkRSI",
-    rsiConfirm,
+    rsiOK,
     "M5 RSI confirmation"
   );
 
 
+  const momentum =
+    getM5MomentumTrigger();
+
+  const momentumOK =
+    (
+      marketData.h1Structure ===
+      "BULLISH" &&
+      momentum ===
+      "BULLISH BREAKOUT"
+    )
+    ||
+    (
+      marketData.h1Structure ===
+      "BEARISH" &&
+      momentum ===
+      "BEARISH BREAKDOWN"
+    );
+
   setCheck(
     "checkMomentum",
-    m5Direction !== "WAIT",
+    momentumOK,
     "Completed M5 momentum candle"
   );
 
@@ -3803,217 +3995,106 @@ function updateChecklist(){
   );
 
 
-  const levelRisk =
-    calculateStructuralRisk();
+  const entry =
+    marketData.price;
 
+  const sl =
+    marketData.h1Structure ===
+    "BULLISH"
+      ? marketData.levels.support1
+      : marketData.levels.resistance1;
+
+  const structuralPips =
+    Number.isFinite(sl)
+      ? Math.abs(
+          entry - sl
+        ) * 10000
+      : null;
+
+  const riskOK =
+    Number.isFinite(
+      structuralPips
+    ) &&
+    structuralPips >= 3 &&
+    structuralPips <= 15;
 
   setCheck(
     "checkRisk",
-    levelRisk >= 3 &&
-    levelRisk <= 15,
+    riskOK,
     "3–15 pip structural risk"
   );
 
 
+  const rrOK =
+    (
+      htfAligned &&
+      m15Aligned &&
+      Number.isFinite(entry)
+    );
+
   setCheck(
     "checkRR",
-    true,
+    rrOK,
     "Minimum 1:2 Risk / Reward"
   );
 
 
+  const tpOK =
+    Number.isFinite(
+      marketData.levels.resistance1
+    ) ||
+    Number.isFinite(
+      marketData.levels.support1
+    );
+
   setCheck(
-    "checkSR",
-    true,
+    "checkTP",
+    tpOK,
     "Higher-timeframe S/R does not block TP2"
   );
 
 }
 
 
-/* =========================================================
-   STRUCTURAL RISK
-========================================================= */
+function setCheck(
+  id,
+  passed,
+  text
+){
 
-function calculateStructuralRisk(){
+  const element =
+    document.getElementById(id);
 
-  if(
-    !Number.isFinite(
-      marketData.price
-    )
-  ){
-    return 0;
+  if(!element){
+    return;
   }
 
+  element.classList.remove(
+    "check-good",
+    "check-bad",
+    "check-wait"
+  );
 
-  let level;
+  if(passed){
 
+    element.classList.add(
+      "check-good"
+    );
 
-  if(
-    marketData.h1Structure ===
-    "BULLISH"
-  ){
-
-    level =
-      marketData.levels.support1;
-
-  }
-  else if(
-    marketData.h1Structure ===
-    "BEARISH"
-  ){
-
-    level =
-      marketData.levels.resistance1;
+    element.textContent =
+      "✓ " + text;
 
   }
   else{
 
-    return 0;
+    element.classList.add(
+      "check-bad"
+    );
+
+    element.textContent =
+      "✕ " + text;
 
   }
-
-
-  if(
-    !Number.isFinite(level)
-  ){
-    return 0;
-  }
-
-
-  return Math.abs(
-    marketData.price - level
-  ) * 10000;
-
-}
-
-
-/* =========================================================
-   CHECK HELPER
-========================================================= */
-
-function setCheck(
-  id,
-  passed,
-  label
-){
-
-  const el =
-    document.getElementById(id);
-
-
-  if(!el){
-    return;
-  }
-
-
-  el.classList.remove(
-    "ok",
-    "fail",
-    "wait"
-  );
-
-
-  el.classList.add(
-    passed
-      ? "ok"
-      : "fail"
-  );
-
-
-  el.textContent =
-    passed
-      ? "✓ " + label
-      : "✗ " + label;
-
-}
-
-
-/* =========================================================
-   CLEAR DATA
-========================================================= */
-
-function clearMarketData(){
-
-  marketData.price = null;
-
-  marketData.h4 = [];
-  marketData.h1 = [];
-  marketData.m15 = [];
-  marketData.m5 = [];
-
-  marketData.h4Structure = null;
-  marketData.h1Structure = null;
-  marketData.m15Structure = null;
-  marketData.m5Structure = null;
-
-  marketData.h4Rsi = null;
-  marketData.h1Rsi = null;
-  marketData.m15Rsi = null;
-  marketData.m5Rsi = null;
-
-  marketData.h4Ema = null;
-  marketData.h1Ema = null;
-  marketData.m15Ema = null;
-  marketData.m5Ema = null;
-
-  marketData.emaStructure = null;
-
-
-  const ids = [
-
-    "price",
-
-    "h4Trend",
-    "h1Trend",
-    "m15Structure",
-    "m5Structure",
-
-    "quickH4Trend",
-    "quickH1Trend",
-    "quickEmaStructure",
-    "setupScore",
-
-    "resistance1",
-    "resistance2",
-    "support1",
-    "support2",
-
-    "h4Rsi",
-    "h1Rsi",
-    "m15Rsi",
-    "m5Rsi",
-
-    "emaStructure"
-
-  ];
-
-
-  ids.forEach(
-    id => setText(id,"--")
-  );
-
-
-  showSniperWait(
-    "Waiting for market data."
-  );
-
-
-  showScalpWait(
-    "Waiting for market data."
-  );
-
-
-  setText(
-    "proVerdict",
-    "WAIT"
-  );
-
-
-  setText(
-    "proExplanation",
-    "Waiting for complete market data..."
-  );
 
 }
 
@@ -4027,19 +4108,18 @@ function setText(
   value
 ){
 
-  const el =
+  const element =
     document.getElementById(id);
 
-
-  if(el){
-
-    el.textContent =
-      value === null ||
-      value === undefined
-        ? "--"
-        : value;
-
+  if(!element){
+    return;
   }
+
+  element.textContent =
+    value === undefined ||
+    value === null
+      ? "--"
+      : value;
 
 }
 
@@ -4049,24 +4129,21 @@ function setClass(
   className
 ){
 
-  const el =
+  const element =
     document.getElementById(id);
 
-
-  if(!el){
+  if(!element){
     return;
   }
 
-
-  el.classList.remove(
+  element.classList.remove(
     "good",
     "bad",
     "warn",
     "neutral"
   );
 
-
-  el.classList.add(
+  element.classList.add(
     className
   );
 
@@ -4080,9 +4157,10 @@ function formatPrice(value){
       Number(value)
     )
   ){
-    return "--";
-  }
 
+    return "--";
+
+  }
 
   return Number(value)
     .toFixed(5);
@@ -4097,9 +4175,10 @@ function formatNumber(value){
       Number(value)
     )
   ){
-    return "--";
-  }
 
+    return "--";
+
+  }
 
   return Number(value)
     .toFixed(1);
@@ -4109,4 +4188,5 @@ function formatNumber(value){
 </script>
 
 </body>
+
 </html>
