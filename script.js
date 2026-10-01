@@ -5,288 +5,137 @@
    ========================================================= */
 
 const API_KEY = "4ba3968e609544bf8990192fdf3ed970";
-
 const SYMBOL = "EUR/USD";
-const TIME_SERIES_URL =
-    "https://api.twelvedata.com/time_series";
+
+/* =========================================================
+   TWELVE DATA SETTINGS
+   ========================================================= */
+
+const REFRESH_INTERVAL = 300000; // 5 minutes
+
+const DATA_TTL = {
+    h4: 30 * 60 * 1000,
+    h1: 15 * 60 * 1000,
+    m15: 10 * 60 * 1000,
+    m5: 5 * 60 * 1000
+};
+
+/* =========================================================
+   NEWS SETTINGS
+   ========================================================= */
 
 /*
-   =========================================================
-   NEWS CONFIGURATION
-   =========================================================
-
    IMPORTANT:
-   Do NOT put a private economic-calendar API key here.
 
-   NEWS_API_URL should eventually point to your own
-   secure backend/proxy.
+   Leave this empty until you have a real economic-calendar
+   endpoint.
 
    Example:
-
    const NEWS_API_URL =
-       "https://YOUR-BACKEND-URL/api/news";
+       "https://your-server.example.com/economic-calendar";
 
-   The backend should return EUR/USD calendar events.
-
-   Until that is configured, the dashboard will safely
-   report NEWS UNAVAILABLE rather than invent news.
+   DO NOT put a private calendar API key directly into
+   GitHub Pages JavaScript.
 */
 
 const NEWS_API_URL = "";
 
-const NEWS_REFRESH_INTERVAL =
-    15 * 60 * 1000;
+const NEWS_REFRESH_INTERVAL = 15 * 60 * 1000;
 
-/*
-   High-impact news protection window.
+// Do not trade this many minutes before a high-impact event.
+const NEWS_BLOCK_BEFORE_MINUTES = 30;
 
-   Before event:
-       30 minutes
-
-   After event:
-       15 minutes
-*/
-
-const NEWS_BEFORE_MINUTES = 30;
-const NEWS_AFTER_MINUTES = 15;
+// Do not trade this many minutes after a high-impact event.
+const NEWS_BLOCK_AFTER_MINUTES = 15;
 
 
 /* =========================================================
-   DASHBOARD REFRESH
+   GLOBAL STATE
    ========================================================= */
-
-const REFRESH_INTERVAL =
-    300000;
-
-
-/* =========================================================
-   DATA CACHE
-   ========================================================= */
-
-const DATA_TTL = {
-
-    h4:
-        30 * 60 * 1000,
-
-    h1:
-        15 * 60 * 1000,
-
-    m15:
-        10 * 60 * 1000,
-
-    m5:
-        5 * 60 * 1000
-};
-
-
-let marketDataLoading =
-    false;
-
 
 let marketData = {
-
     h4: null,
-
     h1: null,
-
     m15: null,
-
     m5: null
 };
 
-
 let marketDataUpdated = {
-
     h4: 0,
-
     h1: 0,
-
     m15: 0,
-
     m5: 0
 };
 
-
-/* =========================================================
-   NEWS STATE
-   ========================================================= */
+let marketDataLoading = false;
 
 let newsData = {
-
     available: false,
-
     events: [],
-
     lastUpdated: 0,
-
     error: null
 };
-
-
-let newsLoading =
-    false;
-
-
-/* =========================================================
-   SNIPER SETUP CLOCK
-   ========================================================= */
-
-let sniperSetupTime =
-    null;
-
-
-let sniperSetupActive =
-    false;
-
-
-function getISTTime() {
-
-    return new Date().toLocaleTimeString(
-        "en-IN",
-        {
-            timeZone:
-                "Asia/Kolkata",
-
-            hour:
-                "2-digit",
-
-            minute:
-                "2-digit",
-
-            second:
-                "2-digit",
-
-            hour12:
-                true
-        }
-    ) + " IST";
-}
-
-
-function startSniperSetup() {
-
-    if (!sniperSetupActive) {
-
-        sniperSetupTime =
-            getISTTime();
-
-        sniperSetupActive =
-            true;
-    }
-
-
-    setText(
-        "setupTime",
-        sniperSetupTime
-    );
-}
-
-
-function invalidateSniperSetup() {
-
-    sniperSetupActive =
-        false;
-
-    sniperSetupTime =
-        null;
-
-
-    setText(
-        "setupTime",
-        "--"
-    );
-}
 
 
 /* =========================================================
    BASIC HELPERS
    ========================================================= */
 
-function setText(
-    id,
-    value
-) {
-
-    const el =
-        document.getElementById(id);
-
-
-    if (el) {
-
-        el.textContent =
-            value;
-    }
+function $(id) {
+    return document.getElementById(id);
 }
 
-
-function num(value) {
-
-    const n =
-        parseFloat(value);
-
-
-    return Number.isFinite(n)
-        ? n
-        : null;
+function setText(id, value) {
+    const el = $(id);
+    if (el) el.textContent = value;
 }
 
-
-function pipSize() {
-
-    return 0.0001;
+function round(value, decimals = 5) {
+    if (!Number.isFinite(value)) return "--";
+    return Number(value).toFixed(decimals);
 }
 
-
-function formatPrice(value) {
-
-    if (
-        value === null ||
-        value === undefined ||
-        !Number.isFinite(value)
-    ) {
-
-        return "--";
-    }
-
-
-    return Number(value)
-        .toFixed(5);
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-
-function formatNumber(
-    value,
-    decimals = 2
-) {
-
-    if (
-        value === null ||
-        value === undefined ||
-        !Number.isFinite(value)
-    ) {
-
-        return "--";
-    }
-
-
-    return Number(value)
-        .toFixed(decimals);
+function safeNumber(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
 }
 
 
 /* =========================================================
-   DELAY HELPER
+   TIME / SESSION
    ========================================================= */
 
-function delay(ms) {
-
-    return new Promise(
-        resolve =>
-            setTimeout(
-                resolve,
-                ms
-            )
+function getISTDate() {
+    return new Date(
+        new Date().toLocaleString("en-US", {
+            timeZone: "Asia/Kolkata"
+        })
     );
+}
+
+function getISTHour() {
+    return getISTDate().getHours();
+}
+
+function isTradingSessionActive() {
+    const hour = getISTHour();
+
+    // London + New York active window in IST.
+    return hour >= 12 && hour < 22;
+}
+
+
+/* =========================================================
+   PRICE FORMAT
+   ========================================================= */
+
+function formatPrice(value) {
+    if (!Number.isFinite(value)) return "--";
+    return value.toFixed(5);
 }
 
 
@@ -294,377 +143,156 @@ function delay(ms) {
    TWELVE DATA
    ========================================================= */
 
-async function getCandles(
-    interval,
-    outputsize = 100
-) {
+async function fetchCandles(interval, outputsize = 100) {
 
     const url =
-        `${TIME_SERIES_URL}?symbol=${encodeURIComponent(SYMBOL)}` +
-        `&interval=${interval}` +
-        `&outputsize=${outputsize}` +
-        `&apikey=${encodeURIComponent(API_KEY)}`;
-
-
-    let response;
-
+        "https://api.twelvedata.com/time_series" +
+        "?symbol=" + encodeURIComponent(SYMBOL) +
+        "&interval=" + interval +
+        "&outputsize=" + outputsize +
+        "&apikey=" + encodeURIComponent(API_KEY);
 
     try {
 
-        response =
-            await fetch(url);
+        const response = await fetch(url);
 
-    } catch (networkError) {
-
-        throw new Error(
-            "Network error connecting to Twelve Data"
-        );
-    }
-
-
-    if (!response.ok) {
-
-        if (
-            response.status === 429
-        ) {
-
-            throw new Error(
-                "Twelve Data HTTP 429 - rate limit or API quota reached"
-            );
+        if (response.status === 429) {
+            throw new Error("Twelve Data rate limit reached (429)");
         }
 
-
-        throw new Error(
-            `Twelve Data HTTP ${response.status}`
-        );
-    }
-
-
-    let data;
-
-
-    try {
-
-        data =
-            await response.json();
-
-    } catch (jsonError) {
-
-        throw new Error(
-            "Invalid response from Twelve Data"
-        );
-    }
-
-
-    if (
-        data.status === "error"
-    ) {
-
-        if (
-            data.code === 429 ||
-            String(
-                data.message || ""
-            )
-                .toLowerCase()
-                .includes("rate")
-        ) {
-
-            throw new Error(
-                "Twelve Data rate limit or quota reached"
-            );
+        if (!response.ok) {
+            throw new Error("HTTP " + response.status);
         }
 
+        const data = await response.json();
 
-        throw new Error(
-            data.message ||
-            "Twelve Data API error"
-        );
+        if (data.status === "error") {
+            throw new Error(data.message || "Twelve Data error");
+        }
+
+        if (!Array.isArray(data.values)) {
+            throw new Error("No candle data returned");
+        }
+
+        return data.values.reverse().map(c => ({
+            datetime: c.datetime,
+            open: Number(c.open),
+            high: Number(c.high),
+            low: Number(c.low),
+            close: Number(c.close)
+        }));
+
+    } catch (error) {
+
+        console.error("Candle fetch error:", interval, error);
+
+        throw error;
     }
-
-
-    if (
-        !data.values ||
-        !Array.isArray(data.values)
-    ) {
-
-        throw new Error(
-            "No candle data returned by Twelve Data"
-        );
-    }
-
-
-    return data.values
-
-        .map(
-            c => ({
-
-                datetime:
-                    c.datetime,
-
-                open:
-                    num(c.open),
-
-                high:
-                    num(c.high),
-
-                low:
-                    num(c.low),
-
-                close:
-                    num(c.close)
-
-            })
-        )
-
-        .filter(
-            c =>
-
-                c.open !== null &&
-                c.high !== null &&
-                c.low !== null &&
-                c.close !== null
-        )
-
-        .sort(
-            (a, b) =>
-                new Date(a.datetime) -
-                new Date(b.datetime)
-        );
 }
 
 
 /* =========================================================
-   CACHED DATA LOADER
+   CACHE LOADER
    ========================================================= */
 
-async function getCachedCandles(
-    key,
-    interval,
-    outputsize,
-    force = false
-) {
+async function loadTimeframe(key, interval, ttl) {
 
-    const now =
-        Date.now();
-
-
-    const existing =
-        marketData[key];
-
-
-    const lastUpdated =
-        marketDataUpdated[key] || 0;
-
-
-    const age =
-        now - lastUpdated;
-
-
-    const fresh =
-        existing &&
-        existing.length > 0 &&
-        age < DATA_TTL[key];
-
+    const now = Date.now();
 
     if (
-        !force &&
-        fresh
+        marketData[key] &&
+        marketDataUpdated[key] &&
+        now - marketDataUpdated[key] < ttl
     ) {
-
-        return existing;
+        return marketData[key];
     }
 
+    const candles = await fetchCandles(interval, 100);
 
-    const candles =
-        await getCandles(
-            interval,
-            outputsize
-        );
-
-
-    marketData[key] =
-        candles;
-
-
-    marketDataUpdated[key] =
-        Date.now();
-
+    marketData[key] = candles;
+    marketDataUpdated[key] = now;
 
     return candles;
 }
 
 
 /* =========================================================
-   TECHNICAL INDICATORS
+   EMA
    ========================================================= */
 
-function calculateEMA(
-    candles,
-    period
-) {
+function calculateEMA(candles, period) {
 
-    if (
-        !candles ||
-        candles.length < period
-    ) {
-
+    if (!candles || candles.length < period) {
         return null;
     }
 
+    const multiplier = 2 / (period + 1);
 
-    const multiplier =
-        2 / (period + 1);
+    let ema = candles
+        .slice(0, period)
+        .reduce((sum, candle) => sum + candle.close, 0) / period;
 
-
-    let ema =
-        candles
-            .slice(
-                0,
-                period
-            )
-            .reduce(
-                (sum, c) =>
-                    sum + c.close,
-                0
-            ) / period;
-
-
-    for (
-        let i = period;
-        i < candles.length;
-        i++
-    ) {
+    for (let i = period; i < candles.length; i++) {
 
         ema =
-            (
-                candles[i].close -
-                ema
-            ) *
-            multiplier +
+            (candles[i].close - ema) * multiplier +
             ema;
     }
-
 
     return ema;
 }
 
 
-function calculateRSI(
-    candles,
-    period = 14
-) {
+/* =========================================================
+   RSI
+   ========================================================= */
 
-    if (
-        !candles ||
-        candles.length <= period
-    ) {
+function calculateRSI(candles, period = 14) {
 
+    if (!candles || candles.length <= period) {
         return null;
     }
 
-
     let gains = 0;
-
     let losses = 0;
 
-
-    for (
-        let i = 1;
-        i <= period;
-        i++
-    ) {
+    for (let i = 1; i <= period; i++) {
 
         const change =
             candles[i].close -
             candles[i - 1].close;
 
-
-        if (
-            change >= 0
-        ) {
-
+        if (change >= 0) {
             gains += change;
-
         } else {
-
-            losses +=
-                Math.abs(change);
+            losses += Math.abs(change);
         }
     }
 
+    let averageGain = gains / period;
+    let averageLoss = losses / period;
 
-    let avgGain =
-        gains / period;
-
-
-    let avgLoss =
-        losses / period;
-
-
-    for (
-        let i = period + 1;
-        i < candles.length;
-        i++
-    ) {
+    for (let i = period + 1; i < candles.length; i++) {
 
         const change =
             candles[i].close -
             candles[i - 1].close;
 
+        const gain = change > 0 ? change : 0;
+        const loss = change < 0 ? Math.abs(change) : 0;
 
-        const gain =
-            Math.max(
-                change,
-                0
-            );
+        averageGain =
+            ((averageGain * (period - 1)) + gain) / period;
 
-
-        const loss =
-            Math.max(
-                -change,
-                0
-            );
-
-
-        avgGain =
-            (
-                (
-                    avgGain *
-                    (period - 1)
-                ) +
-                gain
-            ) / period;
-
-
-        avgLoss =
-            (
-                (
-                    avgLoss *
-                    (period - 1)
-                ) +
-                loss
-            ) / period;
+        averageLoss =
+            ((averageLoss * (period - 1)) + loss) / period;
     }
 
+    if (averageLoss === 0) return 100;
 
-    if (
-        avgLoss === 0
-    ) {
+    const rs = averageGain / averageLoss;
 
-        return 100;
-    }
-
-
-    const rs =
-        avgGain /
-        avgLoss;
-
-
-    return 100 -
-        (
-            100 /
-            (1 + rs)
-        );
+    return 100 - (100 / (1 + rs));
 }
 
 
@@ -674,53 +302,19 @@ function calculateRSI(
 
 function getTrend(candles) {
 
-    if (
-        !candles ||
-        candles.length < 50
-    ) {
-
-        return "--";
-    }
-
-
-    const ema20 =
-        calculateEMA(
-            candles,
-            20
-        );
-
-
-    const ema50 =
-        calculateEMA(
-            candles,
-            50
-        );
-
+    const ema20 = calculateEMA(candles, 20);
+    const ema50 = calculateEMA(candles, 50);
 
     if (
-        ema20 === null ||
-        ema50 === null
+        !Number.isFinite(ema20) ||
+        !Number.isFinite(ema50)
     ) {
-
-        return "--";
+        return "WAIT";
     }
 
+    if (ema20 > ema50) return "BULLISH";
 
-    if (
-        ema20 > ema50
-    ) {
-
-        return "BULLISH";
-    }
-
-
-    if (
-        ema20 < ema50
-    ) {
-
-        return "BEARISH";
-    }
-
+    if (ema20 < ema50) return "BEARISH";
 
     return "NEUTRAL";
 }
@@ -732,72 +326,34 @@ function getTrend(candles) {
 
 function getStructure(candles) {
 
-    if (
-        !candles ||
-        candles.length < 10
-    ) {
-
-        return "--";
+    if (!candles || candles.length < 10) {
+        return "WAIT";
     }
 
+    const recent = candles.slice(-10);
 
-    const recent =
-        candles.slice(-10);
+    const highs = recent.map(c => c.high);
+    const lows = recent.map(c => c.low);
 
+    const firstHigh = highs[0];
+    const lastHigh = highs[highs.length - 1];
 
-    const highs =
-        recent.map(
-            c => c.high
-        );
-
-
-    const lows =
-        recent.map(
-            c => c.low
-        );
-
-
-    const firstHigh =
-        Math.max(
-            ...highs.slice(0, 5)
-        );
-
-
-    const lastHigh =
-        Math.max(
-            ...highs.slice(5)
-        );
-
-
-    const firstLow =
-        Math.min(
-            ...lows.slice(0, 5)
-        );
-
-
-    const lastLow =
-        Math.min(
-            ...lows.slice(5)
-        );
-
-
-    if (
-        lastHigh > firstHigh &&
-        lastLow > firstLow
-    ) {
-
-        return "BULLISH";
-    }
-
+    const firstLow = lows[0];
+    const lastLow = lows[lows.length - 1];
 
     if (
         lastHigh < firstHigh &&
         lastLow < firstLow
     ) {
-
         return "BEARISH";
     }
 
+    if (
+        lastHigh > firstHigh &&
+        lastLow > firstLow
+    ) {
+        return "BULLISH";
+    }
 
     return "RANGE";
 }
@@ -807,71 +363,30 @@ function getStructure(candles) {
    SUPPORT / RESISTANCE
    ========================================================= */
 
-function calculateSR(candles) {
+function getSupportResistance(candles) {
 
-    if (
-        !candles ||
-        candles.length < 20
-    ) {
-
+    if (!candles || candles.length < 20) {
         return {
-
             r2: null,
-
             r1: null,
-
             s1: null,
-
             s2: null
         };
     }
 
+    const recent = candles.slice(-20);
 
-    const recent =
-        candles.slice(-20);
+    const highs = recent.map(c => c.high);
+    const lows = recent.map(c => c.low);
 
-
-    const highs =
-        recent.map(
-            c => c.high
-        );
-
-
-    const lows =
-        recent.map(
-            c => c.low
-        );
-
-
-    const sortedHighs =
-        [...highs].sort(
-            (a, b) =>
-                b - a
-        );
-
-
-    const sortedLows =
-        [...lows].sort(
-            (a, b) =>
-                a - b
-        );
-
+    const sortedHighs = [...highs].sort((a, b) => b - a);
+    const sortedLows = [...lows].sort((a, b) => a - b);
 
     return {
-
-        r2:
-            sortedHighs[1] ||
-            sortedHighs[0],
-
-        r1:
-            sortedHighs[0],
-
-        s1:
-            sortedLows[0],
-
-        s2:
-            sortedLows[1] ||
-            sortedLows[0]
+        r2: sortedHighs[1],
+        r1: sortedHighs[0],
+        s1: sortedLows[0],
+        s2: sortedLows[1]
     };
 }
 
@@ -882,106 +397,57 @@ function calculateSR(candles) {
 
 function getMomentum(candles) {
 
-    if (
-        !candles ||
-        candles.length < 3
-    ) {
-
+    if (!candles || candles.length < 2) {
         return "WAIT";
     }
 
-
-    const c1 =
-        candles[
-            candles.length - 2
-        ];
-
-
-    const c2 =
-        candles[
-            candles.length - 3
-        ];
-
-
-    const body =
-        Math.abs(
-            c1.close -
-            c1.open
-        );
-
+    const candle = candles[candles.length - 1];
 
     const range =
-        c1.high -
-        c1.low;
+        candle.high -
+        candle.low;
 
-
-    if (
-        range === 0
-    ) {
-
+    if (range <= 0) {
         return "WAIT";
     }
 
+    const body =
+        Math.abs(candle.close - candle.open);
 
     const bodyRatio =
         body / range;
 
-
-    if (
-        c1.close < c1.open &&
-        c1.close < c2.close &&
-        bodyRatio >= 0.55
-    ) {
-
-        return "BEARISH";
+    if (bodyRatio < 0.55) {
+        return "NEUTRAL";
     }
 
-
-    if (
-        c1.close > c1.open &&
-        c1.close > c2.close &&
-        bodyRatio >= 0.55
-    ) {
-
+    if (candle.close > candle.open) {
         return "BULLISH";
     }
 
+    if (candle.close < candle.open) {
+        return "BEARISH";
+    }
 
-    return "WAIT";
+    return "NEUTRAL";
 }
 
 
 /* =========================================================
-   RSI CONFIRMATION
+   RSI DIRECTION
    ========================================================= */
 
-function rsiDirection(rsi) {
+function getRSIDirection(rsi) {
 
-    if (
-        rsi === null
-    ) {
-
+    if (!Number.isFinite(rsi)) {
         return "WAIT";
     }
 
+    if (rsi >= 55) return "BULLISH";
 
-    if (
-        rsi >= 50
-    ) {
+    if (rsi <= 45) return "BEARISH";
 
-        return "BULLISH";
-    }
-
-
-    if (
-        rsi < 50
-    ) {
-
-        return "BEARISH";
-    }
-
-
-    return "WAIT";
+    return "NEUTRAL";
 }
 
 
@@ -991,640 +457,318 @@ function rsiDirection(rsi) {
 
 function getEMADirection(candles) {
 
-    if (
-        !candles ||
-        candles.length < 50
-    ) {
+    const ema20 = calculateEMA(candles, 20);
+    const ema50 = calculateEMA(candles, 50);
 
+    if (
+        !Number.isFinite(ema20) ||
+        !Number.isFinite(ema50)
+    ) {
         return "WAIT";
     }
 
+    if (ema20 > ema50) return "BULLISH";
 
-    const ema20 =
-        calculateEMA(
-            candles,
-            20
-        );
+    if (ema20 < ema50) return "BEARISH";
 
-
-    const ema50 =
-        calculateEMA(
-            candles,
-            50
-        );
-
-
-    if (
-        ema20 === null ||
-        ema50 === null
-    ) {
-
-        return "WAIT";
-    }
-
-
-    if (
-        ema20 > ema50
-    ) {
-
-        return "BULLISH";
-    }
-
-
-    if (
-        ema20 < ema50
-    ) {
-
-        return "BEARISH";
-    }
-
-
-    return "WAIT";
+    return "NEUTRAL";
 }
 
 
 /* =========================================================
-   SESSION
+   CURRENT MARKET PRICE
    ========================================================= */
 
-function getSession() {
-
-    const hour =
-        Number(
-            new Intl.DateTimeFormat(
-                "en-IN",
-                {
-                    timeZone:
-                        "Asia/Kolkata",
-
-                    hour:
-                        "2-digit",
-
-                    hour12:
-                        false
-                }
-            ).format(
-                new Date()
-            )
-        );
-
+function getMarketPrice() {
 
     if (
-        hour >= 12 &&
-        hour < 22
+        !marketData.m5 ||
+        marketData.m5.length === 0
     ) {
-
-        return "ACTIVE";
+        return null;
     }
 
-
-    return "OFF";
+    return marketData.m5[
+        marketData.m5.length - 1
+    ].close;
 }
 
 
 /* =========================================================
-   MARKET PRICE
+   NEWS NORMALIZER
    ========================================================= */
 
-function getLatestCompletedCandle(
-    candles
-) {
+function normalizeNewsEvent(event) {
 
-    if (
-        !candles ||
-        candles.length < 2
-    ) {
-
-        return null;
-    }
-
-
-    return candles[
-        candles.length - 2
-    ];
-}
-
-
-function getMarketPrice(
-    candles
-) {
-
-    const candle =
-        getLatestCompletedCandle(
-            candles
-        );
-
-
-    if (!candle) {
-
-        return null;
-    }
-
-
-    return candle.close;
-}
-
-
-/* =========================================================
-   NEWS HELPERS
-   ========================================================= */
-
-/*
-   Normalize different possible calendar formats.
-
-   This allows our backend to return either:
-
-   {
-       currency: "USD",
-       name: "Nonfarm Payrolls",
-       impact: "high",
-       datetime: "2026-10-02T12:30:00Z"
-   }
-
-   or similar common field names.
-*/
-
-function normalizeNewsEvent(
-    raw
-) {
-
-    if (!raw) {
-
-        return null;
-    }
-
+    if (!event) return null;
 
     const currency =
         String(
-            raw.currency ||
-            raw.country ||
-            raw.ccy ||
+            event.currency ||
+            event.country ||
+            event.ccy ||
             ""
-        )
-            .toUpperCase();
+        ).toUpperCase();
 
+    const title =
+        event.title ||
+        event.name ||
+        event.event ||
+        event.report_name ||
+        event.indicator ||
+        "Economic event";
+
+    const impactRaw =
+        event.impact ??
+        event.importance ??
+        event.priority ??
+        event.impact_level;
+
+    let impact = "UNKNOWN";
 
     if (
-        currency !== "EUR" &&
-        currency !== "USD"
+        impactRaw === 3 ||
+        String(impactRaw).toLowerCase() === "high" ||
+        String(impactRaw).toLowerCase() === "red"
     ) {
-
-        return null;
-    }
-
-
-    const impact =
-        String(
-            raw.impact ||
-            raw.importance ||
-            raw.event_importance ||
-            raw.priority ||
-            ""
-        )
-            .toLowerCase();
-
-
-    const eventTime =
-        raw.datetime ||
-        raw.dateTime ||
-        raw.scheduledAt ||
-        raw.announcement_datetime_utc ||
-        raw.time ||
-        raw.date;
-
-
-    if (!eventTime) {
-
-        return null;
-    }
-
-
-    const timestamp =
-        new Date(eventTime)
-            .getTime();
-
-
-    if (
-        !Number.isFinite(timestamp)
+        impact = "HIGH";
+    } else if (
+        impactRaw === 2 ||
+        String(impactRaw).toLowerCase() === "medium" ||
+        String(impactRaw).toLowerCase() === "orange"
     ) {
-
-        return null;
+        impact = "MEDIUM";
+    } else if (
+        impactRaw === 1 ||
+        String(impactRaw).toLowerCase() === "low" ||
+        String(impactRaw).toLowerCase() === "yellow"
+    ) {
+        impact = "LOW";
     }
 
+    let datetime =
+        event.datetime ||
+        event.date ||
+        event.time ||
+        event.timestamp ||
+        event.announcement_datetime;
 
-    const name =
-        String(
-            raw.event ||
-            raw.name ||
-            raw.eventName ||
-            raw.title ||
-            raw.release ||
-            "Economic event"
-        );
+    let timestamp = null;
 
+    if (typeof datetime === "number") {
+
+        timestamp =
+            datetime < 10000000000
+                ? datetime * 1000
+                : datetime;
+
+    } else if (datetime) {
+
+        timestamp =
+            new Date(datetime).getTime();
+    }
+
+    if (!Number.isFinite(timestamp)) {
+        timestamp = null;
+    }
 
     return {
-
         currency,
-
-        name,
-
+        title: String(title),
         impact,
-
-        timestamp,
-
-        datetime:
-            new Date(timestamp),
-
-        forecast:
-            raw.forecast ??
-            null,
-
-        previous:
-            raw.previous ??
-            null,
-
-        actual:
-            raw.actual ??
-            null
+        timestamp
     };
 }
 
 
-/*
-   High impact detector.
+/* =========================================================
+   HIGH IMPACT CHECK
+   ========================================================= */
 
-   We deliberately require explicit high-impact
-   information. We do NOT guess an event's importance
-   from its name.
-*/
+function isHighImpact(event) {
 
-function isHighImpact(
-    event
-) {
-
-    if (!event) {
-
-        return false;
-    }
-
+    if (!event) return false;
 
     return (
-        event.impact === "high" ||
-        event.impact === "3" ||
-        event.impact === "red"
+        event.impact === "HIGH" &&
+        (
+            event.currency === "USD" ||
+            event.currency === "EUR" ||
+            event.currency === "US" ||
+            event.currency === "EU" ||
+            event.currency === "EURO"
+        )
     );
 }
 
 
-/*
-   Return only future/recent high-impact events.
-*/
-
-function getRelevantNewsEvents() {
-
-    const now =
-        Date.now();
-
-
-    const before =
-        NEWS_BEFORE_MINUTES *
-        60 *
-        1000;
-
-
-    const after =
-        NEWS_AFTER_MINUTES *
-        60 *
-        1000;
-
-
-    return newsData.events
-
-        .filter(
-            event =>
-                isHighImpact(event) &&
-                (
-                    event.timestamp >=
-                    now - after
-                ) &&
-                (
-                    event.timestamp <=
-                    now +
-                    24 *
-                    60 *
-                    60 *
-                    1000
-                )
-        )
-
-        .sort(
-            (a, b) =>
-                a.timestamp -
-                b.timestamp
-        );
-}
-
-
-/*
-   Determine whether EUR/USD trading should be
-   blocked because of high-impact news.
-*/
+/* =========================================================
+   NEWS RISK ENGINE
+   ========================================================= */
 
 function getNewsRisk() {
 
-    if (
-        !newsData.available
-    ) {
+    if (!newsData.available) {
 
         return {
-
-            status:
-                "UNAVAILABLE",
-
-            blocked:
-                true,
-
-            reason:
-                "Live news calendar unavailable",
-
-            event:
-                null
+            available: false,
+            blocked: true,
+            reason: "Live news confirmation unavailable",
+            event: null
         };
     }
 
+    const now = Date.now();
 
-    const now =
-        Date.now();
+    const relevantEvents =
+        newsData.events.filter(event => {
 
+            if (!isHighImpact(event)) {
+                return false;
+            }
 
-    const before =
-        NEWS_BEFORE_MINUTES *
-        60 *
-        1000;
+            if (!Number.isFinite(event.timestamp)) {
+                return false;
+            }
 
+            const minutesAway =
+                (event.timestamp - now) / 60000;
 
-    const after =
-        NEWS_AFTER_MINUTES *
-        60 *
-        1000;
-
-
-    const relevant =
-        newsData.events
-            .filter(
-                event =>
-                    isHighImpact(event)
-            )
-            .sort(
-                (a, b) =>
-                    a.timestamp -
-                    b.timestamp
+            return (
+                minutesAway >= -NEWS_BLOCK_AFTER_MINUTES &&
+                minutesAway <= NEWS_BLOCK_BEFORE_MINUTES
             );
+        });
 
+    if (relevantEvents.length > 0) {
 
-    for (
-        const event of relevant
-    ) {
+        relevantEvents.sort(
+            (a, b) =>
+                Math.abs(a.timestamp - now) -
+                Math.abs(b.timestamp - now)
+        );
 
-        const difference =
-            event.timestamp -
-            now;
+        const event = relevantEvents[0];
 
+        const minutesAway =
+            (event.timestamp - now) / 60000;
 
-        /*
-           Event is approaching.
-        */
+        let timing;
 
-        if (
-            difference >= 0 &&
-            difference <= before
-        ) {
-
-            return {
-
-                status:
-                    "BLOCKED",
-
-                blocked:
-                    true,
-
-                reason:
-                    `${event.currency} high-impact news within ${NEWS_BEFORE_MINUTES} minutes`,
-
-                event
-            };
+        if (minutesAway > 0) {
+            timing =
+                Math.round(minutesAway) +
+                " min before";
+        } else {
+            timing =
+                Math.round(Math.abs(minutesAway)) +
+                " min after";
         }
 
-
-        /*
-           Event has just released.
-        */
-
-        if (
-            difference < 0 &&
-            Math.abs(difference) <= after
-        ) {
-
-            return {
-
-                status:
-                    "BLOCKED",
-
-                blocked:
-                    true,
-
-                reason:
-                    `${event.currency} high-impact news just released`,
-
-                event
-            };
-        }
+        return {
+            available: true,
+            blocked: true,
+            reason:
+                "High-impact " +
+                event.currency +
+                " news: " +
+                event.title +
+                " (" +
+                timing +
+                ")",
+            event
+        };
     }
 
-
     return {
-
-        status:
-            "CLEAR",
-
-        blocked:
-            false,
-
-        reason:
-            "No high-impact EUR/USD event inside protection window",
-
-        event:
-            relevant.find(
-                event =>
-                    event.timestamp >
-                    now
-            ) || null
+        available: true,
+        blocked: false,
+        reason: "No high-impact EUR/USD event in protection window",
+        event: null
     };
 }
 
 
 /* =========================================================
-   NEWS API LOADER
+   NEWS LOADER
    ========================================================= */
 
 async function loadNewsData() {
 
-    /*
-       No backend configured yet.
-
-       Fail safely rather than inventing news.
-    */
-
-    if (
-        !NEWS_API_URL
-    ) {
+    if (!NEWS_API_URL) {
 
         newsData = {
-
-            available:
-                false,
-
-            events:
-                [],
-
-            lastUpdated:
-                Date.now(),
-
-            error:
-                "NEWS_API_URL not configured"
+            available: false,
+            events: [],
+            lastUpdated: Date.now(),
+            error: "NEWS_API_URL is not configured"
         };
-
 
         displayNews();
 
-
         return;
     }
-
-
-    if (
-        newsLoading
-    ) {
-
-        return;
-    }
-
-
-    newsLoading =
-        true;
-
 
     try {
 
         const response =
-            await fetch(
-                NEWS_API_URL,
-                {
-                    method:
-                        "GET",
+            await fetch(NEWS_API_URL, {
+                cache: "no-store"
+            });
 
-                    cache:
-                        "no-store"
-                }
-            );
-
-
-        if (
-            !response.ok
-        ) {
-
+        if (!response.ok) {
             throw new Error(
-                `News API HTTP ${response.status}`
+                "News HTTP " + response.status
             );
         }
 
-
-        const payload =
+        const data =
             await response.json();
 
+        let rawEvents = [];
 
-        /*
-           Accept several common response shapes.
-        */
-
-        let rawEvents =
-            payload.events ||
-            payload.data ||
-            payload.results ||
-            payload;
-
-
-        if (
-            !Array.isArray(rawEvents)
+        if (Array.isArray(data)) {
+            rawEvents = data;
+        } else if (Array.isArray(data.events)) {
+            rawEvents = data.events;
+        } else if (
+            data.result &&
+            Array.isArray(data.result.output)
         ) {
-
-            throw new Error(
-                "News API returned no event array"
-            );
+            rawEvents = data.result.output;
+        } else if (Array.isArray(data.data)) {
+            rawEvents = data.data;
         }
-
 
         const normalized =
             rawEvents
-
-                .map(
-                    normalizeNewsEvent
-                )
-
-                .filter(
-                    Boolean
-                );
-
+                .map(normalizeNewsEvent)
+                .filter(Boolean);
 
         newsData = {
-
-            available:
-                true,
-
-            events:
-                normalized,
-
-            lastUpdated:
-                Date.now(),
-
-            error:
-                null
+            available: true,
+            events: normalized,
+            lastUpdated: Date.now(),
+            error: null
         };
-
 
         displayNews();
 
     } catch (error) {
 
         console.error(
-            "News calendar error:",
+            "News loading error:",
             error
         );
 
-
         newsData = {
-
-            available:
-                false,
-
-            events:
-                [],
-
-            lastUpdated:
-                Date.now(),
-
-            error:
-                error.message
+            available: false,
+            events: [],
+            lastUpdated: Date.now(),
+            error: error.message
         };
 
-
         displayNews();
-
-    } finally {
-
-        newsLoading =
-            false;
     }
 }
 
@@ -1633,202 +777,131 @@ async function loadNewsData() {
    NEWS DISPLAY
    ========================================================= */
 
-function formatNewsCountdown(
-    timestamp
-) {
-
-    const difference =
-        timestamp -
-        Date.now();
-
-
-    if (
-        difference <= 0
-    ) {
-
-        return "NOW";
-    }
-
-
-    const totalMinutes =
-        Math.floor(
-            difference /
-            60000
-        );
-
-
-    const hours =
-        Math.floor(
-            totalMinutes /
-            60
-        );
-
-
-    const minutes =
-        totalMinutes %
-        60;
-
-
-    if (
-        hours > 0
-    ) {
-
-        return (
-            `${hours}h ${minutes}m`
-        );
-    }
-
-
-    return (
-        `${minutes}m`
-    );
-}
-
-
-function formatNewsTime(
-    timestamp
-) {
-
-    return new Date(
-        timestamp
-    ).toLocaleString(
-        "en-IN",
-        {
-            timeZone:
-                "Asia/Kolkata",
-
-            day:
-                "2-digit",
-
-            month:
-                "short",
-
-            hour:
-                "2-digit",
-
-            minute:
-                "2-digit",
-
-            hour12:
-                true
-        }
-    ) + " IST";
-}
-
-
 function displayNews() {
 
-    /*
-       No live calendar available.
-    */
+    const eurNews = $("eurNews");
+    const usdNews = $("usdNews");
+    const newsFilter = $("newsFilter");
+    const nextEvent = $("nextEvent");
+    const tradingRisk = $("tradingRisk");
 
-    if (
-        !newsData.available
-    ) {
+    if (!newsData.available) {
 
         setText(
             "eurNews",
             "EUR NEWS — UNAVAILABLE"
         );
 
-
         setText(
             "usdNews",
             "USD NEWS — UNAVAILABLE"
         );
-
 
         setText(
             "newsFilter",
             "NEWS FILTER — UNAVAILABLE"
         );
 
-
         setText(
             "nextEvent",
             "NEXT EVENT — --"
         );
-
 
         setText(
             "tradingRisk",
             "TRADING RISK — UNKNOWN"
         );
 
-
         setText(
             "checkNews",
             "— EUR/USD high-impact news clear"
         );
 
-
         return;
     }
 
+    const risk = getNewsRisk();
 
-    const events =
-        getRelevantNewsEvents();
-
+    const now = Date.now();
 
     const eurEvents =
-        events.filter(
+        newsData.events.filter(
             e =>
-                e.currency === "EUR"
+                (
+                    e.currency === "EUR" ||
+                    e.currency === "EU" ||
+                    e.currency === "EURO"
+                ) &&
+                Number.isFinite(e.timestamp) &&
+                e.timestamp > now
         );
-
 
     const usdEvents =
-        events.filter(
+        newsData.events.filter(
             e =>
-                e.currency === "USD"
+                (
+                    e.currency === "USD" ||
+                    e.currency === "US"
+                ) &&
+                Number.isFinite(e.timestamp) &&
+                e.timestamp > now
         );
 
+    function eventText(events) {
 
-    const risk =
-        getNewsRisk();
+        if (!events.length) {
+            return "No upcoming high-impact event";
+        }
 
+        events.sort(
+            (a, b) =>
+                a.timestamp - b.timestamp
+        );
+
+        const event = events[0];
+
+        return (
+            event.title +
+            " — " +
+            new Date(
+                event.timestamp
+            ).toLocaleString("en-IN", {
+                timeZone: "Asia/Kolkata",
+                hour: "2-digit",
+                minute: "2-digit",
+                day: "2-digit",
+                month: "short"
+            })
+        );
+    }
 
     setText(
         "eurNews",
-
-        eurEvents.length > 0
-
-            ? `EUR NEWS — HIGH IMPACT (${eurEvents.length})`
-
-            : "EUR NEWS — CLEAR"
+        "EUR NEWS — " +
+        eventText(eurEvents)
     );
-
 
     setText(
         "usdNews",
-
-        usdEvents.length > 0
-
-            ? `USD NEWS — HIGH IMPACT (${usdEvents.length})`
-
-            : "USD NEWS — CLEAR"
+        "USD NEWS — " +
+        eventText(usdEvents)
     );
 
-
-    if (
-        risk.blocked
-    ) {
+    if (risk.blocked) {
 
         setText(
             "newsFilter",
             "NEWS FILTER — BLOCKED"
         );
 
-
         setText(
             "tradingRisk",
             "TRADING RISK — HIGH"
         );
 
-
         setText(
             "checkNews",
-            "— EUR/USD high-impact news clear"
+            "✗ High-impact EUR/USD news protection active"
         );
 
     } else {
@@ -1838,12 +911,10 @@ function displayNews() {
             "NEWS FILTER — CLEAR"
         );
 
-
         setText(
             "tradingRisk",
             "TRADING RISK — NORMAL"
         );
-
 
         setText(
             "checkNews",
@@ -1851,31 +922,42 @@ function displayNews() {
         );
     }
 
-
-    const nextEvent =
-        events.find(
-            event =>
-                event.timestamp >
-                Date.now()
-        );
-
-
-    if (
-        nextEvent
-    ) {
+    if (risk.event) {
 
         setText(
             "nextEvent",
-
-            `NEXT EVENT — ${nextEvent.currency} ${nextEvent.name} — ${formatNewsCountdown(nextEvent.timestamp)}`
+            "NEXT EVENT — " +
+            risk.event.currency +
+            " " +
+            risk.event.title
         );
 
     } else {
 
-        setText(
-            "nextEvent",
-            "NEXT EVENT — None in next 24h"
-        );
+        const allUpcoming =
+            [...eurEvents, ...usdEvents]
+                .sort(
+                    (a, b) =>
+                        a.timestamp - b.timestamp
+                );
+
+        if (allUpcoming.length) {
+
+            setText(
+                "nextEvent",
+                "NEXT EVENT — " +
+                allUpcoming[0].currency +
+                " " +
+                allUpcoming[0].title
+            );
+
+        } else {
+
+            setText(
+                "nextEvent",
+                "NEXT EVENT — NONE FOUND"
+            );
+        }
     }
 }
 
@@ -1884,605 +966,225 @@ function displayNews() {
    SNIPER SETUP
    ========================================================= */
 
-function evaluateSniper(
-    price,
-    h4,
-    h1,
-    m15,
-    m5
-) {
+function evaluateSniper() {
 
-    const h4Trend =
-        getTrend(h4);
+    const h4 = marketData.h4;
+    const h1 = marketData.h1;
+    const m15 = marketData.m15;
+    const m5 = marketData.m5;
 
+    if (!h4 || !h1 || !m15 || !m5) {
+        return {
+            status: "WAIT",
+            direction: null
+        };
+    }
 
-    const h1Trend =
-        getTrend(h1);
+    const h4Trend = getTrend(h4);
+    const h1Trend = getTrend(h1);
+    const m15Trend = getTrend(m15);
+    const m5Trend = getTrend(m5);
 
+    const emaDirection = getEMADirection(m5);
 
-    const m15Structure =
-        getStructure(m15);
+    const m5Rsi =
+        calculateRSI(m5, 14);
 
-
-    const m5Structure =
-        getStructure(m5);
-
-
-    const ema =
-        getEMADirection(m5);
-
+    const rsiDirection =
+        getRSIDirection(m5Rsi);
 
     const momentum =
         getMomentum(m5);
 
-
-    const rsi =
-        calculateRSI(m5);
-
-
-    let direction =
-        null;
-
+    let direction = null;
 
     if (
         h4Trend === "BEARISH" &&
         h1Trend === "BEARISH" &&
-        m15Structure === "BEARISH" &&
-        m5Structure === "BEARISH" &&
-        ema === "BEARISH" &&
+        m15Trend === "BEARISH" &&
+        m5Trend === "BEARISH" &&
+        emaDirection === "BEARISH" &&
         momentum === "BEARISH" &&
-        rsi !== null &&
-        rsi < 50
+        rsiDirection === "BEARISH"
     ) {
-
-        direction =
-            "SELL";
+        direction = "SELL";
     }
-
 
     if (
         h4Trend === "BULLISH" &&
         h1Trend === "BULLISH" &&
-        m15Structure === "BULLISH" &&
-        m5Structure === "BULLISH" &&
-        ema === "BULLISH" &&
+        m15Trend === "BULLISH" &&
+        m5Trend === "BULLISH" &&
+        emaDirection === "BULLISH" &&
         momentum === "BULLISH" &&
-        rsi !== null &&
-        rsi >= 50
+        rsiDirection === "BULLISH"
     ) {
-
-        direction =
-            "BUY";
+        direction = "BUY";
     }
-
 
     if (!direction) {
 
-        invalidateSniperSetup();
-
-
         return {
-
-            status:
-                "WAIT",
-
-            direction:
-                "--",
-
-            entry:
-                "--",
-
-            sl:
-                "--",
-
-            tp1:
-                "--",
-
-            tp2:
-                "--",
-
-            tp3:
-                "--",
-
-            rr:
-                "--",
-
-            validity:
-                "NO A+ SETUP",
-
+            status: "WAIT",
+            direction: null,
             trigger:
-                momentum,
-
+                direction || "WAIT",
             invalidation:
-                "Alignment or momentum missing",
-
-            score:
-                0
+                "Alignment or momentum missing"
         };
     }
 
+    const price =
+        getMarketPrice();
 
-    const entry =
-        price;
+    if (!price) {
+        return {
+            status: "WAIT",
+            direction: null
+        };
+    }
 
+    const riskPips = 10;
 
-    const riskPips =
-        10;
-
+    const pip = 0.0001;
 
     let sl;
-
     let tp1;
-
     let tp2;
-
     let tp3;
 
+    if (direction === "SELL") {
 
-    if (
-        direction === "SELL"
-    ) {
-
-        sl =
-            entry +
-            riskPips *
-            pipSize();
-
-
-        tp1 =
-            entry -
-            riskPips *
-            2 *
-            pipSize();
-
-
-        tp2 =
-            entry -
-            riskPips *
-            3 *
-            pipSize();
-
-
-        tp3 =
-            entry -
-            riskPips *
-            4 *
-            pipSize();
+        sl = price + riskPips * pip;
+        tp1 = price - 2 * riskPips * pip;
+        tp2 = price - 3 * riskPips * pip;
+        tp3 = price - 4 * riskPips * pip;
 
     } else {
 
-        sl =
-            entry -
-            riskPips *
-            pipSize();
-
-
-        tp1 =
-            entry +
-            riskPips *
-            2 *
-            pipSize();
-
-
-        tp2 =
-            entry +
-            riskPips *
-            3 *
-            pipSize();
-
-
-        tp3 =
-            entry +
-            riskPips *
-            4 *
-            pipSize();
+        sl = price - riskPips * pip;
+        tp1 = price + 2 * riskPips * pip;
+        tp2 = price + 3 * riskPips * pip;
+        tp3 = price + 4 * riskPips * pip;
     }
 
-
-    const score =
-        90;
-
-
-    startSniperSetup();
-
-
     return {
-
-        status:
-            "A+ SETUP",
-
+        status: "A+ SETUP",
         direction,
-
-        entry,
-
+        entry: price,
         sl,
-
         tp1,
-
         tp2,
-
         tp3,
-
-        rr:
-            "1:2 / 1:3 / 1:4",
-
-        validity:
-            "VALID",
-
-        trigger:
-            direction === "SELL"
-
-                ? "Bearish M5 momentum confirmed"
-
-                : "Bullish M5 momentum confirmed",
-
-        invalidation:
-            direction === "SELL"
-
-                ? "M5 closes bullish / alignment breaks"
-
-                : "M5 closes bearish / alignment breaks",
-
-        score
+        rr: "1:2 / 1:3 / 1:4",
+        validity: "VALID",
+        trigger: "Full alignment confirmed",
+        invalidation: "Setup invalid if alignment breaks"
     };
 }
 
 
 /* =========================================================
-   DISPLAY SNIPER
+   SCALP SETUP
    ========================================================= */
 
-function displaySniper(
-    setup
-) {
+function evaluateScalp() {
 
-    setText(
-        "sniperStatus",
-        setup.status
-    );
+    const h1 = marketData.h1;
+    const m15 = marketData.m15;
+    const m5 = marketData.m5;
 
+    if (!h1 || !m15 || !m5) {
 
-    setText(
-        "sniperStatusBig",
-        setup.status
-    );
+        return {
+            status: "WAIT"
+        };
+    }
 
-
-    setText(
-        "sniperDirection",
-        setup.direction
-    );
-
-
-    setText(
-        "sniperEntry",
-        formatPrice(
-            setup.entry
-        )
-    );
-
-
-    setText(
-        "sniperSL",
-        formatPrice(
-            setup.sl
-        )
-    );
-
-
-    setText(
-        "sniperTP1",
-        formatPrice(
-            setup.tp1
-        )
-    );
-
-
-    setText(
-        "sniperTP2",
-        formatPrice(
-            setup.tp2
-        )
-    );
-
-
-    setText(
-        "sniperTP3",
-        formatPrice(
-            setup.tp3
-        )
-    );
-
-
-    setText(
-        "sniperRR",
-        setup.rr
-    );
-
-
-    setText(
-        "sniperValidity",
-        setup.validity
-    );
-
-
-    setText(
-        "sniperTrigger",
-        setup.trigger
-    );
-
-
-    setText(
-        "sniperInvalidation",
-        setup.invalidation
-    );
-
-
-    setText(
-        "setupTime",
-
-        sniperSetupActive
-            ? sniperSetupTime
-            : "--"
-    );
-
-
-    setText(
-        "setupScore",
-
-        setup.score
-
-            ? setup.score +
-              "/100"
-
-            : "--"
-    );
-}
-
-
-/* =========================================================
-   ELITE SCALP
-   ========================================================= */
-
-function evaluateScalp(
-    price,
-    h1,
-    m15,
-    m5
-) {
-
-    const h1Trend =
-        getTrend(h1);
-
-
-    const m15Structure =
-        getStructure(m15);
-
-
-    const m5Structure =
-        getStructure(m5);
-
-
-    const momentum =
-        getMomentum(m5);
-
+    const h1Trend = getTrend(h1);
+    const m15Trend = getTrend(m15);
+    const m5Trend = getTrend(m5);
 
     const ema =
         getEMADirection(m5);
 
+    const momentum =
+        getMomentum(m5);
+
+    let direction = null;
 
     if (
         h1Trend === "BEARISH" &&
-        m15Structure === "BEARISH" &&
-        m5Structure === "BEARISH" &&
+        m15Trend === "BEARISH" &&
+        m5Trend === "BEARISH" &&
         ema === "BEARISH" &&
         momentum === "BEARISH"
     ) {
-
-        const entry =
-            price;
-
-
-        return {
-
-            verdict:
-                "A+ SCALP",
-
-            direction:
-                "SELL",
-
-            entry,
-
-            sl:
-                entry + 0.0007,
-
-            tp1:
-                entry - 0.0014,
-
-            tp2:
-                entry - 0.0021,
-
-            rr:
-                "1:2 / 1:3",
-
-            score:
-                90,
-
-            validity:
-                "VALID",
-
-            trigger:
-                "M5 bearish momentum",
-
-            invalidation:
-                "M5 bullish close"
-        };
+        direction = "SELL";
     }
-
 
     if (
         h1Trend === "BULLISH" &&
-        m15Structure === "BULLISH" &&
-        m5Structure === "BULLISH" &&
+        m15Trend === "BULLISH" &&
+        m5Trend === "BULLISH" &&
         ema === "BULLISH" &&
         momentum === "BULLISH"
     ) {
+        direction = "BUY";
+    }
 
-        const entry =
-            price;
-
+    if (!direction) {
 
         return {
-
-            verdict:
-                "A+ SCALP",
-
-            direction:
-                "BUY",
-
-            entry,
-
-            sl:
-                entry - 0.0007,
-
-            tp1:
-                entry + 0.0014,
-
-            tp2:
-                entry + 0.0021,
-
-            rr:
-                "1:2 / 1:3",
-
-            score:
-                90,
-
-            validity:
-                "VALID",
-
-            trigger:
-                "M5 bullish momentum",
-
-            invalidation:
-                "M5 bearish close"
+            status: "WAIT",
+            direction: null,
+            trigger: "WAIT",
+            invalidation: "Confirmation missing"
         };
     }
 
+    const price =
+        getMarketPrice();
+
+    if (!price) {
+        return {
+            status: "WAIT"
+        };
+    }
+
+    const riskPips = 7;
+    const pip = 0.0001;
+
+    let sl;
+    let tp1;
+    let tp2;
+
+    if (direction === "SELL") {
+
+        sl = price + riskPips * pip;
+        tp1 = price - 2 * riskPips * pip;
+        tp2 = price - 3 * riskPips * pip;
+
+    } else {
+
+        sl = price - riskPips * pip;
+        tp1 = price + 2 * riskPips * pip;
+        tp2 = price + 3 * riskPips * pip;
+    }
 
     return {
-
-        verdict:
-            "WAIT",
-
-        direction:
-            "--",
-
-        entry:
-            "--",
-
-        sl:
-            "--",
-
-        tp1:
-            "--",
-
-        tp2:
-            "--",
-
-        rr:
-            "--",
-
-        score:
-            "--",
-
-        validity:
-            "NO SETUP",
-
-        trigger:
-            momentum,
-
-        invalidation:
-            "Confirmation missing"
+        status: "SETUP",
+        direction,
+        entry: price,
+        sl,
+        tp1,
+        tp2,
+        rr: "1:2 / 1:3",
+        score: "A",
+        validity: "VALID",
+        trigger: "H1 + M15 + M5 alignment",
+        invalidation: "Momentum or EMA alignment breaks"
     };
-}
-
-
-function displayScalp(
-    setup
-) {
-
-    setText(
-        "scalpVerdict",
-        setup.verdict
-    );
-
-
-    setText(
-        "scalpDirection",
-        setup.direction
-    );
-
-
-    setText(
-        "scalpEntry",
-        formatPrice(
-            setup.entry
-        )
-    );
-
-
-    setText(
-        "scalpSL",
-        formatPrice(
-            setup.sl
-        )
-    );
-
-
-    setText(
-        "scalpTP1",
-        formatPrice(
-            setup.tp1
-        )
-    );
-
-
-    setText(
-        "scalpTP2",
-        formatPrice(
-            setup.tp2
-        )
-    );
-
-
-    setText(
-        "scalpRR",
-        setup.rr
-    );
-
-
-    setText(
-        "scalpScore",
-        setup.score
-    );
-
-
-    setText(
-        "scalpValidity",
-        setup.validity
-    );
-
-
-    setText(
-        "scalpTrigger",
-        setup.trigger
-    );
-
-
-    setText(
-        "scalpInvalidation",
-        setup.invalidation
-    );
 }
 
 
@@ -2490,480 +1192,716 @@ function displayScalp(
    ELITE TRADE GATE
    ========================================================= */
 
-function evaluateTradeGate(
-    price,
-    h4,
-    h1,
-    m15,
-    m5
-) {
-
-    const session =
-        getSession();
-
-
-    const h4Trend =
-        getTrend(h4);
-
-
-    const h1Trend =
-        getTrend(h1);
-
-
-    const m15Structure =
-        getStructure(m15);
-
-
-    const m5Structure =
-        getStructure(m5);
-
-
-    const ema =
-        getEMADirection(m5);
-
-
-    const momentum =
-        getMomentum(m5);
-
-
-    const rsi =
-        calculateRSI(m5);
-
-
-    let direction =
-        "--";
-
-
-    if (
-        h4Trend === "BEARISH" &&
-        h1Trend === "BEARISH" &&
-        m15Structure === "BEARISH" &&
-        m5Structure === "BEARISH"
-    ) {
-
-        direction =
-            "SELL";
-    }
-
-
-    if (
-        h4Trend === "BULLISH" &&
-        h1Trend === "BULLISH" &&
-        m15Structure === "BULLISH" &&
-        m5Structure === "BULLISH"
-    ) {
-
-        direction =
-            "BUY";
-    }
-
-
-    const allAligned =
-        direction !== "--";
-
-
-    const momentumOK =
-        direction === "SELL"
-
-            ? momentum === "BEARISH"
-
-            : direction === "BUY"
-
-                ? momentum === "BULLISH"
-
-                : false;
-
-
-    const rsiOK =
-        direction === "SELL"
-
-            ? rsi !== null &&
-              rsi < 50
-
-            : direction === "BUY"
-
-                ? rsi !== null &&
-                  rsi >= 50
-
-                : false;
-
-
-    /*
-       =====================================================
-       NEWS GATE
-       =====================================================
-
-       IMPORTANT:
-
-       If the calendar is unavailable we do NOT allow
-       the dashboard to claim that news is clear.
-
-       This is intentionally conservative.
-    */
+function evaluateTradeGate(sniper, scalp) {
 
     const newsRisk =
         getNewsRisk();
 
+    const sessionOK =
+        isTradingSessionActive();
+
+    const direction =
+        sniper.direction ||
+        scalp.direction ||
+        null;
+
+    const price =
+        getMarketPrice();
+
+    let momentum =
+        marketData.m5
+            ? getMomentum(marketData.m5)
+            : "WAIT";
+
+    const momentumOK =
+        direction === "SELL"
+            ? momentum === "BEARISH"
+            : direction === "BUY"
+                ? momentum === "BULLISH"
+                : false;
+
+    const h4 =
+        marketData.h4
+            ? getTrend(marketData.h4)
+            : "WAIT";
+
+    const h1 =
+        marketData.h1
+            ? getTrend(marketData.h1)
+            : "WAIT";
+
+    const m15 =
+        marketData.m15
+            ? getTrend(marketData.m15)
+            : "WAIT";
+
+    const m5 =
+        marketData.m5
+            ? getTrend(marketData.m5)
+            : "WAIT";
+
+    const htfOK =
+        direction === "BUY"
+            ? h4 === "BULLISH" &&
+              h1 === "BULLISH"
+            : direction === "SELL"
+                ? h4 === "BEARISH" &&
+                  h1 === "BEARISH"
+                : false;
+
+    const m15OK =
+        direction === "BUY"
+            ? m15 === "BULLISH"
+            : direction === "SELL"
+                ? m15 === "BEARISH"
+                : false;
+
+    const m5OK =
+        direction === "BUY"
+            ? m5 === "BULLISH"
+            : direction === "SELL"
+                ? m5 === "BEARISH"
+                : false;
 
     const newsOK =
-        newsRisk.available !== false &&
-        newsRisk.blocked === false;
+        newsRisk.available &&
+        !newsRisk.blocked;
 
-
-    const gateOK =
-        session === "ACTIVE" &&
-        allAligned &&
-        ema ===
-            (
-                direction === "SELL"
-                    ? "BEARISH"
-                    : direction === "BUY"
-                        ? "BULLISH"
-                        : "WAIT"
-            ) &&
-        rsiOK &&
+    const allOK =
+        sessionOK &&
+        direction &&
+        htfOK &&
+        m15OK &&
+        m5OK &&
         momentumOK &&
         newsOK;
 
-
-    if (!gateOK) {
-
-        setText(
-            "eliteTradeGate",
-            "STAY AWAY"
-        );
-
+    if (!allOK) {
 
         let reason =
             "Required confirmation not complete";
 
-
-        if (
-            !newsRisk.available
-        ) {
-
+        if (!sessionOK) {
+            reason =
+                "Trading session inactive";
+        } else if (!newsRisk.available) {
             reason =
                 "Live news confirmation unavailable";
-
-        } else if (
-            newsRisk.blocked
-        ) {
-
+        } else if (newsRisk.blocked) {
             reason =
                 newsRisk.reason;
+        } else if (!direction) {
+            reason =
+                "No trade direction";
+        } else if (!htfOK) {
+            reason =
+                "H4/H1 alignment missing";
+        } else if (!m15OK) {
+            reason =
+                "M15 confirmation missing";
+        } else if (!m5OK) {
+            reason =
+                "M5 confirmation missing";
+        } else if (!momentumOK) {
+            reason =
+                "Momentum confirmation missing";
         }
 
-
-        setText(
-            "gateReason",
-            reason
-        );
-
-
-        setText(
-            "gateSession",
-            session
-        );
-
-
-        setText(
-            "gateDirection",
-            direction
-        );
-
-
-        setText(
-            "gateEntry",
-            "--"
-        );
-
-
-        setText(
-            "gateSL",
-            "--"
-        );
-
-
-        setText(
-            "gateTP1",
-            "--"
-        );
-
-
-        setText(
-            "gateTP2",
-            "--"
-        );
-
-
-        setText(
-            "gateRR",
-            "--"
-        );
-
-
-        setText(
-            "gateRisk",
-            "--"
-        );
-
-
-        return;
+        return {
+            allowed: false,
+            reason,
+            direction,
+            entry: null,
+            sl: null,
+            tp1: null,
+            tp2: null,
+            rr: null
+        };
     }
 
+    const setup =
+        sniper.status === "A+ SETUP"
+            ? sniper
+            : scalp;
+
+    return {
+        allowed: true,
+        reason: "All elite conditions confirmed",
+        direction,
+        entry: setup.entry,
+        sl: setup.sl,
+        tp1: setup.tp1,
+        tp2: setup.tp2,
+        rr: setup.rr
+    };
+}
+
+
+/* =========================================================
+   DISPLAY MARKET STRUCTURE
+   ========================================================= */
+
+function displayMarketStructure() {
 
     setText(
-        "eliteTradeGate",
-        "A+ TRADE READY"
+        "h4Bias",
+        getTrend(marketData.h4)
     );
 
-
     setText(
-        "gateReason",
-        "All primary confirmations aligned and news clear"
+        "h1Bias",
+        getTrend(marketData.h1)
     );
 
-
     setText(
-        "gateSession",
-        session
+        "m15Structure",
+        getStructure(marketData.m15)
     );
 
-
     setText(
-        "gateDirection",
-        direction
-    );
-
-
-    setText(
-        "gateEntry",
-        formatPrice(price)
-    );
-
-
-    const sl =
-        direction === "SELL"
-
-            ? price + 0.001
-
-            : price - 0.001;
-
-
-    const tp1 =
-        direction === "SELL"
-
-            ? price - 0.002
-
-            : price + 0.002;
-
-
-    const tp2 =
-        direction === "SELL"
-
-            ? price - 0.003
-
-            : price + 0.003;
-
-
-    setText(
-        "gateSL",
-        formatPrice(sl)
-    );
-
-
-    setText(
-        "gateTP1",
-        formatPrice(tp1)
-    );
-
-
-    setText(
-        "gateTP2",
-        formatPrice(tp2)
-    );
-
-
-    setText(
-        "gateRR",
-        "1:2 / 1:3"
-    );
-
-
-    setText(
-        "gateRisk",
-        "10 pips"
+        "m5Structure",
+        getStructure(marketData.m5)
     );
 }
 
 
 /* =========================================================
-   CHECKLIST
+   DISPLAY QUICK ANALYSIS
    ========================================================= */
 
-function displayChecklist(
-    h4,
-    h1,
-    m15,
-    m5
-) {
+function displayQuickAnalysis() {
 
     const h4Trend =
-        getTrend(h4);
-
+        getTrend(marketData.h4);
 
     const h1Trend =
-        getTrend(h1);
-
-
-    const m15Structure =
-        getStructure(m15);
-
-
-    const m5Structure =
-        getStructure(m5);
-
+        getTrend(marketData.h1);
 
     const ema =
-        getEMADirection(m5);
+        getEMADirection(marketData.m5);
+
+    setText(
+        "h4Trend",
+        h4Trend
+    );
+
+    setText(
+        "h1Trend",
+        h1Trend
+    );
+
+    setText(
+        "emaStructure",
+        ema
+    );
+
+    setText(
+        "setupScore",
+        "--"
+    );
+}
 
 
-    const rsi =
-        calculateRSI(m5);
+/* =========================================================
+   DISPLAY SUPPORT / RESISTANCE
+   ========================================================= */
+
+function displaySupportResistance() {
+
+    const sr =
+        getSupportResistance(marketData.h1);
+
+    setText(
+        "r2",
+        formatPrice(sr.r2)
+    );
+
+    setText(
+        "r1",
+        formatPrice(sr.r1)
+    );
+
+    setText(
+        "s1",
+        formatPrice(sr.s1)
+    );
+
+    setText(
+        "s2",
+        formatPrice(sr.s2)
+    );
+}
 
 
-    const momentum =
-        getMomentum(m5);
+/* =========================================================
+   DISPLAY TECHNICALS
+   ========================================================= */
 
+function displayTechnicals() {
+
+    const h4Rsi =
+        calculateRSI(marketData.h4);
+
+    const h1Rsi =
+        calculateRSI(marketData.h1);
+
+    const m15Rsi =
+        calculateRSI(marketData.m15);
+
+    const m5Rsi =
+        calculateRSI(marketData.m5);
+
+    setText(
+        "h4Rsi",
+        round(h4Rsi, 2)
+    );
+
+    setText(
+        "h1Rsi",
+        round(h1Rsi, 2)
+    );
+
+    setText(
+        "m15Rsi",
+        round(m15Rsi, 2)
+    );
+
+    setText(
+        "m5Rsi",
+        round(m5Rsi, 2)
+    );
+
+    setText(
+        "emaStructure2",
+        getEMADirection(marketData.m5)
+    );
+}
+
+
+/* =========================================================
+   DISPLAY SNIPER
+   ========================================================= */
+
+function displaySniper(result) {
+
+    setText(
+        "sniperStatusBig",
+        result.status || "WAIT"
+    );
+
+    setText(
+        "sniperStatus",
+        result.status || "WAIT"
+    );
+
+    setText(
+        "sniperDirection",
+        result.direction || "--"
+    );
+
+    setText(
+        "sniperEntry",
+        result.entry
+            ? formatPrice(result.entry)
+            : "--"
+    );
+
+    setText(
+        "sniperSL",
+        result.sl
+            ? formatPrice(result.sl)
+            : "--"
+    );
+
+    setText(
+        "sniperTP1",
+        result.tp1
+            ? formatPrice(result.tp1)
+            : "--"
+    );
+
+    setText(
+        "sniperTP2",
+        result.tp2
+            ? formatPrice(result.tp2)
+            : "--"
+    );
+
+    setText(
+        "sniperTP3",
+        result.tp3
+            ? formatPrice(result.tp3)
+            : "--"
+    );
+
+    setText(
+        "sniperRR",
+        result.rr || "--"
+    );
+
+    setText(
+        "sniperValidity",
+        result.validity ||
+        "NO A+ SETUP"
+    );
+
+    setText(
+        "sniperTrigger",
+        result.trigger || "WAIT"
+    );
+
+    setText(
+        "sniperInvalidation",
+        result.invalidation ||
+        "Alignment or momentum missing"
+    );
+
+    setText(
+        "setupTime",
+        result.status === "A+ SETUP"
+            ? new Date().toLocaleTimeString(
+                "en-IN",
+                {
+                    timeZone: "Asia/Kolkata"
+                }
+            )
+            : "--"
+    );
+}
+
+
+/* =========================================================
+   DISPLAY SCALP
+   ========================================================= */
+
+function displayScalp(result) {
+
+    setText(
+        "scalpVerdict",
+        result.status || "WAIT"
+    );
+
+    setText(
+        "scalpDirection",
+        result.direction || "--"
+    );
+
+    setText(
+        "scalpEntry",
+        result.entry
+            ? formatPrice(result.entry)
+            : "--"
+    );
+
+    setText(
+        "scalpSL",
+        result.sl
+            ? formatPrice(result.sl)
+            : "--"
+    );
+
+    setText(
+        "scalpTP1",
+        result.tp1
+            ? formatPrice(result.tp1)
+            : "--"
+    );
+
+    setText(
+        "scalpTP2",
+        result.tp2
+            ? formatPrice(result.tp2)
+            : "--"
+    );
+
+    setText(
+        "scalpRR",
+        result.rr || "--"
+    );
+
+    setText(
+        "scalpScore",
+        result.score || "--"
+    );
+
+    setText(
+        "scalpValidity",
+        result.validity ||
+        "NO SETUP"
+    );
+
+    setText(
+        "scalpTrigger",
+        result.trigger ||
+        "WAIT"
+    );
+
+    setText(
+        "scalpInvalidation",
+        result.invalidation ||
+        "Confirmation missing"
+    );
+}
+
+
+/* =========================================================
+   DISPLAY PRO VERDICT
+   ========================================================= */
+
+function displayProVerdict(sniper, scalp, gate) {
+
+    if (gate.allowed) {
+
+        setText(
+            "proVerdict",
+            "TRADE READY"
+        );
+
+        return;
+    }
+
+    if (
+        sniper.status === "A+ SETUP" ||
+        scalp.status === "SETUP"
+    ) {
+
+        setText(
+            "proVerdict",
+            "WAIT — NEWS / GATE"
+        );
+
+        return;
+    }
+
+    setText(
+        "proVerdict",
+        "WAIT"
+    );
+}
+
+
+/* =========================================================
+   DISPLAY ELITE GATE
+   ========================================================= */
+
+function displayTradeGate(gate) {
+
+    setText(
+        "eliteTradeGate",
+        gate.allowed
+            ? "TRADE READY"
+            : "STAY AWAY"
+    );
+
+    setText(
+        "gateReason",
+        gate.reason
+    );
+
+    setText(
+        "gateSession",
+        isTradingSessionActive()
+            ? "SESSION ACTIVE"
+            : "SESSION INACTIVE"
+    );
+
+    setText(
+        "gateDirection",
+        gate.direction || "--"
+    );
+
+    setText(
+        "gateEntry",
+        gate.entry
+            ? formatPrice(gate.entry)
+            : "--"
+    );
+
+    setText(
+        "gateSL",
+        gate.sl
+            ? formatPrice(gate.sl)
+            : "--"
+    );
+
+    setText(
+        "gateTP1",
+        gate.tp1
+            ? formatPrice(gate.tp1)
+            : "--"
+    );
+
+    setText(
+        "gateTP2",
+        gate.tp2
+            ? formatPrice(gate.tp2)
+            : "--"
+    );
+
+    setText(
+        "gateRR",
+        gate.rr || "--"
+    );
+
+    setText(
+        "gateRisk",
+        gate.allowed
+            ? "CONFIRMED"
+            : "NOT APPROVED"
+    );
+}
+
+
+/* =========================================================
+   EXECUTION CHECKLIST
+   ========================================================= */
+
+function displayChecklist(sniper, scalp, gate) {
 
     const direction =
-        h4Trend === "BULLISH" &&
-        h1Trend === "BULLISH"
+        gate.direction;
 
-            ? "BULLISH"
+    const sessionOK =
+        isTradingSessionActive();
 
-            :
+    const h4 =
+        getTrend(marketData.h4);
 
-        h4Trend === "BEARISH" &&
-        h1Trend === "BEARISH"
+    const h1 =
+        getTrend(marketData.h1);
 
-            ? "BEARISH"
+    const m15 =
+        getTrend(marketData.m15);
 
-            : "--";
+    const m5 =
+        getTrend(marketData.m5);
 
+    const ema =
+        getEMADirection(marketData.m5);
+
+    const rsi =
+        calculateRSI(marketData.m5);
+
+    const momentum =
+        getMomentum(marketData.m5);
+
+    const news =
+        getNewsRisk();
+
+    const htfOK =
+        direction === "BUY"
+            ? h4 === "BULLISH" &&
+              h1 === "BULLISH"
+            : direction === "SELL"
+                ? h4 === "BEARISH" &&
+                  h1 === "BEARISH"
+                : false;
+
+    const m15OK =
+        direction === "BUY"
+            ? m15 === "BULLISH"
+            : direction === "SELL"
+                ? m15 === "BEARISH"
+                : false;
+
+    const m5OK =
+        direction === "BUY"
+            ? m5 === "BULLISH"
+            : direction === "SELL"
+                ? m5 === "BEARISH"
+                : false;
+
+    const emaOK =
+        direction === "BUY"
+            ? ema === "BULLISH"
+            : direction === "SELL"
+                ? ema === "BEARISH"
+                : false;
+
+    const rsiOK =
+        direction === "BUY"
+            ? rsi >= 55
+            : direction === "SELL"
+                ? rsi <= 45
+                : false;
+
+    const momentumOK =
+        direction === "BUY"
+            ? momentum === "BULLISH"
+            : direction === "SELL"
+                ? momentum === "BEARISH"
+                : false;
 
     setText(
         "checkSession",
-
-        getSession() === "ACTIVE"
-
+        sessionOK
             ? "✓ Active London / New York session"
-
             : "— Active London / New York session"
     );
 
+    setText(
+        "checkNews",
+        news.available && !news.blocked
+            ? "✓ EUR/USD high-impact news clear"
+            : "— EUR/USD high-impact news clear"
+    );
 
     setText(
         "checkHtf",
-
-        direction !== "--"
-
+        htfOK
             ? "✓ H4 + H1 directional alignment"
-
             : "— H4 + H1 directional alignment"
     );
 
-
     setText(
         "checkM15",
-
-        m15Structure === direction
-
+        m15OK
             ? "✓ M15 confirmation"
-
             : "— M15 confirmation"
     );
 
-
     setText(
         "checkM5",
-
-        m5Structure === direction
-
+        m5OK
             ? "✓ M5 confirmation"
-
             : "— M5 confirmation"
     );
 
-
     setText(
         "checkEMA",
-
-        ema === direction
-
+        emaOK
             ? "✓ M5 EMA20 / EMA50 alignment"
-
             : "— M5 EMA20 / EMA50 alignment"
     );
 
-
-    const rsiConfirmed =
-        direction === "BEARISH"
-
-            ? rsi !== null &&
-              rsi < 50
-
-            : direction === "BULLISH"
-
-                ? rsi !== null &&
-                  rsi >= 50
-
-                : false;
-
-
     setText(
         "checkRSI",
-
-        rsiConfirmed
-
+        rsiOK
             ? "✓ M5 RSI confirmation"
-
             : "— M5 RSI confirmation"
     );
 
-
     setText(
         "checkMomentum",
-
-        momentum === direction
-
+        momentumOK
             ? "✓ Completed M5 momentum candle"
-
             : "— Completed M5 momentum candle"
     );
-
 
     setText(
         "checkExtension",
         "— No excessive EMA extension"
     );
 
-
     setText(
         "checkRisk",
         "✓ 3–15 pip structural risk"
     );
 
-
     setText(
         "checkRR",
         "✓ Minimum 1:2 Risk / Reward"
     );
-
-
-    /*
-       S/R remains unchanged from your current engine.
-    */
 
     setText(
         "checkSR",
@@ -2973,507 +1911,134 @@ function displayChecklist(
 
 
 /* =========================================================
-   TECHNICAL DISPLAY
-   ========================================================= */
-
-function displayTechnicalData(
-    price,
-    h4,
-    h1,
-    m15,
-    m5
-) {
-
-    const h4Trend =
-        getTrend(h4);
-
-
-    const h1Trend =
-        getTrend(h1);
-
-
-    const m15Structure =
-        getStructure(m15);
-
-
-    const m5Structure =
-        getStructure(m5);
-
-
-    const h4RSI =
-        calculateRSI(h4);
-
-
-    const h1RSI =
-        calculateRSI(h1);
-
-
-    const m15RSI =
-        calculateRSI(m15);
-
-
-    const m5RSI =
-        calculateRSI(m5);
-
-
-    const ema =
-        getEMADirection(m5);
-
-
-    const sr =
-        calculateSR(h1);
-
-
-    setText(
-        "livePrice",
-        formatPrice(price)
-    );
-
-
-    setText(
-        "dataStatus",
-        "● LIVE"
-    );
-
-
-    setText(
-        "h4Bias",
-        h4Trend
-    );
-
-
-    setText(
-        "h1Bias",
-        h1Trend
-    );
-
-
-    setText(
-        "m15Structure",
-        m15Structure
-    );
-
-
-    setText(
-        "m5Structure",
-        m5Structure
-    );
-
-
-    setText(
-        "h4Trend",
-        h4Trend
-    );
-
-
-    setText(
-        "h1Trend",
-        h1Trend
-    );
-
-
-    setText(
-        "emaStructure",
-        ema
-    );
-
-
-    setText(
-        "emaStructure2",
-        ema
-    );
-
-
-    setText(
-        "r2",
-        formatPrice(sr.r2)
-    );
-
-
-    setText(
-        "r1",
-        formatPrice(sr.r1)
-    );
-
-
-    setText(
-        "s1",
-        formatPrice(sr.s1)
-    );
-
-
-    setText(
-        "s2",
-        formatPrice(sr.s2)
-    );
-
-
-    setText(
-        "h4Rsi",
-        formatNumber(h4RSI)
-    );
-
-
-    setText(
-        "h1Rsi",
-        formatNumber(h1RSI)
-    );
-
-
-    setText(
-        "m15Rsi",
-        formatNumber(m15RSI)
-    );
-
-
-    setText(
-        "m5Rsi",
-        formatNumber(m5RSI)
-    );
-}
-
-
-/* =========================================================
-   ERROR DISPLAY
-   ========================================================= */
-
-function displayDataError(
-    error
-) {
-
-    console.error(
-        "EUR/USD Dashboard Error:",
-        error
-    );
-
-
-    setText(
-        "dataStatus",
-        "● DATA LOAD FAILED"
-    );
-
-
-    setText(
-        "eliteTradeGate",
-        "STAY AWAY"
-    );
-
-
-    setText(
-        "gateReason",
-        error.message
-    );
-
-
-    setText(
-        "gateSession",
-        getSession()
-    );
-
-
-    setText(
-        "gateDirection",
-        "--"
-    );
-
-
-    setText(
-        "gateEntry",
-        "--"
-    );
-
-
-    setText(
-        "gateSL",
-        "--"
-    );
-
-
-    setText(
-        "gateTP1",
-        "--"
-    );
-
-
-    setText(
-        "gateTP2",
-        "--"
-    );
-
-
-    setText(
-        "gateRR",
-        "--"
-    );
-
-
-    setText(
-        "gateRisk",
-        "--"
-    );
-
-
-    invalidateSniperSetup();
-}
-
-
-/* =========================================================
-   MARKET DATA LOAD
+   LOAD ALL MARKET DATA
    ========================================================= */
 
 async function loadMarketData() {
 
-    if (
-        marketDataLoading
-    ) {
-
+    if (marketDataLoading) {
         return;
     }
 
-
-    marketDataLoading =
-        true;
-
-
-    setText(
-        "dataStatus",
-        "● LOADING"
-    );
-
+    marketDataLoading = true;
 
     try {
 
         /*
-           =====================================================
-           LOAD NEWS
-           =====================================================
-        */
+         * NEWS IS LOADED FIRST.
+         * If no news API is configured, this returns immediately.
+         */
 
         await loadNewsData();
 
-
         /*
-           =====================================================
-           H4
-           =====================================================
-        */
+         * LOW REQUEST MODE
+         */
 
-        const h4 =
-            await getCachedCandles(
-                "h4",
-                "4h",
-                100
-            );
+        await loadTimeframe(
+            "h4",
+            "4h",
+            DATA_TTL.h4
+        );
 
+        await delay(250);
 
-        /*
-           =====================================================
-           H1
-           =====================================================
-        */
+        await loadTimeframe(
+            "h1",
+            "1h",
+            DATA_TTL.h1
+        );
 
-        const h1 =
-            await getCachedCandles(
-                "h1",
-                "1h",
-                100
-            );
+        await delay(250);
 
+        await loadTimeframe(
+            "m15",
+            "15min",
+            DATA_TTL.m15
+        );
 
-        /*
-           =====================================================
-           M15
-           =====================================================
-        */
+        await delay(250);
 
-        const m15 =
-            await getCachedCandles(
-                "m15",
-                "15min",
-                100
-            );
-
-
-        /*
-           =====================================================
-           M5
-           =====================================================
-        */
-
-        const m5 =
-            await getCachedCandles(
-                "m5",
-                "5min",
-                100
-            );
-
-
-        /*
-           =====================================================
-           VALIDATE DATA
-           =====================================================
-        */
-
-        if (
-            !h4 ||
-            !h1 ||
-            !m15 ||
-            !m5
-        ) {
-
-            throw new Error(
-                "Incomplete market data"
-            );
-        }
-
+        await loadTimeframe(
+            "m5",
+            "5min",
+            DATA_TTL.m5
+        );
 
         const price =
-            getMarketPrice(m5);
+            getMarketPrice();
 
+        if (price) {
 
-        if (
-            price === null
-        ) {
-
-            throw new Error(
-                "Unable to determine EUR/USD market price"
+            setText(
+                "livePrice",
+                formatPrice(price)
             );
         }
 
+        displayMarketStructure();
 
-        /*
-           =====================================================
-           TECHNICAL DATA
-           =====================================================
-        */
+        displayQuickAnalysis();
 
-        displayTechnicalData(
-            price,
-            h4,
-            h1,
-            m15,
-            m5
-        );
+        displaySupportResistance();
 
-
-        /*
-           =====================================================
-           SNIPER
-           =====================================================
-        */
+        displayTechnicals();
 
         const sniper =
-            evaluateSniper(
-                price,
-                h4,
-                h1,
-                m15,
-                m5
-            );
-
-
-        displaySniper(
-            sniper
-        );
-
-
-        /*
-           =====================================================
-           SCALP
-           =====================================================
-        */
+            evaluateSniper();
 
         const scalp =
-            evaluateScalp(
-                price,
-                h1,
-                m15,
-                m5
+            evaluateScalp();
+
+        const gate =
+            evaluateTradeGate(
+                sniper,
+                scalp
             );
 
+        displaySniper(sniper);
 
-        displayScalp(
-            scalp
+        displayScalp(scalp);
+
+        displayProVerdict(
+            sniper,
+            scalp,
+            gate
         );
 
-
-        /*
-           =====================================================
-           ELITE TRADE GATE
-           =====================================================
-        */
-
-        evaluateTradeGate(
-            price,
-            h4,
-            h1,
-            m15,
-            m5
-        );
-
-
-        /*
-           =====================================================
-           CHECKLIST
-           =====================================================
-        */
+        displayTradeGate(gate);
 
         displayChecklist(
-            h4,
-            h1,
-            m15,
-            m5
+            sniper,
+            scalp,
+            gate
         );
 
-
-        /*
-           =====================================================
-           NEWS DISPLAY
-           =====================================================
-        */
-
-        displayNews();
-
-
-        /*
-           =====================================================
-           PRO VERDICT
-           =====================================================
-        */
-
         setText(
-            "proVerdict",
-
-            sniper.status ===
-                "A+ SETUP"
-
-                ? "A+ SETUP"
-
-                : "WAIT"
-        );
-
-
-        /*
-           =====================================================
-           DATA SUCCESS
-           =====================================================
-        */
-
-        setText(
-            "dataStatus",
-            "● LIVE"
+            "livePrice",
+            formatPrice(price)
         );
 
     } catch (error) {
 
-        displayDataError(
+        console.error(
+            "Dashboard error:",
             error
+        );
+
+        setText(
+            "livePrice",
+            "ERROR"
+        );
+
+        setText(
+            "proVerdict",
+            "DATA ERROR"
         );
 
     } finally {
 
-        marketDataLoading =
-            false;
+        marketDataLoading = false;
     }
 }
 
@@ -3482,18 +2047,51 @@ async function loadMarketData() {
    MANUAL REFRESH
    ========================================================= */
 
-function manualRefresh() {
+async function manualRefresh() {
 
-    if (
-        marketDataLoading
-    ) {
+    /*
+     * Force refresh of all timeframes.
+     */
 
-        return;
-    }
+    marketDataUpdated = {
+        h4: 0,
+        h1: 0,
+        m15: 0,
+        m5: 0
+    };
 
+    newsData.lastUpdated = 0;
 
-    loadMarketData();
+    await loadMarketData();
 }
+
+
+/* =========================================================
+   AUTOMATIC REFRESH
+   ========================================================= */
+
+setInterval(
+    async () => {
+
+        await loadMarketData();
+
+    },
+    REFRESH_INTERVAL
+);
+
+
+/* =========================================================
+   NEWS AUTO REFRESH
+   ========================================================= */
+
+setInterval(
+    async () => {
+
+        await loadNewsData();
+
+    },
+    NEWS_REFRESH_INTERVAL
+);
 
 
 /* =========================================================
@@ -3504,62 +2102,7 @@ document.addEventListener(
     "DOMContentLoaded",
     () => {
 
-        /*
-           Load market data.
-        */
-
         loadMarketData();
 
-
-        /*
-           Market data refresh:
-           every 5 minutes.
-        */
-
-        setInterval(
-            loadMarketData,
-            REFRESH_INTERVAL
-        );
-
-
-        /*
-           News display refresh:
-           every 15 minutes.
-
-           Once NEWS_API_URL is connected,
-           this will update the calendar without
-           unnecessarily hitting Twelve Data.
-        */
-
-        setInterval(
-            async () => {
-
-                await loadNewsData();
-
-                displayNews();
-
-            },
-            NEWS_REFRESH_INTERVAL
-        );
-
-
-        /*
-           Update countdown / news status
-           every 30 seconds.
-        */
-
-        setInterval(
-            () => {
-
-                if (
-                    newsData.available
-                ) {
-
-                    displayNews();
-                }
-
-            },
-            30000
-        );
     }
 );
