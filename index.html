@@ -2,1529 +2,726 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>EUR/USD Sniper Dashboard</title>
 
 <style>
-:root{
-  --bg:#070a0f;
-  --panel:#0f141b;
-  --panel2:#131a23;
-  --panel3:#0b1016;
-  --border:#222b36;
-  --border2:#303b49;
-  --text:#f4f7fb;
-  --muted:#8c98a7;
-  --dim:#5e6977;
-  --green:#19d69b;
-  --red:#ff5365;
-  --yellow:#f4c451;
-  --blue:#4da1ff;
-  --purple:#9a7cff;
-  --green-bg:rgba(25,214,155,.10);
-  --red-bg:rgba(255,83,101,.10);
-  --blue-bg:rgba(77,161,255,.10);
-  --yellow-bg:rgba(244,196,81,.10);
-  --radius:16px;
-  --small-radius:10px;
-}
-
-*{box-sizing:border-box}
-
-html,body{
-  margin:0;
-  padding:0;
-  min-height:100%;
-  background:var(--bg);
+*{
+  box-sizing:border-box;
 }
 
 body{
-  color:var(--text);
-  font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-  background:
-    radial-gradient(circle at 100% 0%,rgba(77,161,255,.07),transparent 30%),
-    radial-gradient(circle at 0% 0%,rgba(154,124,255,.05),transparent 28%),
-    var(--bg);
+  margin:0;
+  font-family:Arial,Helvetica,sans-serif;
+  background:#0b0f14;
+  color:#fff;
 }
-
-button{font-family:inherit}
-
-.app{
-  width:100%;
-  max-width:1500px;
-  margin:auto;
-  padding:18px;
-}
-
-/* HEADER */
 
 .topbar{
+  background:#111820;
+  padding:14px 18px;
   display:flex;
-  align-items:center;
   justify-content:space-between;
-  padding:17px 20px;
-  margin-bottom:15px;
-  background:linear-gradient(135deg,rgba(255,255,255,.035),rgba(255,255,255,.008)),var(--panel);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  box-shadow:0 12px 35px rgba(0,0,0,.25);
-}
-
-.brand{
-  display:flex;
   align-items:center;
-  gap:13px;
+  border-bottom:1px solid #26313d;
 }
 
 .logo{
-  width:44px;
-  height:44px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:12px;
-  background:linear-gradient(135deg,#1b2736,#0b1017);
-  border:1px solid var(--border2);
-  color:var(--blue);
   font-size:21px;
-  font-weight:900;
+  font-weight:bold;
 }
 
-.brand h1{
-  margin:0;
-  font-size:20px;
-  font-weight:800;
-}
-
-.brand p{
-  margin:4px 0 0;
-  color:var(--muted);
-  font-size:10px;
-  letter-spacing:1.3px;
-  text-transform:uppercase;
-}
-
-.live{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  padding:8px 12px;
-  border-radius:999px;
-  background:var(--green-bg);
-  border:1px solid rgba(25,214,155,.25);
-  color:var(--green);
-  font-size:10px;
-  font-weight:800;
-  letter-spacing:.8px;
-}
-
-.live-dot{
-  width:7px;
-  height:7px;
-  border-radius:50%;
-  background:var(--green);
-  box-shadow:0 0 10px rgba(25,214,155,.8);
-}
-
-/* HERO */
-
-.hero{
-  display:grid;
-  grid-template-columns:1.45fr 1fr;
-  gap:15px;
-  margin-bottom:15px;
-}
-
-.price-card{
-  position:relative;
-  overflow:hidden;
-  min-height:160px;
-  padding:25px;
-  background:linear-gradient(135deg,rgba(77,161,255,.075),rgba(255,255,255,.01)),var(--panel);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  box-shadow:0 12px 35px rgba(0,0,0,.22);
-}
-
-.price-card::after{
-  content:"";
-  position:absolute;
-  width:230px;
-  height:230px;
-  right:-80px;
-  bottom:-110px;
-  border:1px solid rgba(77,161,255,.08);
-  border-radius:50%;
-  pointer-events:none;
-}
-
-.eyebrow{
-  color:var(--muted);
-  font-size:10px;
-  font-weight:700;
-  letter-spacing:1.2px;
-  text-transform:uppercase;
-}
-
-.pair{
-  margin-top:6px;
-  font-size:18px;
-  font-weight:800;
-}
-
-#price{
-  margin-top:9px;
-  font-size:clamp(38px,6vw,60px);
-  line-height:1;
-  font-weight:900;
-  letter-spacing:-1.5px;
-  font-variant-numeric:tabular-nums;
-}
-
-#priceStatus{
-  margin-top:12px;
-  color:var(--muted);
-  font-size:11px;
-}
-
-.quick-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-
-.quick-card{
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  padding:15px;
-  background:var(--panel);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-}
-
-.quick-label{
-  color:var(--muted);
-  font-size:9px;
-  font-weight:700;
-  text-transform:uppercase;
-  letter-spacing:1px;
-}
-
-.quick-value{
-  margin-top:7px;
-  font-size:16px;
-  font-weight:900;
-  font-variant-numeric:tabular-nums;
-}
-
-/* SECTIONS */
-
-.section-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  margin:22px 2px 9px;
-}
-
-.section-head h2{
-  margin:0;
-  color:#d7dee7;
+.live-badge{
+  background:#123c2b;
+  color:#5cffae;
+  border:1px solid #1c6a48;
+  padding:6px 12px;
+  border-radius:20px;
   font-size:12px;
-  font-weight:800;
-  text-transform:uppercase;
-  letter-spacing:1.4px;
 }
 
-.section-head span{
-  color:var(--dim);
-  font-size:9px;
+.container{
+  width:95%;
+  max-width:1400px;
+  margin:20px auto;
 }
 
 .card{
-  overflow:hidden;
-  background:linear-gradient(145deg,rgba(255,255,255,.025),rgba(255,255,255,.008)),var(--panel);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  box-shadow:0 8px 28px rgba(0,0,0,.18);
+  background:#111820;
+  border:1px solid #26313d;
+  border-radius:14px;
+  padding:18px;
+  margin-bottom:18px;
 }
 
-.card-head{
+.hero{
+  text-align:center;
+  padding:25px;
+}
+
+.hero-title{
+  color:#9aa8b7;
+  font-size:14px;
+  margin-bottom:8px;
+}
+
+.price{
+  font-size:42px;
+  font-weight:bold;
+  letter-spacing:1px;
+}
+
+.status{
+  margin-top:8px;
+  color:#9aa8b7;
+  font-size:13px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+}
+
+.grid-2{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:14px;
+}
+
+@media(max-width:900px){
+  .grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+
+@media(max-width:600px){
+  .grid,
+  .grid-2{
+    grid-template-columns:1fr;
+  }
+
+  .price{
+    font-size:34px;
+  }
+}
+
+.quick-card{
+  background:#151d26;
+  border:1px solid #283541;
+  border-radius:12px;
+  padding:15px;
+  text-align:center;
+}
+
+.label{
+  color:#8f9eac;
+  font-size:12px;
+  margin-bottom:7px;
+}
+
+.value{
+  font-size:18px;
+  font-weight:bold;
+}
+
+.section-title{
+  font-size:19px;
+  font-weight:bold;
+  margin-bottom:15px;
+}
+
+.row{
   display:flex;
-  align-items:center;
   justify-content:space-between;
-  gap:10px;
-  padding:13px 16px;
-  border-bottom:1px solid var(--border);
-  background:rgba(255,255,255,.012);
+  align-items:center;
+  padding:11px 0;
+  border-bottom:1px solid #222d38;
 }
 
-.card-head strong{
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:.8px;
-  text-transform:uppercase;
+.row:last-child{
+  border-bottom:none;
 }
 
-.card-head small{
-  color:var(--muted);
-  font-size:9px;
+.good{
+  color:#4dff9a;
 }
 
-.card-body{padding:15px}
+.bad{
+  color:#ff6262;
+}
 
-/* CHART */
+.warn{
+  color:#ffc857;
+}
 
-.timeframes{
+.neutral{
+  color:#c5d0da;
+}
+
+.chart-buttons{
   display:flex;
-  gap:5px;
+  gap:8px;
+  margin-bottom:12px;
   flex-wrap:wrap;
 }
 
-.tf{
-  padding:7px 11px;
-  border:1px solid var(--border);
+.chart-buttons button{
+  background:#18222c;
+  color:#fff;
+  border:1px solid #344250;
+  padding:8px 15px;
   border-radius:8px;
-  background:#0c1117;
-  color:var(--muted);
-  font-size:9px;
-  font-weight:800;
   cursor:pointer;
-  transition:.2s ease;
 }
 
-.tf:hover{
-  color:white;
-  border-color:var(--border2);
+.chart-buttons button.active{
+  background:#263b4d;
+  border-color:#5c91b8;
 }
 
-.tf.active{
-  color:var(--blue);
-  background:var(--blue-bg);
-  border-color:rgba(77,161,255,.35);
-}
-
-.chart{
+.chart-wrap{
   width:100%;
-  height:510px;
-  background:#080b10;
+  height:500px;
+  overflow:hidden;
+  border-radius:10px;
 }
 
-#tradingChart{
-  display:block;
+.chart-wrap iframe{
   width:100%;
   height:100%;
   border:0;
 }
 
-/* STRUCTURE */
-
-.structure-grid{
-  display:grid;
-  grid-template-columns:repeat(4,1fr);
-  gap:10px;
-}
-
-.metric{
-  padding:14px;
-  background:var(--panel3);
-  border:1px solid var(--border);
-  border-radius:var(--small-radius);
-}
-
-.metric-label{
-  color:var(--muted);
-  font-size:9px;
-  font-weight:700;
-  text-transform:uppercase;
-  letter-spacing:.9px;
-}
-
-.metric-value{
-  margin-top:8px;
-  font-size:14px;
-  font-weight:900;
-}
-
-/* SUPPORT RESISTANCE */
-
-.sr-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-
-.sr{
+.signal{
+  border-radius:12px;
   padding:16px;
-  background:var(--panel3);
-  border:1px solid var(--border);
-  border-radius:12px;
+  background:#151d26;
+  border:1px solid #293643;
 }
 
-.sr.resistance{
-  border-color:rgba(255,83,101,.23);
-  background:linear-gradient(135deg,var(--red-bg),transparent),var(--panel3);
-}
-
-.sr.support{
-  border-color:rgba(25,214,155,.23);
-  background:linear-gradient(135deg,var(--green-bg),transparent),var(--panel3);
-}
-
-.sr-title{
-  color:var(--muted);
-  font-size:9px;
-  font-weight:800;
-  text-transform:uppercase;
-  letter-spacing:1px;
-}
-
-.level{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding:10px 0;
-  border-bottom:1px solid var(--border);
-  font-size:13px;
-  font-weight:800;
-  font-variant-numeric:tabular-nums;
-}
-
-.level:last-child{border-bottom:0}
-
-.resistance .level span:last-child{color:var(--red)}
-.support .level span:last-child{color:var(--green)}
-
-/* INDICATORS */
-
-.indicator-grid{
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:10px;
-}
-
-.indicator{
-  padding:13px;
-  text-align:center;
-  background:var(--panel3);
-  border:1px solid var(--border);
-  border-radius:var(--small-radius);
-}
-
-.indicator-label{
-  color:var(--muted);
-  font-size:9px;
-  font-weight:700;
-  text-transform:uppercase;
-  letter-spacing:.7px;
-}
-
-.indicator-value{
-  margin-top:7px;
+.signal-title{
   font-size:17px;
-  font-weight:900;
-  font-variant-numeric:tabular-nums;
+  font-weight:bold;
+  margin-bottom:12px;
 }
 
-/* SIGNAL */
-
-.signal-grid{
-  display:grid;
-  grid-template-columns:1.4fr 1fr 1fr;
-  gap:15px;
-}
-
-.signal-card{min-height:350px}
-
-.signal-card.sniper{border-color:rgba(77,161,255,.28)}
-.signal-card.scalp{border-color:rgba(154,124,255,.23)}
-.signal-card.pro{border-color:rgba(244,196,81,.23)}
-
-.badge{
-  padding:6px 8px;
-  border-radius:7px;
-  background:rgba(255,255,255,.04);
-  border:1px solid var(--border);
-  color:var(--muted);
-  font-size:8px;
-  font-weight:800;
-  letter-spacing:.8px;
-}
-
-.signal-content{padding:17px}
-
-#sniperStatus,
-#scalpVerdict,
-#proVerdict{
-  margin-bottom:16px;
-  font-size:20px;
-  font-weight:900;
-  line-height:1.15;
-}
-
-.trade-list{
-  display:grid;
-  gap:6px;
-}
-
-.trade-row{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  min-height:38px;
-  padding:8px 10px;
-  background:var(--panel3);
-  border:1px solid var(--border);
-  border-radius:8px;
-}
-
-.trade-row span:first-child{
-  color:var(--muted);
-  font-size:9px;
-  font-weight:700;
-  text-transform:uppercase;
-  letter-spacing:.7px;
-}
-
-.trade-row span:last-child{
-  color:#e8edf3;
-  font-size:12px;
-  font-weight:900;
-  font-variant-numeric:tabular-nums;
-}
-
-.score{
-  margin-top:13px;
-  padding:13px;
-  border-radius:10px;
-  background:linear-gradient(90deg,rgba(25,214,155,.07),rgba(77,161,255,.035));
-  border:1px solid var(--border);
-}
-
-.score-top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.score-top span:first-child{
-  color:var(--muted);
-  font-size:9px;
-  font-weight:700;
-  text-transform:uppercase;
-  letter-spacing:.8px;
-}
-
-.score-top span:last-child{
-  font-size:14px;
-  font-weight:900;
-}
-
-.detail{
-  margin-top:12px;
-  padding-top:11px;
-  border-top:1px solid var(--border);
-}
-
-.detail-label{
-  margin-bottom:5px;
-  color:var(--muted);
-  font-size:8px;
-  font-weight:800;
-  text-transform:uppercase;
-  letter-spacing:.9px;
-}
-
-.detail-value{
-  color:#d2dae4;
-  font-size:10px;
-  line-height:1.55;
-}
-
-/* ELITE TRADE GATE */
-
-.trade-gate-card{
-  border-color:rgba(25,214,155,.30);
-  background:linear-gradient(145deg,rgba(25,214,155,.045),rgba(255,255,255,.008)),var(--panel);
-}
-
-.trade-gate-body{padding:20px}
-
-.trade-gate-verdict{
+.trade-gate{
   text-align:center;
-  font-size:clamp(32px,6vw,52px);
-  font-weight:950;
-  letter-spacing:1px;
-  line-height:1;
-  margin:5px 0 12px;
+  padding:24px;
+  border-radius:14px;
+  background:#171d23;
+  border:2px solid #34414e;
 }
 
-.trade-gate-reason{
-  text-align:center;
-  color:#dce5ee;
-  font-size:14px;
-  font-weight:800;
+.gate-verdict{
+  font-size:30px;
+  font-weight:bold;
+  margin-bottom:10px;
+}
+
+.gate-reason{
+  color:#aeb9c4;
   line-height:1.5;
 }
 
-.trade-gate-action{
-  max-width:850px;
-  margin:8px auto 20px;
-  text-align:center;
-  color:var(--muted);
-  font-size:11px;
-  line-height:1.5;
-}
-
-.gate-check-grid{
+.gate-grid{
   display:grid;
   grid-template-columns:repeat(4,1fr);
-  gap:9px;
+  gap:12px;
+  margin-top:18px;
 }
 
-.gate-check{
+@media(max-width:800px){
+  .gate-grid{
+    grid-template-columns:repeat(2,1fr);
+  }
+}
+
+.gate-box{
+  background:#10161c;
+  padding:12px;
+  border-radius:9px;
+}
+
+.gate-label{
+  color:#82909d;
+  font-size:11px;
+  margin-bottom:5px;
+}
+
+.gate-value{
+  font-weight:bold;
+  font-size:15px;
+}
+
+button.refresh{
+  width:100%;
   padding:13px;
-  background:var(--panel3);
-  border:1px solid var(--border);
+  border:none;
   border-radius:10px;
-}
-
-.gate-check span{
-  display:block;
-  color:var(--muted);
-  font-size:8px;
-  font-weight:800;
-  letter-spacing:.8px;
-  text-transform:uppercase;
-}
-
-.gate-check strong{
-  display:block;
-  margin-top:7px;
-  color:#edf3f8;
-  font-size:13px;
-  font-weight:900;
-  font-variant-numeric:tabular-nums;
-}
-
-.gate-rules{
-  margin-top:15px;
-  padding:15px;
-  background:rgba(255,255,255,.015);
-  border:1px solid var(--border);
-  border-radius:12px;
-}
-
-.gate-rule-title{
-  margin-bottom:10px;
-  color:var(--muted);
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:1px;
-  text-transform:uppercase;
-}
-
-.gate-rule-list{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:8px;
-}
-
-.gate-rule-list span{
-  padding:8px 10px;
-  background:var(--panel3);
-  border:1px solid var(--border);
-  border-radius:7px;
-  color:#bfc9d5;
-  font-size:9px;
-  line-height:1.4;
-}
-
-/* NEWS */
-
-.news-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-}
-
-.news-box{
-  padding:15px;
-  background:var(--panel3);
-  border:1px solid var(--border);
-  border-radius:12px;
-}
-
-.news-label{
-  color:var(--muted);
-  font-size:8px;
-  font-weight:800;
-  text-transform:uppercase;
-  letter-spacing:.9px;
-}
-
-.news-value{
-  margin-top:7px;
-  color:#dce4ed;
-  font-size:12px;
-  font-weight:800;
-  line-height:1.45;
-}
-
-.news-bottom{
-  display:grid;
-  grid-template-columns:1.5fr 1fr 1fr;
-  gap:12px;
-  margin-top:12px;
-}
-
-/* REFRESH */
-
-.actions{
-  display:flex;
-  justify-content:center;
-  margin-top:22px;
-}
-
-#refreshBtn{
-  padding:11px 20px;
-  border:1px solid var(--border2);
-  border-radius:10px;
-  background:linear-gradient(135deg,rgba(77,161,255,.13),rgba(255,255,255,.02));
-  color:#dce6f2;
-  font-size:10px;
-  font-weight:800;
-  letter-spacing:.7px;
+  background:#1f6feb;
+  color:white;
+  font-size:15px;
+  font-weight:bold;
   cursor:pointer;
-  transition:.2s ease;
 }
 
-#refreshBtn:hover{
-  transform:translateY(-1px);
-  background:rgba(77,161,255,.16);
+.small{
+  font-size:12px;
+  color:#7f8c98;
+  margin-top:8px;
+  line-height:1.5;
 }
 
-#refreshBtn:active{transform:translateY(0)}
-
-.footer{
-  margin:11px 0 5px;
-  text-align:center;
-  color:var(--dim);
-  font-size:8px;
-  letter-spacing:.7px;
+.news-event{
+  background:#151d26;
+  padding:12px;
+  border-radius:9px;
+  margin-bottom:8px;
 }
 
-/* RESPONSIVE */
-
-@media(max-width:1100px){
-
-  .signal-grid{
-    grid-template-columns:1fr 1fr;
-  }
-
-  .signal-card.sniper{
-    grid-column:span 2;
-  }
-
-  .indicator-grid{
-    grid-template-columns:repeat(3,1fr);
-  }
-
-  .gate-check-grid{
-    grid-template-columns:repeat(2,1fr);
-  }
-
-  .gate-rule-list{
-    grid-template-columns:repeat(2,1fr);
-  }
-}
-
-@media(max-width:700px){
-
-  .app{padding:10px}
-
-  .topbar{padding:13px}
-
-  .brand h1{font-size:16px}
-
-  .brand p{font-size:8px}
-
-  .live{display:none}
-
-  .hero{
-    grid-template-columns:1fr;
-  }
-
-  .price-card{
-    min-height:145px;
-    padding:20px;
-  }
-
-  .structure-grid{
-    grid-template-columns:1fr 1fr;
-  }
-
-  .indicator-grid{
-    grid-template-columns:1fr 1fr;
-  }
-
-  .signal-grid{
-    grid-template-columns:1fr;
-  }
-
-  .signal-card.sniper{
-    grid-column:auto;
-  }
-
-  .sr-grid,
-  .news-grid{
-    grid-template-columns:1fr;
-  }
-
-  .news-bottom{
-    grid-template-columns:1fr;
-  }
-
-  .chart{height:430px}
-
-  .gate-check-grid{
-    grid-template-columns:1fr 1fr;
-  }
-
-  .gate-rule-list{
-    grid-template-columns:1fr;
-  }
-
-  .trade-gate-body{
-    padding:15px;
-  }
-}
-
-@media(max-width:430px){
-
-  #price{font-size:39px}
-
-  .chart{height:370px}
-
-  .quick-value{font-size:14px}
-
-  .gate-check-grid{
-    grid-template-columns:1fr;
-  }
-
-  .trade-gate-verdict{
-    font-size:36px;
-  }
+.error-box{
+  color:#ff7070;
+  font-size:12px;
+  margin-top:8px;
+  word-break:break-word;
 }
 </style>
 </head>
 
 <body>
 
-<div class="app">
+<div class="topbar">
+  <div class="logo">EUR/USD SNIPER DASHBOARD</div>
+  <div class="live-badge">● LIVE</div>
+</div>
 
-<header class="topbar">
+<div class="container">
 
-  <div class="brand">
-
-    <div class="logo">€</div>
-
-    <div>
-      <h1>EUR/USD Sniper Dashboard</h1>
-      <p>Institutional Price Action Terminal</p>
-    </div>
-
+  <!-- LIVE PRICE -->
+  <div class="card hero">
+    <div class="hero-title">LIVE MARKET PRICE — EUR / USD</div>
+    <div id="price" class="price">Loading...</div>
+    <div id="priceStatus" class="status">Connecting to market data...</div>
+    <div id="priceError" class="error-box"></div>
   </div>
 
-  <div class="live">
-    <span class="live-dot"></span>
-    LIVE MARKET
-  </div>
-
-</header>
-
-
-<!-- LIVE PRICE -->
-
-<section class="hero">
-
-  <div class="price-card">
-
-    <div class="eyebrow">Live Market Price</div>
-
-    <div class="pair">EUR / USD</div>
-
-    <div id="price">Loading...</div>
-
-    <div id="priceStatus">Connecting to market data...</div>
-
-  </div>
-
-
-  <div class="quick-grid">
+  <!-- QUICK STATUS -->
+  <div class="grid">
 
     <div class="quick-card">
-      <div class="quick-label">H4 Bias</div>
-      <div class="quick-value" id="quickH4Trend">Calculating...</div>
+      <div class="label">H4 TREND</div>
+      <div id="quickH4Trend" class="value">Calculating...</div>
     </div>
 
     <div class="quick-card">
-      <div class="quick-label">H1 Bias</div>
-      <div class="quick-value" id="quickH1Trend">Calculating...</div>
+      <div class="label">H1 TREND</div>
+      <div id="quickH1Trend" class="value">Calculating...</div>
     </div>
 
     <div class="quick-card">
-      <div class="quick-label">EMA Structure</div>
-      <div class="quick-value" id="quickEmaStructure">Calculating...</div>
+      <div class="label">EMA STRUCTURE</div>
+      <div id="quickEmaStructure" class="value">Calculating...</div>
     </div>
 
     <div class="quick-card">
-      <div class="quick-label">Setup Score</div>
-      <div class="quick-value" id="setupScore">--</div>
+      <div class="label">SETUP SCORE</div>
+      <div id="setupScore" class="value">--</div>
     </div>
 
   </div>
 
-</section>
+  <!-- CHART -->
+  <div class="card">
+    <div class="section-title">EUR/USD CHART</div>
 
-
-<!-- CHART -->
-
-<div class="section-head">
-  <h2>Market Chart</h2>
-  <span>EUR/USD • IST</span>
-</div>
-
-<section class="card">
-
-  <div class="card-head">
-
-    <strong>Price Action</strong>
-
-    <div class="timeframes">
-
-      <button class="tf" id="btnM5" onclick="changeChart('5min')">M5</button>
-
-      <button class="tf active" id="btnM15" onclick="changeChart('15min')">M15</button>
-
-      <button class="tf" id="btnH1" onclick="changeChart('1h')">H1</button>
-
-      <button class="tf" id="btnH4" onclick="changeChart('4h')">H4</button>
-
+    <div class="chart-buttons">
+      <button id="btnM5" onclick="changeChart('5')">M5</button>
+      <button id="btnM15" class="active" onclick="changeChart('15')">M15</button>
+      <button id="btnH1" onclick="changeChart('60')">H1</button>
+      <button id="btnH4" onclick="changeChart('240')">H4</button>
     </div>
 
+    <div class="chart-wrap">
+      <iframe
+        id="tradingChart"
+        src="https://www.tradingview.com/widgetembed/?frameElementId=tradingviewChart&symbol=FX:EURUSD&interval=15&hidesidetoolbar=1&symboledit=1&saveimage=0&toolbarbg=f1f3f6&studies=[]&hideideas=1&theme=dark&style=1&timezone=Asia%2FKolkata"
+        allowtransparency="true"
+        scrolling="no">
+      </iframe>
+    </div>
   </div>
 
-  <div class="chart">
+  <!-- MARKET STRUCTURE -->
+  <div class="card">
+    <div class="section-title">MARKET STRUCTURE</div>
 
-    <iframe
-      id="tradingChart"
-      src="https://www.tradingview.com/widgetembed/?frameElementId=tradingviewChart&symbol=FX:EURUSD&interval=15&hidesidetoolbar=1&symboledit=1&saveimage=0&toolbarbg=f1f3f6&studies=[]&hideideas=1&theme=dark&style=1&timezone=Asia%2FKolkata"
-      allowtransparency="true"
-      scrolling="no">
-    </iframe>
+    <div class="grid">
 
+      <div class="quick-card">
+        <div class="label">H4 TREND</div>
+        <div id="h4Trend" class="value">Calculating...</div>
+      </div>
+
+      <div class="quick-card">
+        <div class="label">H1 TREND</div>
+        <div id="h1Trend" class="value">Calculating...</div>
+      </div>
+
+      <div class="quick-card">
+        <div class="label">M15 STRUCTURE</div>
+        <div id="m15Structure" class="value">Calculating...</div>
+      </div>
+
+      <div class="quick-card">
+        <div class="label">M5 STRUCTURE</div>
+        <div id="m5Structure" class="value">Calculating...</div>
+      </div>
+
+    </div>
   </div>
 
-</section>
+  <!-- KEY LEVELS -->
+  <div class="card">
+    <div class="section-title">KEY LEVELS</div>
 
+    <div class="grid-2">
 
-<!-- MARKET STRUCTURE -->
+      <div>
+        <div class="row">
+          <span>Resistance 2</span>
+          <strong id="resistance2">--</strong>
+        </div>
 
-<div class="section-head">
-  <h2>Market Structure</h2>
-  <span>Multi-timeframe analysis</span>
-</div>
+        <div class="row">
+          <span>Resistance 1</span>
+          <strong id="resistance1">--</strong>
+        </div>
+      </div>
 
-<section class="card">
+      <div>
+        <div class="row">
+          <span>Support 1</span>
+          <strong id="support1">--</strong>
+        </div>
 
-  <div class="card-head">
-    <strong>Structure Matrix</strong>
-    <small>H4 → H1 → M15 → M5</small>
+        <div class="row">
+          <span>Support 2</span>
+          <strong id="support2">--</strong>
+        </div>
+      </div>
+
+    </div>
   </div>
 
-  <div class="card-body">
+  <!-- MOMENTUM -->
+  <div class="card">
+    <div class="section-title">MOMENTUM & INDICATORS</div>
 
-    <div class="structure-grid">
+    <div class="grid">
 
-      <div class="metric">
-        <div class="metric-label">H4 Trend</div>
-        <div class="metric-value" id="h4Trend">Calculating...</div>
+      <div class="quick-card">
+        <div class="label">H4 RSI</div>
+        <div id="h4Rsi" class="value">--</div>
       </div>
 
-      <div class="metric">
-        <div class="metric-label">H1 Trend</div>
-        <div class="metric-value" id="h1Trend">Calculating...</div>
+      <div class="quick-card">
+        <div class="label">H1 RSI</div>
+        <div id="h1Rsi" class="value">--</div>
       </div>
 
-      <div class="metric">
-        <div class="metric-label">M15 Structure</div>
-        <div class="metric-value" id="m15Structure">Calculating...</div>
+      <div class="quick-card">
+        <div class="label">M15 RSI</div>
+        <div id="m15Rsi" class="value">--</div>
       </div>
 
-      <div class="metric">
-        <div class="metric-label">M5 Structure</div>
-        <div class="metric-value" id="m5Structure">Calculating...</div>
+      <div class="quick-card">
+        <div class="label">M5 RSI</div>
+        <div id="m5Rsi" class="value">--</div>
       </div>
 
     </div>
 
+    <div class="row">
+      <span>EMA Structure</span>
+      <strong id="emaStructure">Calculating...</strong>
+    </div>
   </div>
 
-</section>
+  <!-- SIGNAL ENGINE -->
+  <div class="card">
 
+    <div class="section-title">SIGNAL ENGINE</div>
 
-<!-- SUPPORT / RESISTANCE -->
+    <div class="grid-2">
 
-<div class="section-head">
-  <h2>Key Levels</h2>
-  <span>Structural zones</span>
-</div>
+      <!-- SNIPER -->
+      <div class="signal">
 
-<section class="sr-grid">
+        <div class="signal-title">SNIPER SETUP</div>
 
-  <div class="sr resistance">
+        <div class="row">
+          <span>Status</span>
+          <strong id="sniperStatus">WAIT</strong>
+        </div>
 
-    <div class="sr-title">Resistance</div>
+        <div class="row">
+          <span>Direction</span>
+          <strong id="direction">--</strong>
+        </div>
 
-    <div class="level">
-      <span>R1</span>
-      <span id="resistance1">--</span>
-    </div>
+        <div class="row">
+          <span>Entry</span>
+          <strong id="entry">--</strong>
+        </div>
 
-    <div class="level">
-      <span>R2</span>
-      <span id="resistance2">--</span>
-    </div>
+        <div class="row">
+          <span>Stop Loss</span>
+          <strong id="stopLoss">--</strong>
+        </div>
 
-  </div>
+        <div class="row">
+          <span>TP1</span>
+          <strong id="tp1">--</strong>
+        </div>
 
+        <div class="row">
+          <span>TP2</span>
+          <strong id="tp2">--</strong>
+        </div>
 
-  <div class="sr support">
+        <div class="row">
+          <span>TP3</span>
+          <strong id="tp3">--</strong>
+        </div>
 
-    <div class="sr-title">Support</div>
+        <div class="row">
+          <span>Risk / Reward</span>
+          <strong id="riskReward">--</strong>
+        </div>
 
-    <div class="level">
-      <span>S1</span>
-      <span id="support1">--</span>
-    </div>
+        <div class="row">
+          <span>Validity</span>
+          <strong id="validity">--</strong>
+        </div>
 
-    <div class="level">
-      <span>S2</span>
-      <span id="support2">--</span>
-    </div>
+        <div class="row">
+          <span>Trigger</span>
+          <strong id="trigger">--</strong>
+        </div>
 
-  </div>
+        <div class="row">
+          <span>Invalidation</span>
+          <strong id="invalidation">--</strong>
+        </div>
 
-</section>
-
-
-<!-- INDICATORS -->
-
-<div class="section-head">
-  <h2>Momentum & Indicators</h2>
-  <span>RSI / EMA</span>
-</div>
-
-<section class="card">
-
-  <div class="card-body">
-
-    <div class="indicator-grid">
-
-      <div class="indicator">
-        <div class="indicator-label">H4 RSI</div>
-        <div class="indicator-value" id="h4Rsi">--</div>
       </div>
 
-      <div class="indicator">
-        <div class="indicator-label">H1 RSI</div>
-        <div class="indicator-value" id="h1Rsi">--</div>
-      </div>
+      <!-- SCALPING -->
+      <div class="signal">
 
-      <div class="indicator">
-        <div class="indicator-label">M15 RSI</div>
-        <div class="indicator-value" id="m15Rsi">--</div>
-      </div>
+        <div class="signal-title">ELITE SCALPING</div>
 
-      <div class="indicator">
-        <div class="indicator-label">M5 RSI</div>
-        <div class="indicator-value" id="m5Rsi">--</div>
-      </div>
+        <div class="row">
+          <span>Verdict</span>
+          <strong id="scalpVerdict">WAIT</strong>
+        </div>
 
-      <div class="indicator">
-        <div class="indicator-label">EMA Structure</div>
-        <div class="indicator-value" id="emaStructure">--</div>
-      </div>
+        <div class="row">
+          <span>Direction</span>
+          <strong id="scalpDirection">--</strong>
+        </div>
 
-    </div>
+        <div class="row">
+          <span>Entry</span>
+          <strong id="scalpEntry">--</strong>
+        </div>
 
-  </div>
+        <div class="row">
+          <span>SL</span>
+          <strong id="scalpSL">--</strong>
+        </div>
 
-</section>
+        <div class="row">
+          <span>TP1</span>
+          <strong id="scalpTP1">--</strong>
+        </div>
 
+        <div class="row">
+          <span>TP2</span>
+          <strong id="scalpTP2">--</strong>
+        </div>
 
-<!-- SIGNAL ENGINE -->
+        <div class="row">
+          <span>RR</span>
+          <strong id="scalpRR">--</strong>
+        </div>
 
-<div class="section-head">
-  <h2>Signal Engine</h2>
-  <span>A+ setup framework</span>
-</div>
+        <div class="row">
+          <span>Score</span>
+          <strong id="scalpScore">--</strong>
+        </div>
 
-<section class="signal-grid">
+        <div class="row">
+          <span>Validity</span>
+          <strong id="scalpValidity">--</strong>
+        </div>
 
+        <div class="row">
+          <span>Trigger</span>
+          <strong id="scalpTrigger">--</strong>
+        </div>
 
-<!-- SNIPER -->
+        <div class="row">
+          <span>Invalidation</span>
+          <strong id="scalpInvalidation">--</strong>
+        </div>
 
-<div class="card signal-card sniper">
-
-  <div class="card-head">
-
-    <strong>A+ Sniper</strong>
-
-    <span class="badge">STRUCTURAL</span>
-
-  </div>
-
-  <div class="signal-content">
-
-    <div id="sniperStatus">Calculating...</div>
-
-    <div class="trade-list">
-
-      <div class="trade-row">
-        <span>Direction</span>
-        <span id="direction">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>Entry</span>
-        <span id="entry">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>Stop Loss</span>
-        <span id="stopLoss">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>TP1</span>
-        <span id="tp1">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>TP2</span>
-        <span id="tp2">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>TP3</span>
-        <span id="tp3">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>Risk / Reward</span>
-        <span id="riskReward">--</span>
       </div>
 
     </div>
 
-    <div class="score">
+    <!-- PRO -->
+    <div class="signal" style="margin-top:14px">
 
-      <div class="score-top">
-        <span>Setup Score</span>
-        <span>See above</span>
+      <div class="signal-title">PRO ANALYSIS</div>
+
+      <div class="row">
+        <span>Verdict</span>
+        <strong id="proVerdict">WAIT</strong>
       </div>
 
-    </div>
-
-    <div class="detail">
-
-      <div class="detail-label">Validity</div>
-
-      <div class="detail-value" id="validity">--</div>
-
-    </div>
-
-    <div class="detail">
-
-      <div class="detail-label">Trigger</div>
-
-      <div class="detail-value" id="trigger">--</div>
-
-    </div>
-
-    <div class="detail">
-
-      <div class="detail-label">Invalidation</div>
-
-      <div class="detail-value" id="invalidation">--</div>
-
-    </div>
-
-  </div>
-
-</div>
-
-
-<!-- ELITE SCALPING -->
-
-<div class="card signal-card scalp">
-
-  <div class="card-head">
-
-    <strong>Elite Scalping</strong>
-
-    <span class="badge">M5 EXECUTION</span>
-
-  </div>
-
-  <div class="signal-content">
-
-    <div id="scalpVerdict">Calculating...</div>
-
-    <div class="trade-list">
-
-      <div class="trade-row">
-        <span>Direction</span>
-        <span id="scalpDirection">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>Entry</span>
-        <span id="scalpEntry">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>Stop Loss</span>
-        <span id="scalpSL">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>TP1</span>
-        <span id="scalpTP1">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>TP2</span>
-        <span id="scalpTP2">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>Risk / Reward</span>
-        <span id="scalpRR">--</span>
-      </div>
-
-      <div class="trade-row">
-        <span>Score</span>
-        <span id="scalpScore">--</span>
-      </div>
-
-    </div>
-
-    <div class="detail">
-
-      <div class="detail-label">Validity</div>
-
-      <div class="detail-value" id="scalpValidity">--</div>
-
-    </div>
-
-    <div class="detail">
-
-      <div class="detail-label">Trigger</div>
-
-      <div class="detail-value" id="scalpTrigger">--</div>
-
-    </div>
-
-    <div class="detail">
-
-      <div class="detail-label">Invalidation</div>
-
-      <div class="detail-value" id="scalpInvalidation">--</div>
-
-    </div>
-
-  </div>
-
-</div>
-
-
-<!-- PRO -->
-
-<div class="card signal-card pro">
-
-  <div class="card-head">
-
-    <strong>PRO Analysis</strong>
-
-    <span class="badge">MTF FILTER</span>
-
-  </div>
-
-  <div class="signal-content">
-
-    <div id="proVerdict">Calculating...</div>
-
-    <div class="detail">
-
-      <div class="detail-label">Institutional Read</div>
-
-      <div class="detail-value" id="proExplanation">
+      <div id="proExplanation" class="small">
         Waiting for market data...
       </div>
 
     </div>
 
-    <div class="detail">
-
-      <div class="detail-label">Framework</div>
-
-      <div class="detail-value">
-        H4 structure → H1 structure → M15 confirmation → M5 execution
-      </div>
-
-    </div>
-
-    <div class="detail">
-
-      <div class="detail-label">Execution Principle</div>
-
-      <div class="detail-value">
-        Wait for alignment and confirmation. Avoid chasing extended price.
-      </div>
-
-    </div>
-
   </div>
 
-</div>
+  <!-- ELITE TRADE GATE -->
+  <div class="card">
 
-</section>
+    <div class="section-title">ELITE TRADE GATE</div>
 
+    <div class="trade-gate">
 
-<!-- ELITE TRADE GATE -->
-
-<div class="section-head">
-
-  <h2>Elite Trade Gate</h2>
-
-  <span>Final execution filter</span>
-
-</div>
-
-<section class="card trade-gate-card">
-
-  <div class="card-head">
-
-    <strong>🧠 ELITE TRADE GATE</strong>
-
-    <span class="badge">FINAL DECISION</span>
-
-  </div>
-
-  <div class="trade-gate-body">
-
-    <div id="tradeGateVerdict" class="trade-gate-verdict">
-      STAY AWAY
-    </div>
-
-    <div id="tradeGateReason" class="trade-gate-reason">
-      Waiting for market confirmation...
-    </div>
-
-    <div id="tradeGateAction" class="trade-gate-action">
-      Waiting for time, news and candle confirmation.
-    </div>
-
-    <div class="gate-check-grid">
-
-      <div class="gate-check">
-        <span>SESSION</span>
-        <strong id="tradeGateSession">—</strong>
+      <div id="tradeGateVerdict" class="gate-verdict warn">
+        WAIT
       </div>
 
-      <div class="gate-check">
-        <span>DIRECTION</span>
-        <strong id="tradeGateDirection">WAIT</strong>
+      <div id="tradeGateReason" class="gate-reason">
+        Waiting for complete market data...
       </div>
 
-      <div class="gate-check">
-        <span>ENTRY</span>
-        <strong id="tradeGateEntry">—</strong>
+      <div id="tradeGateAction" class="small">
+        No trade decision yet.
       </div>
 
-      <div class="gate-check">
-        <span>STOP LOSS</span>
-        <strong id="tradeGateSL">—</strong>
-      </div>
+      <div class="gate-grid">
 
-      <div class="gate-check">
-        <span>TP1</span>
-        <strong id="tradeGateTP1">—</strong>
-      </div>
-
-      <div class="gate-check">
-        <span>TP2</span>
-        <strong id="tradeGateTP2">—</strong>
-      </div>
-
-      <div class="gate-check">
-        <span>RISK / REWARD</span>
-        <strong id="tradeGateRR">—</strong>
-      </div>
-
-      <div class="gate-check">
-        <span>RISK</span>
-        <strong id="tradeGateRisk">—</strong>
-      </div>
-
-    </div>
-
-    <div class="gate-rules">
-
-      <div class="gate-rule-title">
-        Execution Checklist
-      </div>
-
-      <div class="gate-rule-list">
-
-        <span>✓ Active London / New York session</span>
-        <span>✓ EUR/USD high-impact news clear</span>
-        <span>✓ H4 + H1 directional alignment</span>
-        <span>✓ M15 confirmation</span>
-        <span>✓ M5 confirmation</span>
-        <span>✓ M5 EMA20 / EMA50 alignment</span>
-        <span>✓ M5 RSI confirmation</span>
-        <span>✓ Completed M5 momentum candle</span>
-        <span>✓ No excessive EMA extension</span>
-        <span>✓ 3–15 pip structural risk</span>
-        <span>✓ Minimum 1:2 Risk / Reward</span>
-        <span>✓ Higher-timeframe S/R does not block TP2</span>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</section>
-
-
-<!-- NEWS -->
-
-<div class="section-head">
-
-  <h2>Macro & News Filter</h2>
-
-  <span>High-impact events</span>
-
-</div>
-
-<section class="card">
-
-  <div class="card-head">
-
-    <strong>EUR / USD Economic Calendar</strong>
-
-    <small>Forward risk window</small>
-
-  </div>
-
-  <div class="card-body">
-
-    <div class="news-grid">
-
-      <div class="news-box">
-
-        <div class="news-label">EUR News</div>
-
-        <div class="news-value" id="eurNews">
-          Checking...
+        <div class="gate-box">
+          <div class="gate-label">SESSION</div>
+          <div id="tradeGateSession" class="gate-value">--</div>
         </div>
 
-      </div>
+        <div class="gate-box">
+          <div class="gate-label">DIRECTION</div>
+          <div id="tradeGateDirection" class="gate-value">--</div>
+        </div>
 
-      <div class="news-box">
+        <div class="gate-box">
+          <div class="gate-label">ENTRY</div>
+          <div id="tradeGateEntry" class="gate-value">--</div>
+        </div>
 
-        <div class="news-label">USD News</div>
+        <div class="gate-box">
+          <div class="gate-label">STOP LOSS</div>
+          <div id="tradeGateSL" class="gate-value">--</div>
+        </div>
 
-        <div class="news-value" id="usdNews">
-          Checking...
+        <div class="gate-box">
+          <div class="gate-label">TP1</div>
+          <div id="tradeGateTP1" class="gate-value">--</div>
+        </div>
+
+        <div class="gate-box">
+          <div class="gate-label">TP2</div>
+          <div id="tradeGateTP2" class="gate-value">--</div>
+        </div>
+
+        <div class="gate-box">
+          <div class="gate-label">RISK / REWARD</div>
+          <div id="tradeGateRR" class="gate-value">--</div>
+        </div>
+
+        <div class="gate-box">
+          <div class="gate-label">RISK STATUS</div>
+          <div id="tradeGateRisk" class="gate-value">--</div>
         </div>
 
       </div>
 
     </div>
+  </div>
 
-    <div class="news-bottom">
+  <!-- NEWS -->
+  <div class="card">
 
-      <div class="news-box">
+    <div class="section-title">MACRO & NEWS FILTER</div>
 
-        <div class="news-label">News Filter</div>
+    <div class="grid-2">
 
-        <div class="news-value" id="newsFilter">
-          Checking...
-        </div>
-
+      <div>
+        <div class="label">EUR NEWS</div>
+        <div id="eurNews" class="neutral">Checking...</div>
       </div>
 
-      <div class="news-box">
-
-        <div class="news-label">Next Event</div>
-
-        <div class="news-value" id="nextEvent">
-          --
-        </div>
-
-      </div>
-
-      <div class="news-box">
-
-        <div class="news-label">Trading Risk</div>
-
-        <div class="news-value" id="tradingRisk">
-          --
-        </div>
-
+      <div>
+        <div class="label">USD NEWS</div>
+        <div id="usdNews" class="neutral">Checking...</div>
       </div>
 
     </div>
 
+    <div class="row">
+      <span>News Filter</span>
+      <strong id="newsFilter">CHECKING...</strong>
+    </div>
+
+    <div class="row">
+      <span>Next Event</span>
+      <strong id="nextEvent">--</strong>
+    </div>
+
+    <div class="row">
+      <span>Trading Risk</span>
+      <strong id="tradingRisk">--</strong>
+    </div>
+
   </div>
 
-</section>
+  <!-- REFRESH -->
+  <div class="card">
+    <button class="refresh" id="refreshBtn" onclick="loadMarketData()">
+      🔄 REFRESH MARKET DATA
+    </button>
 
-
-<div class="actions">
-
-  <button id="refreshBtn" onclick="loadMarketData()">
-    ↻ &nbsp; REFRESH MARKET DATA
-  </button>
-
-</div>
-
-<div class="footer">
-  EUR/USD SNIPER TERMINAL • PRICE ACTION • MULTI-TIMEFRAME ANALYSIS
-</div>
+    <div class="small">
+      Dashboard automatically refreshes every 2 minutes.
+    </div>
+  </div>
 
 </div>
 
 
 <script>
+
 /* =========================================================
-   EUR/USD SNIPER DASHBOARD
-   SINGLE-FILE VERSION
+   CONFIGURATION
    ========================================================= */
-
-/*
-  IMPORTANT:
-  Replace YOUR_NEW_TWELVE_DATA_API_KEY with your NEW Twelve Data key.
-
-  Do NOT use your old exposed key.
-*/
 
 const API_KEY = "8908432b6c784bc49aad6ccf64845991";
 
@@ -1544,98 +741,56 @@ const NEWS_URL =
    ENGINE SETTINGS
    ========================================================= */
 
-const SCALP_WINDOW_MINUTES = 120;
-
-const SCALP_MIN_SCORE = 80;
-
-const SCALP_MIN_RR = 2.0;
-
-const SCALP_MIN_RISK_PIPS = 3;
-
-const SCALP_MAX_RISK_PIPS = 15;
-
-const SCALP_MAX_EMA_DISTANCE = 0.00050;
-
-const SCALP_SL_BUFFER = 0.00010;
-
-const BULLISH_RSI_MIN = 52;
-
-const BULLISH_RSI_MAX = 68;
-
-const BEARISH_RSI_MIN = 32;
-
-const BEARISH_RSI_MAX = 48;
-
-
-/* FINAL TRADE GATE */
-
-const TRADE_GATE_MIN_RR = 2.0;
-
-const TRADE_GATE_MIN_RISK_PIPS = 3;
-
-const TRADE_GATE_MAX_RISK_PIPS = 15;
-
-const TRADE_GATE_EMA_MAX_DISTANCE = 0.00050;
-
-const TRADE_GATE_SL_BUFFER = 0.00010;
-
-const TRADE_GATE_REQUIRE_EMA_PROXIMITY = true;
+const ENGINE = {
+  minRR: 2,
+  maxNewsMinutes: 120,
+  atrLikeBuffer: 0.00020,
+  refreshMs: 120000
+};
 
 
 /* =========================================================
-   MARKET DATA OBJECT
+   MARKET DATA STORAGE
    ========================================================= */
 
 let marketData = {
-
   price:null,
 
-  h4:{
-    candles:[],
-    trend:"RANGE",
-    rsi:null,
-    ema20:null,
-    ema50:null
+  h4:[],
+  h1:[],
+  m15:[],
+  m5:[],
+
+  h4Structure:null,
+  h1Structure:null,
+  m15Structure:null,
+  m5Structure:null,
+
+  h4Rsi:null,
+  h1Rsi:null,
+  m15Rsi:null,
+  m5Rsi:null,
+
+  h4Ema:null,
+  h1Ema:null,
+  m15Ema:null,
+  m5Ema:null,
+
+  emaStructure:null,
+
+  levels:{
+    resistance1:null,
+    resistance2:null,
+    support1:null,
+    support2:null
   },
-
-  h1:{
-    candles:[],
-    trend:"RANGE",
-    rsi:null,
-    ema20:null,
-    ema50:null
-  },
-
-  m15:{
-    candles:[],
-    structure:"RANGE",
-    rsi:null,
-    ema20:null,
-    ema50:null
-  },
-
-  m5:{
-    candles:[],
-    structure:"RANGE",
-    rsi:null,
-    ema20:null,
-    ema50:null
-  },
-
-  resistance1:null,
-  resistance2:null,
-
-  support1:null,
-  support2:null,
-
-  emaStructure:"NEUTRAL",
 
   news:{
-    clear:false,
     risk:"UNKNOWN",
-    events:[]
+    clear:false,
+    events:[],
+    nextEvent:null
   }
-
 };
 
 
@@ -1643,19 +798,15 @@ let marketData = {
    START
    ========================================================= */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  () => {
+document.addEventListener("DOMContentLoaded",function(){
 
+  loadMarketData();
+
+  setInterval(function(){
     loadMarketData();
+  },ENGINE.refreshMs);
 
-    setInterval(
-      loadMarketData,
-      120000
-    );
-
-  }
-);
+});
 
 
 /* =========================================================
@@ -1664,25 +815,15 @@ document.addEventListener(
 
 function changeChart(interval){
 
-  const map = {
-    "5min":"5",
-    "15min":"15",
-    "1h":"60",
-    "4h":"240"
-  };
-
-  const value = map[interval] || "15";
-
-  const iframe =
-    document.getElementById("tradingChart");
+  const iframe = document.getElementById("tradingChart");
 
   if(!iframe) return;
 
   iframe.src =
-    "https://www.tradingview.com/widgetembed/" +
-    "?frameElementId=tradingviewChart" +
+    "https://www.tradingview.com/widgetembed/?" +
+    "frameElementId=tradingviewChart" +
     "&symbol=FX:EURUSD" +
-    "&interval=" + value +
+    "&interval=" + interval +
     "&hidesidetoolbar=1" +
     "&symboledit=1" +
     "&saveimage=0" +
@@ -1693,24 +834,26 @@ function changeChart(interval){
     "&style=1" +
     "&timezone=Asia%2FKolkata";
 
-  document
-    .querySelectorAll(".tf")
-    .forEach(btn => btn.classList.remove("active"));
+  document.querySelectorAll(".chart-buttons button")
+    .forEach(function(btn){
+      btn.classList.remove("active");
+    });
 
-  const ids = {
-    "5min":"btnM5",
-    "15min":"btnM15",
-    "1h":"btnH1",
-    "4h":"btnH4"
-  };
-
-  const active =
-    document.getElementById(ids[interval]);
-
-  if(active){
-    active.classList.add("active");
+  if(interval === "5"){
+    document.getElementById("btnM5").classList.add("active");
   }
 
+  if(interval === "15"){
+    document.getElementById("btnM15").classList.add("active");
+  }
+
+  if(interval === "60"){
+    document.getElementById("btnH1").classList.add("active");
+  }
+
+  if(interval === "240"){
+    document.getElementById("btnH4").classList.add("active");
+  }
 }
 
 
@@ -1720,137 +863,118 @@ function changeChart(interval){
 
 async function loadMarketData(){
 
-  setText(
-    "priceStatus",
-    "Updating market data..."
-  );
+  setText("priceStatus","Loading live market data...");
+  setText("priceError","");
 
   try{
 
-    const [
-      price,
-      h4,
-      h1,
-      m15,
-      m5,
-      news
-    ] = await Promise.all([
+    if(
+      !API_KEY ||
+      API_KEY === "YOUR_NEW_TWELVE_DATA_API_KEY"
+    ){
+      throw new Error(
+        "Twelve Data API key has not been entered."
+      );
+    }
 
-      getPrice(),
+    const pricePromise = getPrice();
 
-      getCandles("4h",100),
+    const h4Promise = getCandles("4h",100);
+    const h1Promise = getCandles("1h",100);
+    const m15Promise = getCandles("15min",100);
+    const m5Promise = getCandles("5min",100);
 
-      getCandles("1h",100),
-
-      getCandles("15min",100),
-
-      getCandles("5min",100),
-
-      getNews()
-
+    const results = await Promise.all([
+      pricePromise,
+      h4Promise,
+      h1Promise,
+      m15Promise,
+      m5Promise
     ]);
 
+    marketData.price = results[0];
+    marketData.h4 = results[1];
+    marketData.h1 = results[2];
+    marketData.m15 = results[3];
+    marketData.m5 = results[4];
 
-    marketData.price = price;
-
-    marketData.h4.candles = h4;
-
-    marketData.h1.candles = h1;
-
-    marketData.m15.candles = m15;
-
-    marketData.m5.candles = m5;
-
-    marketData.news = news;
-
+    if(
+      !marketData.h4.length ||
+      !marketData.h1.length ||
+      !marketData.m15.length ||
+      !marketData.m5.length
+    ){
+      throw new Error(
+        "One or more candle datasets are empty."
+      );
+    }
 
     /* STRUCTURE */
 
-    marketData.h4.trend =
-      getMarketStructure(h4);
+    marketData.h4Structure =
+      getMarketStructure(marketData.h4);
 
-    marketData.h1.trend =
-      getMarketStructure(h1);
+    marketData.h1Structure =
+      getMarketStructure(marketData.h1);
 
-    marketData.m15.structure =
-      getMarketStructure(m15);
+    marketData.m15Structure =
+      getMarketStructure(marketData.m15);
 
-    marketData.m5.structure =
-      getMarketStructure(m5);
+    marketData.m5Structure =
+      getMarketStructure(marketData.m5);
 
 
     /* RSI */
 
-    marketData.h4.rsi =
-      calculateRSI(h4);
+    marketData.h4Rsi =
+      calculateRSI(marketData.h4);
 
-    marketData.h1.rsi =
-      calculateRSI(h1);
+    marketData.h1Rsi =
+      calculateRSI(marketData.h1);
 
-    marketData.m15.rsi =
-      calculateRSI(m15);
+    marketData.m15Rsi =
+      calculateRSI(marketData.m15);
 
-    marketData.m5.rsi =
-      calculateRSI(m5);
+    marketData.m5Rsi =
+      calculateRSI(marketData.m5);
 
 
     /* EMA */
 
-    marketData.h4.ema20 =
-      calculateEMA(h4,20);
+    marketData.h4Ema =
+      calculateEMA(marketData.h4,20);
 
-    marketData.h4.ema50 =
-      calculateEMA(h4,50);
+    marketData.h1Ema =
+      calculateEMA(marketData.h1,20);
 
-    marketData.h1.ema20 =
-      calculateEMA(h1,20);
+    marketData.m15Ema =
+      calculateEMA(marketData.m15,20);
 
-    marketData.h1.ema50 =
-      calculateEMA(h1,50);
+    marketData.m5Ema =
+      calculateEMA(marketData.m5,20);
 
-    marketData.m15.ema20 =
-      calculateEMA(m15,20);
-
-    marketData.m15.ema50 =
-      calculateEMA(m15,50);
-
-    marketData.m5.ema20 =
-      calculateEMA(m5,20);
-
-    marketData.m5.ema50 =
-      calculateEMA(m5,50);
-
-
-    /* SUPPORT / RESISTANCE */
-
-    const levels =
-      calculateSupportResistance(h1);
-
-    marketData.resistance1 =
-      levels.resistance1;
-
-    marketData.resistance2 =
-      levels.resistance2;
-
-    marketData.support1 =
-      levels.support1;
-
-    marketData.support2 =
-      levels.support2;
-
-
-    /* EMA STRUCTURE */
 
     marketData.emaStructure =
       getEMAStructure();
 
 
-    /* UPDATE UI */
+    /* SUPPORT / RESISTANCE */
+
+    marketData.levels =
+      calculateSupportResistance();
+
+
+    /* NEWS */
+
+    marketData.news =
+      await getNews();
+
+
+    /* UPDATE */
 
     updateDashboard();
 
-
-    /* ENGINES */
+    updateNewsDashboard();
 
     runSniperEngine();
 
@@ -1860,31 +984,42 @@ async function loadMarketData(){
 
     runEliteTradeGate();
 
-
     setText(
       "priceStatus",
-      "MARKET DATA LOADED • " +
-      new Date().toLocaleTimeString("en-IN")
+      "Live data updated: " +
+      new Date().toLocaleTimeString()
     );
 
   }
+
   catch(error){
 
-    console.error(error);
+    console.error(
+      "Dashboard error:",
+      error
+    );
 
     setText(
       "priceStatus",
-      "DATA ERROR — CHECK API KEY / CONNECTION"
+      "DATA ERROR"
+    );
+
+    setText(
+      "priceError",
+      error && error.message
+        ? error.message
+        : "Unknown market-data error."
     );
 
     showTradeGateError(
-      "DATA ERROR",
+      "STAY AWAY",
       "Market data could not be loaded.",
-      "Check your new Twelve Data API key and internet connection."
+      error && error.message
+        ? error.message
+        : "Unknown error"
     );
 
   }
-
 }
 
 
@@ -1901,35 +1036,37 @@ async function getPrice(){
     "&apikey=" +
     encodeURIComponent(API_KEY);
 
-  const response =
-    await fetch(url);
+  const response = await fetch(url);
 
   if(!response.ok){
     throw new Error(
-      "Price HTTP error " +
-      response.status
+      "Price server HTTP " + response.status
     );
   }
 
-  const data =
-    await response.json();
+  const data = await response.json();
 
   if(
     !data ||
     data.status === "error" ||
-    !data.price
+    data.price === undefined
   ){
-
     throw new Error(
       data && data.message
         ? data.message
-        : "Invalid price response"
+        : "Invalid price response from Twelve Data."
     );
-
   }
 
-  return Number(data.price);
+  const price = Number(data.price);
 
+  if(!Number.isFinite(price)){
+    throw new Error(
+      "Invalid EUR/USD price received."
+    );
+  }
+
+  return price;
 }
 
 
@@ -1937,10 +1074,7 @@ async function getPrice(){
    CANDLES
    ========================================================= */
 
-async function getCandles(
-  interval,
-  outputsize = 100
-){
+async function getCandles(interval,outputsize){
 
   const url =
     TIME_SERIES_URL +
@@ -1950,21 +1084,21 @@ async function getCandles(
     encodeURIComponent(interval) +
     "&outputsize=" +
     outputsize +
+    "&order=asc" +
     "&apikey=" +
     encodeURIComponent(API_KEY);
 
-  const response =
-    await fetch(url);
+  const response = await fetch(url);
 
   if(!response.ok){
     throw new Error(
-      "Candle HTTP error " +
+      interval +
+      " candle server HTTP " +
       response.status
     );
   }
 
-  const data =
-    await response.json();
+  const data = await response.json();
 
   if(
     !data ||
@@ -1974,33 +1108,43 @@ async function getCandles(
 
     throw new Error(
       data && data.message
-        ? data.message
-        : "Invalid candle response"
+        ? interval + ": " + data.message
+        : interval + ": invalid candle response."
     );
-
   }
 
-  return data.values
-    .map(c => ({
-      datetime:c.datetime,
-      open:Number(c.open),
-      high:Number(c.high),
-      low:Number(c.low),
-      close:Number(c.close)
-    }))
-    .filter(
-      c =>
-        Number.isFinite(c.open) &&
-        Number.isFinite(c.high) &&
-        Number.isFinite(c.low) &&
-        Number.isFinite(c.close)
-    )
-    .sort(
-      (a,b) =>
-        new Date(a.datetime) -
-        new Date(b.datetime)
-    );
+  const candles =
+    data.values
+      .map(function(x){
 
+        return {
+          datetime:x.datetime,
+          open:Number(x.open),
+          high:Number(x.high),
+          low:Number(x.low),
+          close:Number(x.close)
+        };
+
+      })
+      .filter(function(x){
+
+        return (
+          Number.isFinite(x.open) &&
+          Number.isFinite(x.high) &&
+          Number.isFinite(x.low) &&
+          Number.isFinite(x.close)
+        );
+
+      });
+
+  if(!candles.length){
+
+    throw new Error(
+      interval + ": no valid candles received."
+    );
+  }
+
+  return candles;
 }
 
 
@@ -2013,11 +1157,13 @@ async function getNews(){
   try{
 
     const response =
-      await fetch(NEWS_URL);
+      await fetch(NEWS_URL,{
+        cache:"no-store"
+      });
 
     if(!response.ok){
       throw new Error(
-        "News HTTP error"
+        "News HTTP " + response.status
       );
     }
 
@@ -2035,159 +1181,172 @@ async function getNews(){
     else if(Array.isArray(raw.data)){
       events = raw.data;
     }
-
+    else if(
+      raw.data &&
+      Array.isArray(raw.data.events)
+    ){
+      events = raw.data.events;
+    }
 
     const now =
-      Date.now();
-
-    const futureLimit =
-      now +
-      SCALP_WINDOW_MINUTES *
-      60 *
-      1000;
-
+      new Date();
 
     const relevant =
       events
-        .map(event => {
+      .map(function(event){
 
-          const currency =
-            String(
-              event.currency ||
-              event.country ||
-              event.ccy ||
-              ""
-            ).toUpperCase();
+        const time =
+          parseEventTime(event);
 
-          const title =
-            String(
-              event.title ||
-              event.event ||
-              event.name ||
-              ""
-            );
+        return {
+          raw:event,
+          time:time
+        };
 
-          const importance =
-            String(
-              event.importance ||
-              event.impact ||
-              event.priority ||
-              "high"
-            ).toLowerCase();
+      })
+      .filter(function(item){
 
-          const timeValue =
-            event.timestamp ||
-            event.time ||
-            event.datetime ||
-            event.date ||
-            event.event_time;
+        if(!item.time) return false;
 
-          const time =
-            parseEventTime(timeValue);
+        const diff =
+          (item.time.getTime() -
+           now.getTime()) / 60000;
 
-          return {
-            currency,
-            title,
-            importance,
-            time,
-            raw:event
-          };
-
-        })
-        .filter(event => {
-
-          const currencyRelevant =
-            event.currency.includes("EUR") ||
-            event.currency.includes("USD") ||
-            event.currency.includes("EURO") ||
-            event.currency.includes("US");
-
-          const highImpact =
-            event.importance.includes("high") ||
-            event.importance.includes("3");
-
-          const future =
-            event.time !== null &&
-            event.time >= now &&
-            event.time <= futureLimit;
-
-          return (
-            currencyRelevant &&
-            highImpact &&
-            future
-          );
-
-        })
-        .sort(
-          (a,b) =>
-            a.time - b.time
+        return (
+          diff >= 0 &&
+          diff <= ENGINE.maxNewsMinutes
         );
 
+      })
+      .filter(function(item){
+
+        const text =
+          JSON.stringify(item.raw)
+            .toLowerCase();
+
+        return (
+          text.includes("eur") ||
+          text.includes("euro") ||
+          text.includes("usd") ||
+          text.includes("dollar") ||
+          text.includes("united states")
+        );
+
+      });
+
+    relevant.sort(function(a,b){
+      return a.time - b.time;
+    });
+
+    let eur = [];
+    let usd = [];
+
+    relevant.forEach(function(item){
+
+      const text =
+        JSON.stringify(item.raw)
+          .toLowerCase();
+
+      if(
+        text.includes("eur") ||
+        text.includes("euro")
+      ){
+        eur.push(item);
+      }
+
+      if(
+        text.includes("usd") ||
+        text.includes("dollar") ||
+        text.includes("united states")
+      ){
+        usd.push(item);
+      }
+
+    });
 
     return {
+
+      risk:
+        relevant.length
+          ? "HIGH"
+          : "LOW",
 
       clear:
         relevant.length === 0,
 
-      risk:
-        relevant.length === 0
-          ? "LOW"
-          : "HIGH",
+      events:relevant,
 
-      events:relevant
+      eur:eur,
+
+      usd:usd,
+
+      nextEvent:
+        relevant.length
+          ? relevant[0]
+          : null
 
     };
 
   }
+
   catch(error){
 
     console.warn(
-      "News filter error:",
+      "News feed unavailable:",
       error
     );
 
     return {
 
-      clear:false,
-
       risk:"UNKNOWN",
-
-      events:[]
+      clear:false,
+      events:[],
+      eur:[],
+      usd:[],
+      nextEvent:null
 
     };
-
   }
-
 }
 
 
 /* =========================================================
-   EVENT TIME
+   NEWS TIME
    ========================================================= */
 
-function parseEventTime(value){
+function parseEventTime(event){
 
-  if(value === null || value === undefined){
-    return null;
-  }
+  const possible = [
 
-  if(typeof value === "number"){
+    event.datetime,
+    event.date,
+    event.time,
+    event.timestamp,
+    event.datetime_utc,
+    event.dateTime,
+    event.release_time,
+    event.event_time
 
-    if(value < 10000000000){
-      return value * 1000;
+  ];
+
+  for(
+    let i=0;
+    i<possible.length;
+    i++
+  ){
+
+    if(!possible[i]) continue;
+
+    const d =
+      new Date(possible[i]);
+
+    if(!isNaN(d.getTime())){
+      return d;
     }
 
-    return value;
-
   }
 
-  const parsed =
-    Date.parse(String(value));
-
-  return Number.isFinite(parsed)
-    ? parsed
-    : null;
-
+  return null;
 }
 
 
@@ -2197,118 +1356,57 @@ function parseEventTime(value){
 
 function getMarketStructure(candles){
 
-  if(!candles || candles.length < 12){
-    return "RANGE";
+  if(!candles || candles.length < 10){
+    return "UNKNOWN";
   }
-
-  /*
-    Last candle may still be forming.
-    Use completed candles only.
-  */
-
-  const completed =
-    candles.slice(0,-1);
 
   const recent =
-    completed.slice(-8);
+    candles.slice(-10);
 
-  if(recent.length < 5){
+  const highs =
+    recent.map(function(x){
+      return x.high;
+    });
+
+  const lows =
+    recent.map(function(x){
+      return x.low;
+    });
+
+  const firstClose =
+    recent[0].close;
+
+  const lastClose =
+    recent[recent.length - 1].close;
+
+  const highest =
+    Math.max.apply(null,highs);
+
+  const lowest =
+    Math.min.apply(null,lows);
+
+  const range =
+    highest - lowest;
+
+  if(range <= 0){
     return "RANGE";
   }
 
-
-  const first =
-    recent[0].close;
-
-  const last =
-    recent[recent.length - 1].close;
-
-
-  const averageRange =
-    recent.reduce(
-      (sum,c) =>
-        sum + (c.high - c.low),
-      0
-    ) /
-    recent.length;
-
+  const movement =
+    lastClose - firstClose;
 
   const threshold =
-    averageRange * 1.5;
+    range * 0.20;
 
-
-  if(
-    last - first >
-    threshold
-  ){
+  if(movement > threshold){
     return "BULLISH";
   }
 
-
-  if(
-    first - last >
-    threshold
-  ){
-    return "BEARISH";
-  }
-
-
-  let higherHigh = true;
-
-  let higherLow = true;
-
-  let lowerHigh = true;
-
-  let lowerLow = true;
-
-
-  for(
-    let i=1;
-    i<recent.length;
-    i++
-  ){
-
-    if(
-      recent[i].high <=
-      recent[i-1].high
-    ){
-      higherHigh = false;
-    }
-
-    if(
-      recent[i].low <=
-      recent[i-1].low
-    ){
-      higherLow = false;
-    }
-
-    if(
-      recent[i].high >=
-      recent[i-1].high
-    ){
-      lowerHigh = false;
-    }
-
-    if(
-      recent[i].low >=
-      recent[i-1].low
-    ){
-      lowerLow = false;
-    }
-
-  }
-
-
-  if(higherHigh && higherLow){
-    return "BULLISH";
-  }
-
-  if(lowerHigh && lowerLow){
+  if(movement < -threshold){
     return "BEARISH";
   }
 
   return "RANGE";
-
 }
 
 
@@ -2316,16 +1414,12 @@ function getMarketStructure(candles){
    SUPPORT / RESISTANCE
    ========================================================= */
 
-function calculateSupportResistance(candles){
+function calculateSupportResistance(){
 
-  const current =
-    marketData.price;
+  const candles =
+    marketData.h1;
 
-  if(
-    !current ||
-    !candles ||
-    candles.length < 10
-  ){
+  if(!candles || candles.length < 10){
 
     return {
       resistance1:null,
@@ -2336,187 +1430,63 @@ function calculateSupportResistance(candles){
 
   }
 
-
-  const completed =
-    candles.slice(0,-1);
-
   const recent =
-    completed.slice(-50);
+    candles.slice(-50);
 
+  const highs =
+    recent.map(function(x){
+      return x.high;
+    });
 
-  const resistance = [];
+  const lows =
+    recent.map(function(x){
+      return x.low;
+    });
 
-  const support = [];
+  const current =
+    marketData.price;
 
+  const resistanceCandidates =
+    highs
+    .filter(function(x){
+      return x > current;
+    })
+    .sort(function(a,b){
+      return a-b;
+    });
 
-  for(
-    let i=1;
-    i<recent.length-1;
-    i++
-  ){
-
-    const c =
-      recent[i];
-
-    const previous =
-      recent[i-1];
-
-    const next =
-      recent[i+1];
-
-
-    if(
-      c.high > previous.high &&
-      c.high > next.high &&
-      c.high > current
-    ){
-
-      resistance.push(c.high);
-
-    }
-
-
-    if(
-      c.low < previous.low &&
-      c.low < next.low &&
-      c.low < current
-    ){
-
-      support.push(c.low);
-
-    }
-
-  }
-
-
-  resistance.sort(
-    (a,b) => a-b
-  );
-
-  support.sort(
-    (a,b) => b-a
-  );
-
-
-  function uniqueLevels(levels){
-
-    const result = [];
-
-    for(const level of levels){
-
-      if(
-        !result.some(
-          x =>
-            Math.abs(x-level)
-            < 0.00015
-        )
-      ){
-
-        result.push(level);
-
-      }
-
-    }
-
-    return result;
-
-  }
-
-
-  const uniqueResistance =
-    uniqueLevels(resistance);
-
-  const uniqueSupport =
-    uniqueLevels(support);
-
-
-  let r1 =
-    uniqueResistance[0] ??
-    null;
-
-  let r2 =
-    uniqueResistance[1] ??
-    null;
-
-  let s1 =
-    uniqueSupport[0] ??
-    null;
-
-  let s2 =
-    uniqueSupport[1] ??
-    null;
-
-
-  /* fallback levels */
-
-  if(!r1){
-
-    const highest =
-      Math.max(
-        ...recent.map(c => c.high)
-      );
-
-    if(highest > current){
-      r1 = highest;
-    }
-
-  }
-
-
-  if(!r2 && r1){
-
-    const candidates =
-      recent
-        .map(c => c.high)
-        .filter(x => x > r1);
-
-    if(candidates.length){
-      r2 =
-        Math.min(...candidates);
-    }
-
-  }
-
-
-  if(!s1){
-
-    const lowest =
-      Math.min(
-        ...recent.map(c => c.low)
-      );
-
-    if(lowest < current){
-      s1 = lowest;
-    }
-
-  }
-
-
-  if(!s2 && s1){
-
-    const candidates =
-      recent
-        .map(c => c.low)
-        .filter(x => x < s1);
-
-    if(candidates.length){
-      s2 =
-        Math.max(...candidates);
-    }
-
-  }
-
+  const supportCandidates =
+    lows
+    .filter(function(x){
+      return x < current;
+    })
+    .sort(function(a,b){
+      return b-a;
+    });
 
   return {
 
-    resistance1:r1,
-    resistance2:r2,
+    resistance1:
+      resistanceCandidates.length
+        ? resistanceCandidates[0]
+        : null,
 
-    support1:s1,
-    support2:s2
+    resistance2:
+      resistanceCandidates.length > 1
+        ? resistanceCandidates[1]
+        : null,
+
+    support1:
+      supportCandidates.length
+        ? supportCandidates[0]
+        : null,
+
+    support2:
+      supportCandidates.length > 1
+        ? supportCandidates[1]
+        : null
 
   };
-
 }
 
 
@@ -2524,32 +1494,22 @@ function calculateSupportResistance(candles){
    RSI
    ========================================================= */
 
-function calculateRSI(
-  candles,
-  period = 14
-){
+function calculateRSI(candles,period=14){
 
   if(
     !candles ||
-    candles.length < period + 2
+    candles.length <= period
   ){
     return null;
   }
 
+  const closes =
+    candles.map(function(x){
+      return x.close;
+    });
 
-  const completed =
-    candles.slice(0,-1);
-
-
-  if(completed.length < period + 1){
-    return null;
-  }
-
-
-  let gain = 0;
-
-  let loss = 0;
-
+  let gains = 0;
+  let losses = 0;
 
   for(
     let i=1;
@@ -2557,74 +1517,57 @@ function calculateRSI(
     i++
   ){
 
-    const difference =
-      completed[i].close -
-      completed[i-1].close;
+    const change =
+      closes[i] - closes[i-1];
 
-
-    if(difference >= 0){
-      gain += difference;
+    if(change > 0){
+      gains += change;
     }
     else{
-      loss -= difference;
+      losses += Math.abs(change);
     }
 
   }
 
-
   let avgGain =
-    gain / period;
+    gains / period;
 
   let avgLoss =
-    loss / period;
-
+    losses / period;
 
   for(
     let i=period+1;
-    i<completed.length;
+    i<closes.length;
     i++
   ){
 
-    const difference =
-      completed[i].close -
-      completed[i-1].close;
+    const change =
+      closes[i] - closes[i-1];
 
+    const gain =
+      change > 0 ? change : 0;
 
-    const currentGain =
-      Math.max(difference,0);
-
-    const currentLoss =
-      Math.max(-difference,0);
-
+    const loss =
+      change < 0 ? Math.abs(change) : 0;
 
     avgGain =
-      (
-        avgGain * (period-1) +
-        currentGain
-      ) / period;
-
+      ((avgGain * (period-1)) + gain)
+      / period;
 
     avgLoss =
-      (
-        avgLoss * (period-1) +
-        currentLoss
-      ) / period;
+      ((avgLoss * (period-1)) + loss)
+      / period;
 
   }
-
 
   if(avgLoss === 0){
     return 100;
   }
 
-
   const rs =
     avgGain / avgLoss;
 
-
-  return 100 -
-    (100 / (1 + rs));
-
+  return 100 - (100 / (1 + rs));
 }
 
 
@@ -2632,69 +1575,45 @@ function calculateRSI(
    EMA
    ========================================================= */
 
-function calculateEMA(
-  candles,
-  period
-){
+function calculateEMA(candles,period=20){
 
   if(
     !candles ||
-    candles.length < period + 1
+    candles.length < period
   ){
     return null;
   }
 
+  const closes =
+    candles.map(function(x){
+      return x.close;
+    });
 
-  const completed =
-    candles.slice(0,-1);
-
-
-  if(completed.length < period){
-    return null;
-  }
-
-
-  let ema = 0;
-
-
-  for(
-    let i=0;
-    i<period;
-    i++
-  ){
-
-    ema +=
-      completed[i].close;
-
-  }
-
-
-  ema /= period;
-
+  let ema =
+    closes
+      .slice(0,period)
+      .reduce(function(a,b){
+        return a+b;
+      },0) / period;
 
   const multiplier =
     2 / (period + 1);
 
-
   for(
     let i=period;
-    i<completed.length;
+    i<closes.length;
     i++
   ){
 
     ema =
       (
-        completed[i].close -
-        ema
-      ) *
-      multiplier +
-      ema;
+        (closes[i] - ema) *
+        multiplier
+      ) + ema;
 
   }
 
-
   return ema;
-
 }
 
 
@@ -2707,46 +1626,35 @@ function getEMAStructure(){
   const price =
     marketData.price;
 
-  const ema20 =
-    marketData.m5.ema20;
+  const h1 =
+    marketData.h1Ema;
 
-  const ema50 =
-    marketData.m5.ema50;
-
+  const m15 =
+    marketData.m15Ema;
 
   if(
-    price === null ||
-    ema20 === null ||
-    ema50 === null
+    !Number.isFinite(price) ||
+    !Number.isFinite(h1) ||
+    !Number.isFinite(m15)
   ){
-
-    return "NEUTRAL";
-
+    return "UNKNOWN";
   }
 
-
   if(
-    price > ema20 &&
-    ema20 > ema50
+    price > h1 &&
+    price > m15
   ){
-
     return "BULLISH";
-
   }
-
 
   if(
-    price < ema20 &&
-    ema20 < ema50
+    price < h1 &&
+    price < m15
   ){
-
     return "BEARISH";
-
   }
 
-
-  return "NEUTRAL";
-
+  return "MIXED";
 }
 
 
@@ -2754,111 +1662,55 @@ function getEMAStructure(){
    M5 MOMENTUM
    ========================================================= */
 
-function getM5MomentumTrigger(direction){
+function getM5MomentumTrigger(){
 
   const candles =
-    marketData.m5.candles;
+    marketData.m5;
 
+  if(!candles || candles.length < 3){
+    return "WAIT";
+  }
+
+  const a =
+    candles[candles.length-2];
+
+  const b =
+    candles[candles.length-1];
 
   if(
-    !candles ||
-    candles.length < 4
+    b.close > b.open &&
+    b.close > a.high
   ){
-
-    return false;
-
+    return "BULLISH BREAKOUT";
   }
 
-
-  const completed =
-    candles.slice(0,-1);
-
-
-  const current =
-    completed[completed.length-1];
-
-  const previous =
-    completed[completed.length-2];
-
-
-  if(!current || !previous){
-    return false;
+  if(
+    b.close < b.open &&
+    b.close < a.low
+  ){
+    return "BEARISH BREAKDOWN";
   }
 
-
-  const range =
-    current.high -
-    current.low;
-
-
-  if(range <= 0){
-    return false;
-  }
-
-
-  const body =
-    Math.abs(
-      current.close -
-      current.open
-    );
-
-
-  const bodyRatio =
-    body / range;
-
-
-  if(bodyRatio < 0.55){
-    return false;
-  }
-
-
-  if(direction === "BUY"){
-
-    return (
-      current.close >
-      current.open &&
-      current.close >
-      previous.high
-    );
-
-  }
-
-
-  if(direction === "SELL"){
-
-    return (
-      current.close <
-      current.open &&
-      current.close <
-      previous.low
-    );
-
-  }
-
-
-  return false;
-
+  return "WAIT";
 }
 
 
 /* =========================================================
-   LAST COMPLETED M5 CANDLE
+   LAST COMPLETED M5
    ========================================================= */
 
 function getLastCompletedM5Candle(){
 
-  const candles =
-    marketData.m5.candles;
-
   if(
-    !candles ||
-    candles.length < 2
+    !marketData.m5 ||
+    !marketData.m5.length
   ){
     return null;
   }
 
-  return candles[candles.length-2];
-
+  return marketData.m5[
+    marketData.m5.length - 1
+  ];
 }
 
 
@@ -2868,286 +1720,195 @@ function getLastCompletedM5Candle(){
 
 function runSniperEngine(){
 
+  const price =
+    marketData.price;
+
   const h4 =
-    marketData.h4.trend;
+    marketData.h4Structure;
 
   const h1 =
-    marketData.h1.trend;
-
-  const m15 =
-    marketData.m15.structure;
-
-  const m5 =
-    marketData.m5.structure;
+    marketData.h1Structure;
 
   const ema =
     marketData.emaStructure;
 
+  const r1 =
+    marketData.levels.resistance1;
+
+  const s1 =
+    marketData.levels.support1;
+
+  const m5Trigger =
+    getM5MomentumTrigger();
+
+  let direction = null;
 
   if(
-    !marketData.price ||
-    !marketData.news.clear
+    h4 === "BULLISH" &&
+    h1 === "BULLISH" &&
+    ema === "BULLISH"
   ){
+    direction = "BUY";
+  }
+
+  if(
+    h4 === "BEARISH" &&
+    h1 === "BEARISH" &&
+    ema === "BEARISH"
+  ){
+    direction = "SELL";
+  }
+
+  if(!direction){
 
     showSniperWait(
-      marketData.news.clear
-        ? "WAIT"
-        : "WAIT — HIGH-IMPACT NEWS RISK"
+      "Higher-timeframe alignment not confirmed."
     );
 
     return;
-
   }
 
-
-  if(
-    h4 === "RANGE" ||
-    h1 === "RANGE"
-  ){
-
-    showSniperWait(
-      "WAIT — H4/H1 RANGE"
-    );
-
-    return;
-
-  }
-
-
-  if(h4 !== h1){
-
-    showSniperWait(
-      "WAIT — H4/H1 NOT ALIGNED"
-    );
-
-    return;
-
-  }
-
-
-  const direction =
-    h4 === "BULLISH"
-      ? "BUY"
-      : "SELL";
-
-
-  let score = 0;
-
-
-  if(h4 !== "RANGE"){
-    score += 25;
-  }
-
-  if(h1 !== "RANGE"){
-    score += 25;
-  }
-
-  if(h4 === h1){
-    score += 20;
-  }
-
-  if(m15 === h4){
-    score += 10;
-  }
-
-  if(m5 === h4){
-    score += 10;
-  }
-
-  if(
-    (
-      direction === "BUY" &&
-      ema === "BULLISH"
-    ) ||
-    (
-      direction === "SELL" &&
-      ema === "BEARISH"
-    )
-  ){
-
-    score += 5;
-
-  }
-
-
-  const m15Rsi =
-    marketData.m15.rsi;
-
-  const m5Rsi =
-    marketData.m5.rsi;
-
-
-  if(
-    direction === "BUY" &&
-    m15Rsi > 50 &&
-    m5Rsi > 50
-  ){
-
-    score += 5;
-
-  }
-
-
-  if(
-    direction === "SELL" &&
-    m15Rsi < 50 &&
-    m5Rsi < 50
-  ){
-
-    score += 5;
-
-  }
-
-
-  setText(
-    "setupScore",
-    score + "/100"
-  );
-
-
-  if(score < 75){
-
-    showSniperWait(
-      "WAIT — SCORE " +
-      score +
-      "/100"
-    );
-
-    return;
-
-  }
-
-
-  const entry =
-    marketData.price;
-
+  let entry =
+    price;
 
   let sl;
-
+  let tp1;
+  let tp2;
+  let tp3;
 
   if(direction === "BUY"){
 
-    if(marketData.support1 === null){
+    if(Number.isFinite(s1)){
+      sl = s1 - ENGINE.atrLikeBuffer;
+    }
+    else{
+      sl = price - 0.00100;
+    }
+
+    if(Number.isFinite(r1)){
+      tp1 = r1;
+    }
+    else{
+      tp1 = price + 0.00150;
+    }
+
+    const risk =
+      entry - sl;
+
+    tp2 =
+      entry + risk * 2;
+
+    tp3 =
+      entry + risk * 3;
+
+    if(
+      tp1 <= entry ||
+      risk <= 0
+    ){
 
       showSniperWait(
-        "WAIT — NO STRUCTURAL SUPPORT"
+        "BUY structure exists, but entry geometry is not valid."
       );
 
       return;
-
     }
-
-    sl =
-      marketData.support1 -
-      0.00010;
 
   }
   else{
 
-    if(marketData.resistance1 === null){
+    if(Number.isFinite(r1)){
+      sl = r1 + ENGINE.atrLikeBuffer;
+    }
+    else{
+      sl = price + 0.00100;
+    }
+
+    if(Number.isFinite(s1)){
+      tp1 = s1;
+    }
+    else{
+      tp1 = price - 0.00150;
+    }
+
+    const risk =
+      sl - entry;
+
+    tp2 =
+      entry - risk * 2;
+
+    tp3 =
+      entry - risk * 3;
+
+    if(
+      tp1 >= entry ||
+      risk <= 0
+    ){
 
       showSniperWait(
-        "WAIT — NO STRUCTURAL RESISTANCE"
+        "SELL structure exists, but entry geometry is not valid."
       );
 
       return;
-
     }
-
-    sl =
-      marketData.resistance1 +
-      0.00010;
 
   }
 
-
   const risk =
-    Math.abs(entry-sl);
+    Math.abs(entry - sl);
 
+  const reward =
+    Math.abs(tp2 - entry);
 
-  if(risk <= 0){
+  const rr =
+    reward / risk;
+
+  if(rr < ENGINE.minRR){
 
     showSniperWait(
-      "WAIT — INVALID RISK"
+      "Risk/reward is below the 1:2 minimum."
     );
 
     return;
-
   }
-
-
-  const tp1 =
-    direction === "BUY"
-      ? entry + risk
-      : entry - risk;
-
-  const tp2 =
-    direction === "BUY"
-      ? entry + risk*2
-      : entry - risk*2;
-
-  const tp3 =
-    direction === "BUY"
-      ? entry + risk*3
-      : entry - risk*3;
-
 
   setText(
     "sniperStatus",
-    "A+ " + direction
+    "A+ SETUP"
   );
 
-  setText(
-    "direction",
-    direction
+  setClass(
+    "sniperStatus",
+    "good"
   );
 
+  setText("direction",direction);
+  setText("entry",formatPrice(entry));
+  setText("stopLoss",formatPrice(sl));
+  setText("tp1",formatPrice(tp1));
+  setText("tp2",formatPrice(tp2));
+  setText("tp3",formatPrice(tp3));
+  setText("riskReward","1:" + rr.toFixed(2));
+  setText("validity","Until structure changes");
   setText(
-    "entry",
-    formatPrice(entry)
+    "trigger",
+    direction === "BUY"
+      ? "Bullish M5 confirmation"
+      : "Bearish M5 confirmation"
   );
-
   setText(
-    "stopLoss",
+    "invalidation",
     formatPrice(sl)
   );
 
-  setText(
-    "tp1",
-    formatPrice(tp1)
-  );
+  const score =
+    calculateSetupScore(
+      direction,
+      m5Trigger
+    );
 
   setText(
-    "tp2",
-    formatPrice(tp2)
-  );
-
-  setText(
-    "tp3",
-    formatPrice(tp3)
-  );
-
-  setText(
-    "riskReward",
-    "1:3"
-  );
-
-  setText(
-    "validity",
-    "Valid while H4/H1 structure remains aligned."
-  );
-
-  setText(
-    "trigger",
-    direction +
-    " only after M15/M5 confirmation."
-  );
-
-  setText(
-    "invalidation",
-    direction === "BUY"
-      ? "Below structural support."
-      : "Above structural resistance."
+    "setupScore",
+    score + "/100"
   );
 
 }
@@ -3157,479 +1918,206 @@ function runSniperEngine(){
    SNIPER WAIT
    ========================================================= */
 
-function showSniperWait(message){
+function showSniperWait(reason){
 
   setText(
     "sniperStatus",
-    message
+    "WAIT"
   );
 
-  setText("direction","WAIT");
+  setClass(
+    "sniperStatus",
+    "warn"
+  );
+
+  setText("direction","--");
   setText("entry","--");
   setText("stopLoss","--");
   setText("tp1","--");
   setText("tp2","--");
   setText("tp3","--");
   setText("riskReward","--");
-  setText("validity","No A+ setup currently.");
-  setText("trigger","Wait for full multi-timeframe confirmation.");
-  setText("invalidation","No active trade.");
+  setText("validity","--");
+  setText("trigger",reason);
+  setText("invalidation","--");
 
 }
 
 
 /* =========================================================
-   ELITE SCALPING ENGINE
+   SCALPING ENGINE
    ========================================================= */
 
 function runEliteScalpingEngine(){
 
-  if(!marketData.price){
-
-    showScalpWait(
-      "WAIT — NO MARKET DATA"
-    );
-
-    return;
-
-  }
-
-
-  if(!marketData.news.clear){
-
-    showScalpWait(
-      marketData.news.risk === "UNKNOWN"
-        ? "WAIT — NEWS UNKNOWN"
-        : "WAIT — HIGH-IMPACT NEWS"
-    );
-
-    return;
-
-  }
-
+  const price =
+    marketData.price;
 
   const h1 =
-    marketData.h1.trend;
+    marketData.h1Structure;
 
   const m15 =
-    marketData.m15.structure;
+    marketData.m15Structure;
 
   const m5 =
-    marketData.m5.structure;
+    marketData.m5Structure;
 
   const ema =
     marketData.emaStructure;
 
+  let direction = null;
 
   if(
-    h1 !== "BULLISH" &&
-    h1 !== "BEARISH"
+    h1 === "BULLISH" &&
+    m15 === "BULLISH" &&
+    ema === "BULLISH"
   ){
+    direction = "BUY";
+  }
+
+  if(
+    h1 === "BEARISH" &&
+    m15 === "BEARISH" &&
+    ema === "BEARISH"
+  ){
+    direction = "SELL";
+  }
+
+  if(!direction){
 
     showScalpWait(
-      "WAIT — H1 RANGE"
+      "M5/M15/H1 alignment is not confirmed."
     );
 
     return;
-
   }
 
+  const resistanceLevels =
+    [
+      marketData.levels.resistance1,
+      marketData.levels.resistance2
+    ]
+    .filter(Number.isFinite);
 
-  const direction =
-    h1 === "BULLISH"
-      ? "BUY"
-      : "SELL";
-
-
-  let score = 15;
-
-
-  if(m15 === h1){
-    score += 15;
-  }
-
-  if(m5 === h1){
-    score += 20;
-  }
-
-
-  if(
-    (
-      direction === "BUY" &&
-      ema === "BULLISH"
-    ) ||
-    (
-      direction === "SELL" &&
-      ema === "BEARISH"
-    )
-  ){
-
-    score += 15;
-
-  }
-
-
-  const rsi =
-    marketData.m5.rsi;
-
-
-  if(
-    direction === "BUY" &&
-    rsi >= BULLISH_RSI_MIN &&
-    rsi <= BULLISH_RSI_MAX
-  ){
-
-    score += 15;
-
-  }
-
-
-  if(
-    direction === "SELL" &&
-    rsi >= BEARISH_RSI_MIN &&
-    rsi <= BEARISH_RSI_MAX
-  ){
-
-    score += 15;
-
-  }
-
-
-  const momentum =
-    getM5MomentumTrigger(direction);
-
-
-  if(momentum){
-    score += 20;
-  }
-
-
-  setText(
-    "scalpScore",
-    score + "/100"
-  );
-
-
-  if(
-    m15 !== h1 ||
-    m5 !== h1
-  ){
-
-    showScalpWait(
-      "WAIT — TIMEFRAME ALIGNMENT"
-    );
-
-    return;
-
-  }
-
-
-  if(
-    !(
-      (
-        direction === "BUY" &&
-        ema === "BULLISH"
-      ) ||
-      (
-        direction === "SELL" &&
-        ema === "BEARISH"
-      )
-    )
-  ){
-
-    showScalpWait(
-      "WAIT — EMA NOT ALIGNED"
-    );
-
-    return;
-
-  }
-
-
-  if(
-    !(
-      (
-        direction === "BUY" &&
-        rsi >= BULLISH_RSI_MIN &&
-        rsi <= BULLISH_RSI_MAX
-      ) ||
-      (
-        direction === "SELL" &&
-        rsi >= BEARISH_RSI_MIN &&
-        rsi <= BEARISH_RSI_MAX
-      )
-    )
-  ){
-
-    showScalpWait(
-      "WAIT — M5 RSI NOT CONFIRMED"
-    );
-
-    return;
-
-  }
-
-
-  if(!momentum){
-
-    showScalpWait(
-      "WAIT — M5 MOMENTUM CANDLE"
-    );
-
-    return;
-
-  }
-
-
-  const entry =
-    marketData.price;
-
-
-  const lastM5 =
-    getLastCompletedM5Candle();
-
-
-  if(!lastM5){
-
-    showScalpWait(
-      "WAIT — M5 CANDLE DATA"
-    );
-
-    return;
-
-  }
-
+  const supportLevels =
+    [
+      marketData.levels.support1,
+      marketData.levels.support2
+    ]
+    .filter(Number.isFinite);
 
   let sl;
-
+  let tp1;
+  let tp2;
 
   if(direction === "BUY"){
 
-    const candidates =
-      [
-        marketData.support1,
-        lastM5.low
-      ]
-      .filter(Number.isFinite);
-
-    if(!candidates.length){
-
-      showScalpWait(
-        "WAIT — NO STRUCTURAL SL"
-      );
-
-      return;
-
-    }
-
     sl =
-      Math.min(...candidates) -
-      SCALP_SL_BUFFER;
+      supportLevels.length
+        ? Math.min.apply(null,supportLevels)
+          - ENGINE.atrLikeBuffer
+        : price - 0.00080;
+
+    tp1 =
+      resistanceLevels.length
+        ? resistanceLevels[0]
+        : price + 0.00100;
+
+    const risk =
+      price - sl;
+
+    tp2 =
+      price + risk * 2;
 
   }
   else{
 
-    const candidates =
-      [
-        marketData.resistance1,
-        lastM5.high
-      ]
-      .filter(Number.isFinite);
-
-    if(!candidates.length){
-
-      showScalpWait(
-        "WAIT — NO STRUCTURAL SL"
-      );
-
-      return;
-
-    }
-
     sl =
-      Math.max(...candidates) +
-      SCALP_SL_BUFFER;
+      resistanceLevels.length
+        ? Math.max.apply(null,resistanceLevels)
+          + ENGINE.atrLikeBuffer
+        : price + 0.00080;
+
+    tp1 =
+      supportLevels.length
+        ? supportLevels[0]
+        : price - 0.00100;
+
+    const risk =
+      sl - price;
+
+    tp2 =
+      price - risk * 2;
 
   }
-
 
   const risk =
-    Math.abs(entry-sl);
+    Math.abs(price - sl);
 
-
-  const riskPips =
-    risk * 10000;
-
-
-  if(
-    riskPips <
-    SCALP_MIN_RISK_PIPS
-  ){
-
-    showScalpWait(
-      "WAIT — RISK TOO SMALL"
-    );
-
-    return;
-
-  }
-
-
-  if(
-    riskPips >
-    SCALP_MAX_RISK_PIPS
-  ){
-
-    showScalpWait(
-      "WAIT — RISK TOO LARGE"
-    );
-
-    return;
-
-  }
-
-
-  const emaDistance =
-    Math.abs(
-      entry -
-      marketData.m5.ema20
-    );
-
-
-  if(
-    emaDistance >
-    SCALP_MAX_EMA_DISTANCE
-  ){
-
-    showScalpWait(
-      "WAIT — PRICE TOO EXTENDED"
-    );
-
-    return;
-
-  }
-
-
-  const tp1 =
-    direction === "BUY"
-      ? entry + risk*1.5
-      : entry - risk*1.5;
-
-  const tp2 =
-    direction === "BUY"
-      ? entry + risk*2
-      : entry - risk*2;
-
+  const reward =
+    Math.abs(tp2 - price);
 
   const rr =
-    2;
-
-
-  /* ROOM CHECK */
-
-  if(direction === "BUY"){
-
-    if(
-      marketData.resistance1 !== null &&
-      marketData.resistance1 <= tp2
-    ){
-
-      showScalpWait(
-        "WAIT — RESISTANCE BLOCKS TP2"
-      );
-
-      return;
-
-    }
-
-  }
-  else{
-
-    if(
-      marketData.support1 !== null &&
-      marketData.support1 >= tp2
-    ){
-
-      showScalpWait(
-        "WAIT — SUPPORT BLOCKS TP2"
-      );
-
-      return;
-
-    }
-
-  }
-
+    risk > 0
+      ? reward / risk
+      : 0;
 
   if(
-    score < SCALP_MIN_SCORE ||
-    rr < SCALP_MIN_RR
+    rr < ENGINE.minRR ||
+    risk <= 0
   ){
 
     showScalpWait(
-      "WAIT — NOT A+ SCALP"
+      "Scalping setup does not meet minimum 1:2 RR."
     );
 
     return;
-
   }
 
+  const score =
+    calculateSetupScore(
+      direction,
+      getM5MomentumTrigger()
+    );
 
   setText(
     "scalpVerdict",
-    "A+ " + direction
+    score >= 80
+      ? "A+ SCALP"
+      : "WAIT"
   );
 
-  setText(
-    "scalpDirection",
-    direction
+  setClass(
+    "scalpVerdict",
+    score >= 80
+      ? "good"
+      : "warn"
   );
 
-  setText(
-    "scalpEntry",
-    formatPrice(entry)
-  );
-
-  setText(
-    "scalpSL",
-    formatPrice(sl)
-  );
-
-  setText(
-    "scalpTP1",
-    formatPrice(tp1)
-  );
-
-  setText(
-    "scalpTP2",
-    formatPrice(tp2)
-  );
-
+  setText("scalpDirection",direction);
+  setText("scalpEntry",formatPrice(price));
+  setText("scalpSL",formatPrice(sl));
+  setText("scalpTP1",formatPrice(tp1));
+  setText("scalpTP2",formatPrice(tp2));
   setText(
     "scalpRR",
-    "1:2"
+    "1:" + rr.toFixed(2)
   );
-
   setText(
     "scalpScore",
     score + "/100"
   );
-
   setText(
     "scalpValidity",
-    "Valid while M5 structure, EMA and momentum remain aligned."
+    "Until M5 structure changes"
   );
-
   setText(
     "scalpTrigger",
-    "Completed M5 momentum candle confirmed."
+    getM5MomentumTrigger()
   );
-
   setText(
     "scalpInvalidation",
-    direction === "BUY"
-      ? "Below structural M5/support level."
-      : "Above structural M5/resistance level."
+    formatPrice(sl)
   );
 
 }
@@ -3639,58 +2127,106 @@ function runEliteScalpingEngine(){
    SCALP WAIT
    ========================================================= */
 
-function showScalpWait(message){
+function showScalpWait(reason){
 
   setText(
     "scalpVerdict",
-    message
-  );
-
-  setText(
-    "scalpDirection",
     "WAIT"
   );
 
-  setText(
-    "scalpEntry",
-    "--"
+  setClass(
+    "scalpVerdict",
+    "warn"
   );
 
-  setText(
-    "scalpSL",
-    "--"
-  );
+  setText("scalpDirection","--");
+  setText("scalpEntry","--");
+  setText("scalpSL","--");
+  setText("scalpTP1","--");
+  setText("scalpTP2","--");
+  setText("scalpRR","--");
+  setText("scalpScore","--");
+  setText("scalpValidity","--");
+  setText("scalpTrigger",reason);
+  setText("scalpInvalidation","--");
 
-  setText(
-    "scalpTP1",
-    "--"
-  );
+}
 
-  setText(
-    "scalpTP2",
-    "--"
-  );
 
-  setText(
-    "scalpRR",
-    "--"
-  );
+/* =========================================================
+   SETUP SCORE
+   ========================================================= */
 
-  setText(
-    "scalpValidity",
-    "No scalp until all required conditions align."
-  );
+function calculateSetupScore(
+  direction,
+  m5Trigger
+){
 
-  setText(
-    "scalpTrigger",
-    "Wait for confirmation."
-  );
+  let score = 0;
 
-  setText(
-    "scalpInvalidation",
-    "No active setup."
-  );
+  if(
+    direction === "BUY" &&
+    marketData.h4Structure === "BULLISH"
+  ){
+    score += 20;
+  }
 
+  if(
+    direction === "SELL" &&
+    marketData.h4Structure === "BEARISH"
+  ){
+    score += 20;
+  }
+
+  if(
+    direction === "BUY" &&
+    marketData.h1Structure === "BULLISH"
+  ){
+    score += 20;
+  }
+
+  if(
+    direction === "SELL" &&
+    marketData.h1Structure === "BEARISH"
+  ){
+    score += 20;
+  }
+
+  if(
+    direction === "BUY" &&
+    marketData.emaStructure === "BULLISH"
+  ){
+    score += 20;
+  }
+
+  if(
+    direction === "SELL" &&
+    marketData.emaStructure === "BEARISH"
+  ){
+    score += 20;
+  }
+
+  if(
+    direction === "BUY" &&
+    m5Trigger === "BULLISH BREAKOUT"
+  ){
+    score += 20;
+  }
+
+  if(
+    direction === "SELL" &&
+    m5Trigger === "BEARISH BREAKDOWN"
+  ){
+    score += 20;
+  }
+
+  if(
+    marketData.news.clear
+  ){
+    score += 20;
+  }
+
+  return Math.min(score,100);
 }
 
 
@@ -3700,139 +2236,95 @@ function showScalpWait(message){
 
 function runProAnalysis(){
 
-  if(!marketData.price){
-
-    setText(
-      "proVerdict",
-      "WAIT"
-    );
-
-    setText(
-      "proExplanation",
-      "Waiting for market data."
-    );
-
-    return;
-
-  }
-
-
-  if(!marketData.news.clear){
-
-    setText(
-      "proVerdict",
-      "WAIT — NEWS RISK"
-    );
-
-    setText(
-      "proExplanation",
-      "High-impact EUR/USD event risk is not cleared."
-    );
-
-    return;
-
-  }
-
-
   const h4 =
-    marketData.h4.trend;
+    marketData.h4Structure;
 
   const h1 =
-    marketData.h1.trend;
+    marketData.h1Structure;
 
   const m15 =
-    marketData.m15.structure;
-
-  const m5 =
-    marketData.m5.structure;
+    marketData.m15Structure;
 
   const ema =
     marketData.emaStructure;
 
+  const rsi =
+    marketData.h1Rsi;
+
+  let verdict =
+    "WAIT";
+
+  let explanation =
+    "";
 
   if(
-    h4 === "RANGE" ||
-    h1 === "RANGE"
+    h4 === "BULLISH" &&
+    h1 === "BULLISH" &&
+    m15 === "BULLISH" &&
+    ema === "BULLISH"
   ){
 
-    setText(
-      "proVerdict",
-      "WAIT — HIGHER TF RANGE"
-    );
+    verdict = "BULLISH ALIGNMENT";
 
-    setText(
-      "proExplanation",
-      "H4/H1 do not provide a clean directional structure."
-    );
+    explanation =
+      "H4, H1 and M15 structure are bullish and price is above the key EMA structure.";
 
-    return;
+  }
+  else if(
+    h4 === "BEARISH" &&
+    h1 === "BEARISH" &&
+    m15 === "BEARISH" &&
+    ema === "BEARISH"
+  ){
+
+    verdict = "BEARISH ALIGNMENT";
+
+    explanation =
+      "H4, H1 and M15 structure are bearish and price is below the key EMA structure.";
+
+  }
+  else{
+
+    verdict = "WAIT";
+
+    explanation =
+      "Timeframes are not sufficiently aligned for an A+ setup.";
 
   }
 
+  if(Number.isFinite(rsi)){
 
-  if(h4 !== h1){
-
-    setText(
-      "proVerdict",
-      "WAIT — H4/H1 CONFLICT"
-    );
-
-    setText(
-      "proExplanation",
-      "Higher-timeframe direction is not aligned."
-    );
-
-    return;
+    explanation +=
+      " H1 RSI: " +
+      rsi.toFixed(1) +
+      ".";
 
   }
 
+  if(
+    marketData.news.risk === "HIGH"
+  ){
 
-  const direction =
-    h4 === "BULLISH"
-      ? "BUY"
-      : "SELL";
-
-
-  const aligned =
-    m15 === h4 &&
-    m5 === h4 &&
-    (
-      (
-        direction === "BUY" &&
-        ema === "BULLISH"
-      ) ||
-      (
-        direction === "SELL" &&
-        ema === "BEARISH"
-      )
-    );
-
-
-  if(!aligned){
-
-    setText(
-      "proVerdict",
-      "WAIT — EXECUTION ALIGNMENT"
-    );
-
-    setText(
-      "proExplanation",
-      "H4/H1 agree, but M15/M5/EMA confirmation is incomplete."
-    );
-
-    return;
+    explanation +=
+      " High-impact EUR/USD news risk is detected.";
 
   }
-
 
   setText(
     "proVerdict",
-    direction + " — ALIGNED"
+    verdict
+  );
+
+  setClass(
+    "proVerdict",
+    verdict === "WAIT"
+      ? "warn"
+      : "good"
   );
 
   setText(
     "proExplanation",
-    "H4 and H1 agree with M15/M5 structure and EMA direction. Wait for a completed M5 trigger before execution."
+    explanation
   );
 
 }
@@ -3844,494 +2336,261 @@ function runProAnalysis(){
 
 function runEliteTradeGate(){
 
-  if(!marketData.price){
-
-    showTradeGateError(
-      "STAY AWAY",
-      "Market price unavailable.",
-      "Wait for live market data."
-    );
-
-    return;
-
-  }
-
-
   const session =
     getTradingSession();
 
-
   setText(
     "tradeGateSession",
-    session.label +
-    " • " +
-    session.istTime
+    session
   );
 
-
-  /*
-    SESSION FILTER
-  */
-
-  if(!session.tradeable){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "OFF-SESSION",
-      "Wait for London or New York trading hours."
-    );
-
-    return;
-
-  }
-
-
-  /*
-    NEWS
-  */
-
-  if(!marketData.news.clear){
-
-    if(
-      marketData.news.risk ===
-      "UNKNOWN"
-    ){
-
-      setTradeGateWait(
-        "STAY AWAY",
-        "NEWS DATA UNKNOWN",
-        "Do not execute until the EUR/USD high-impact calendar is confirmed."
-      );
-
-    }
-    else{
-
-      setTradeGateWait(
-        "STAY AWAY",
-        "HIGH-IMPACT NEWS RISK",
-        "Wait until the event risk window has cleared."
-      );
-
-    }
-
-    return;
-
-  }
-
-
-  /*
-    H4 / H1
-  */
-
-  const h4 =
-    marketData.h4.trend;
-
-  const h1 =
-    marketData.h1.trend;
-
-
-  if(
-    h4 === "RANGE" ||
-    h1 === "RANGE"
-  ){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "H4/H1 RANGE",
-      "Wait for a clean directional higher-timeframe structure."
-    );
-
-    return;
-
-  }
-
-
-  if(h4 !== h1){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "H4/H1 CONFLICT",
-      "Wait until H4 and H1 point in the same direction."
-    );
-
-    return;
-
-  }
-
-
-  const direction =
-    h4 === "BULLISH"
-      ? "BUY"
-      : "SELL";
-
-
-  /*
-    M15
-  */
-
-  if(
-    marketData.m15.structure !==
-    h4
-  ){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "M15 NOT CONFIRMED",
-      "Wait for M15 structure to align with H4/H1."
-    );
-
-    return;
-
-  }
-
-
-  /*
-    M5
-  */
-
-  if(
-    marketData.m5.structure !==
-    h4
-  ){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "M5 NOT CONFIRMED",
-      "Wait for M5 structure to align with the higher timeframes."
-    );
-
-    return;
-
-  }
-
-
-  /*
-    EMA
-  */
-
-  const expectedEMA =
-    direction === "BUY"
-      ? "BULLISH"
-      : "BEARISH";
-
-
-  if(
-    marketData.emaStructure !==
-    expectedEMA
-  ){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "EMA NOT ALIGNED",
-      "Wait for M5 price, EMA20 and EMA50 to align."
-    );
-
-    return;
-
-  }
-
-
-  /*
-    RSI
-  */
-
-  const rsi =
-    marketData.m5.rsi;
-
-
-  const validRSI =
-    direction === "BUY"
-      ? (
-          rsi >= BULLISH_RSI_MIN &&
-          rsi <= BULLISH_RSI_MAX
-        )
-      : (
-          rsi >= BEARISH_RSI_MIN &&
-          rsi <= BEARISH_RSI_MAX
-        );
-
-
-  if(!validRSI){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "M5 RSI NOT CONFIRMED",
-      "Wait for M5 RSI to return to the directional confirmation zone."
-    );
-
-    return;
-
-  }
-
-
-  /*
-    MOMENTUM CANDLE
-  */
-
-  const completedM5 =
-    getLastCompletedM5Candle();
-
-
-  if(!completedM5){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "M5 CANDLE UNAVAILABLE",
-      "Wait for a completed M5 candle."
-    );
-
-    return;
-
-  }
-
-
-  if(
-    !getM5MomentumTrigger(direction)
-  ){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "M5 MOMENTUM NOT CONFIRMED",
-      "Wait for a completed M5 breakout/momentum candle."
-    );
-
-    return;
-
-  }
-
-
-  /*
-    EMA PROXIMITY
-  */
-
-  const emaDistance =
-    Math.abs(
-      marketData.price -
-      marketData.m5.ema20
-    );
-
-
-  if(
-    TRADE_GATE_REQUIRE_EMA_PROXIMITY &&
-    emaDistance >
-    TRADE_GATE_EMA_MAX_DISTANCE
-  ){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "PRICE TOO EXTENDED",
-      "Wait for price to return closer to M5 EMA20 instead of chasing the move."
-    );
-
-    return;
-
-  }
-
-
-  /*
-    STRUCTURAL STOP
-  */
-
-  const entry =
+  const price =
     marketData.price;
 
+  if(!Number.isFinite(price)){
+
+    setTradeGateWait(
+      "Market price is unavailable."
+    );
+
+    return;
+  }
+
+  if(
+    marketData.news.risk === "HIGH"
+  ){
+
+    setTradeGateWait(
+      "High-impact EUR/USD news is within the active danger window."
+    );
+
+    setText(
+      "tradeGateRisk",
+      "HIGH"
+    );
+
+    return;
+  }
+
+  if(
+    marketData.news.risk === "UNKNOWN"
+  ){
+
+    setTradeGateWait(
+      "News filter could not be verified."
+    );
+
+    setText(
+      "tradeGateRisk",
+      "UNKNOWN"
+    );
+
+    return;
+  }
+
+  if(
+    session === "OFF SESSION"
+  ){
+
+    setTradeGateWait(
+      "Outside the London/New York trading sessions."
+    );
+
+    setText(
+      "tradeGateRisk",
+      "OFF SESSION"
+    );
+
+    return;
+  }
+
+  const h4 =
+    marketData.h4Structure;
+
+  const h1 =
+    marketData.h1Structure;
+
+  const m15 =
+    marketData.m15Structure;
+
+  const ema =
+    marketData.emaStructure;
+
+  let direction = null;
+
+  if(
+    h4 === "BULLISH" &&
+    h1 === "BULLISH" &&
+    m15 === "BULLISH" &&
+    ema === "BULLISH"
+  ){
+    direction = "BUY";
+  }
+
+  if(
+    h4 === "BEARISH" &&
+    h1 === "BEARISH" &&
+    m15 === "BEARISH" &&
+    ema === "BEARISH"
+  ){
+    direction = "SELL";
+  }
+
+  if(!direction){
+
+    setTradeGateWait(
+      "Higher-timeframe and M15 structure are not fully aligned."
+    );
+
+    setText(
+      "tradeGateRisk",
+      "NORMAL"
+    );
+
+    return;
+  }
+
+  const r1 =
+    marketData.levels.resistance1;
+
+  const s1 =
+    marketData.levels.support1;
 
   let sl;
-
+  let tp1;
+  let tp2;
 
   if(direction === "BUY"){
 
-    const candidates =
-      [
-        marketData.support1,
-        completedM5.low
-      ]
-      .filter(Number.isFinite);
-
-
-    if(!candidates.length){
-
-      setTradeGateWait(
-        "STAY AWAY",
-        "NO STRUCTURAL STOP",
-        "A valid structural stop is required."
-      );
-
-      return;
-
-    }
-
-
     sl =
-      Math.min(...candidates) -
-      TRADE_GATE_SL_BUFFER;
+      Number.isFinite(s1)
+        ? s1 - ENGINE.atrLikeBuffer
+        : price - 0.00100;
+
+    tp1 =
+      Number.isFinite(r1)
+        ? r1
+        : price + 0.00150;
+
+    const risk =
+      price - sl;
+
+    tp2 =
+      price + risk * 2;
 
   }
   else{
 
-    const candidates =
-      [
-        marketData.resistance1,
-        completedM5.high
-      ]
-      .filter(Number.isFinite);
-
-
-    if(!candidates.length){
-
-      setTradeGateWait(
-        "STAY AWAY",
-        "NO STRUCTURAL STOP",
-        "A valid structural stop is required."
-      );
-
-      return;
-
-    }
-
-
     sl =
-      Math.max(...candidates) +
-      TRADE_GATE_SL_BUFFER;
+      Number.isFinite(r1)
+        ? r1 + ENGINE.atrLikeBuffer
+        : price + 0.00100;
+
+    tp1 =
+      Number.isFinite(s1)
+        ? s1
+        : price - 0.00150;
+
+    const risk =
+      sl - price;
+
+    tp2 =
+      price - risk * 2;
 
   }
-
 
   const risk =
-    Math.abs(entry-sl);
+    Math.abs(price-sl);
 
-
-  const riskPips =
-    risk * 10000;
-
-
-  /*
-    RISK LIMIT
-  */
-
-  if(
-    riskPips <
-    TRADE_GATE_MIN_RISK_PIPS
-  ){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "RISK TOO SMALL",
-      "Structural risk must be at least 3 pips."
-    );
-
-    return;
-
-  }
-
-
-  if(
-    riskPips >
-    TRADE_GATE_MAX_RISK_PIPS
-  ){
-
-    setTradeGateWait(
-      "STAY AWAY",
-      "RISK TOO LARGE",
-      "Structural risk exceeds the 15-pip execution limit."
-    );
-
-    return;
-
-  }
-
-
-  /*
-    TARGETS
-  */
-
-  const tp1 =
-    direction === "BUY"
-      ? entry + risk*1.5
-      : entry - risk*1.5;
-
-
-  const tp2 =
-    direction === "BUY"
-      ? entry + risk*2
-      : entry - risk*2;
-
+  const reward =
+    Math.abs(tp2-price);
 
   const rr =
-    2;
+    risk > 0
+      ? reward/risk
+      : 0;
 
+  const score =
+    calculateSetupScore(
+      direction,
+      getM5MomentumTrigger()
+    );
 
-  /*
-    HIGHER TF S/R ROOM
-  */
-
-  if(direction === "BUY"){
-
-    if(
-      marketData.resistance1 !== null &&
-      marketData.resistance1 <= tp2
-    ){
-
-      setTradeGateWait(
-        "STAY AWAY",
-        "RESISTANCE BLOCKS TP2",
-        "There is not enough structural room for a 1:2 target."
-      );
-
-      return;
-
-    }
-
-  }
-  else{
-
-    if(
-      marketData.support1 !== null &&
-      marketData.support1 >= tp2
-    ){
-
-      setTradeGateWait(
-        "STAY AWAY",
-        "SUPPORT BLOCKS TP2",
-        "There is not enough structural room for a 1:2 target."
-      );
-
-      return;
-
-    }
-
-  }
-
-
-  /*
-    FINAL RR
-  */
-
-  if(rr < TRADE_GATE_MIN_RR){
+  if(
+    rr < ENGINE.minRR
+  ){
 
     setTradeGateWait(
-      "STAY AWAY",
-      "RR BELOW 1:2",
-      "The setup does not meet the minimum risk/reward requirement."
+      "Risk/reward is below the required 1:2."
+    );
+
+    setText(
+      "tradeGateRisk",
+      "RR FAIL"
     );
 
     return;
-
   }
 
+  if(score < 80){
 
-  /*
-    FINAL EXECUTION DECISION
-  */
+    setTradeGateWait(
+      "Setup score is below the A+ threshold."
+    );
+
+    setText(
+      "tradeGateRisk",
+      "SETUP < 80"
+    );
+
+    return;
+  }
+
+  const momentum =
+    getM5MomentumTrigger();
+
+  if(
+    direction === "BUY" &&
+    momentum !== "BULLISH BREAKOUT"
+  ){
+
+    setTradeGateWait(
+      "BUY setup needs bullish M5 confirmation."
+    );
+
+    setText(
+      "tradeGateRisk",
+      "WAIT"
+    );
+
+    return;
+  }
+
+  if(
+    direction === "SELL" &&
+    momentum !== "BEARISH BREAKDOWN"
+  ){
+
+    setTradeGateWait(
+      "SELL setup needs bearish M5 confirmation."
+    );
+
+    setText(
+      "tradeGateRisk",
+      "WAIT"
+    );
+
+    return;
+  }
 
   showTradeGateDecision(
     direction,
-    entry,
+    price,
     sl,
     tp1,
     tp2,
     rr,
-    riskPips
+    session
   );
 
 }
@@ -4341,15 +2600,16 @@ function runEliteTradeGate(){
    TRADE GATE WAIT
    ========================================================= */
 
-function setTradeGateWait(
-  verdict,
-  reason,
-  action
-){
+function setTradeGateWait(reason){
 
   setText(
     "tradeGateVerdict",
-    verdict
+    "STAY AWAY"
+  );
+
+  setClass(
+    "tradeGateVerdict",
+    "bad"
   );
 
   setText(
@@ -4359,49 +2619,21 @@ function setTradeGateWait(
 
   setText(
     "tradeGateAction",
-    action
+    "NO TRADE — wait for all filters to align."
   );
 
-  setText(
-    "tradeGateDirection",
-    "WAIT"
-  );
-
-  setText(
-    "tradeGateEntry",
-    "—"
-  );
-
-  setText(
-    "tradeGateSL",
-    "—"
-  );
-
-  setText(
-    "tradeGateTP1",
-    "—"
-  );
-
-  setText(
-    "tradeGateTP2",
-    "—"
-  );
-
-  setText(
-    "tradeGateRR",
-    "—"
-  );
-
-  setText(
-    "tradeGateRisk",
-    "—"
-  );
+  setText("tradeGateDirection","--");
+  setText("tradeGateEntry","--");
+  setText("tradeGateSL","--");
+  setText("tradeGateTP1","--");
+  setText("tradeGateTP2","--");
+  setText("tradeGateRR","--");
 
 }
 
 
 /* =========================================================
-   FINAL TRADE GATE DECISION
+   TRADE GATE DECISION
    ========================================================= */
 
 function showTradeGateDecision(
@@ -4411,22 +2643,32 @@ function showTradeGateDecision(
   tp1,
   tp2,
   rr,
-  riskPips
+  session
 ){
 
   setText(
     "tradeGateVerdict",
-    direction
+    "A+ TRADE READY"
+  );
+
+  setClass(
+    "tradeGateVerdict",
+    "good"
   );
 
   setText(
     "tradeGateReason",
-    "ALL EXECUTION CONDITIONS CONFIRMED"
+    "All primary structure, momentum, session, news and RR filters are aligned."
   );
 
   setText(
     "tradeGateAction",
-    "Execution allowed only while these conditions remain valid. Do not chase if price moves away from the calculated entry."
+    "Wait for the stated M5 confirmation before execution."
+  );
+
+  setText(
+    "tradeGateSession",
+    session
   );
 
   setText(
@@ -4456,13 +2698,12 @@ function showTradeGateDecision(
 
   setText(
     "tradeGateRR",
-    "1:" + rr
+    "1:" + rr.toFixed(2)
   );
 
   setText(
     "tradeGateRisk",
-    riskPips.toFixed(1) +
-    " pips"
+    "NORMAL"
   );
 
 }
@@ -4475,12 +2716,17 @@ function showTradeGateDecision(
 function showTradeGateError(
   verdict,
   reason,
-  action
+  detail
 ){
 
   setText(
     "tradeGateVerdict",
     verdict
+  );
+
+  setClass(
+    "tradeGateVerdict",
+    "bad"
   );
 
   setText(
@@ -4490,49 +2736,22 @@ function showTradeGateError(
 
   setText(
     "tradeGateAction",
-    action
+    detail || "Check the market-data connection."
   );
 
-  setText(
-    "tradeGateDirection",
-    "WAIT"
-  );
-
-  setText(
-    "tradeGateEntry",
-    "—"
-  );
-
-  setText(
-    "tradeGateSL",
-    "—"
-  );
-
-  setText(
-    "tradeGateTP1",
-    "—"
-  );
-
-  setText(
-    "tradeGateTP2",
-    "—"
-  );
-
-  setText(
-    "tradeGateRR",
-    "—"
-  );
-
-  setText(
-    "tradeGateRisk",
-    "—"
-  );
+  setText("tradeGateDirection","--");
+  setText("tradeGateEntry","--");
+  setText("tradeGateSL","--");
+  setText("tradeGateTP1","--");
+  setText("tradeGateTP2","--");
+  setText("tradeGateRR","--");
+  setText("tradeGateRisk","DATA ERROR");
 
 }
 
 
 /* =========================================================
-   TRADING SESSION
+   SESSION
    ========================================================= */
 
 function getTradingSession(){
@@ -4540,106 +2759,66 @@ function getTradingSession(){
   const now =
     new Date();
 
-
-  const londonHour =
-    Number(
-      new Intl.DateTimeFormat(
-        "en-GB",
-        {
-          timeZone:"Europe/London",
-          hour:"2-digit",
-          hour12:false
-        }
-      ).format(now)
-    );
-
-
-  const newYorkHour =
-    Number(
-      new Intl.DateTimeFormat(
-        "en-US",
-        {
-          timeZone:"America/New_York",
-          hour:"2-digit",
-          hour12:false
-        }
-      ).format(now)
-    );
-
-
-  const istParts =
+  const london =
     new Intl.DateTimeFormat(
-      "en-IN",
+      "en-GB",
       {
-        timeZone:"Asia/Kolkata",
+        timeZone:"Europe/London",
         hour:"2-digit",
         minute:"2-digit",
         hour12:false
       }
     ).formatToParts(now);
 
+  const newYork =
+    new Intl.DateTimeFormat(
+      "en-GB",
+      {
+        timeZone:"America/New_York",
+        hour:"2-digit",
+        minute:"2-digit",
+        hour12:false
+      }
+    ).formatToParts(now);
 
-  const istHour =
-    istParts.find(
-      p => p.type === "hour"
-    )?.value || "00";
+  const londonHour =
+    Number(
+      london.find(
+        x => x.type === "hour"
+      ).value
+    );
 
+  const nyHour =
+    Number(
+      newYork.find(
+        x => x.type === "hour"
+      ).value
+    );
 
-  const istMinute =
-    istParts.find(
-      p => p.type === "minute"
-    )?.value || "00";
-
-
-  const londonOpen =
+  const londonActive =
     londonHour >= 8 &&
     londonHour < 17;
 
+  const nyActive =
+    nyHour >= 8 &&
+    nyHour < 17;
 
-  const newYorkOpen =
-    newYorkHour >= 8 &&
-    newYorkHour < 17;
-
-
-  let label =
-    "OFF-SESSION";
-
-
-  if(londonOpen && newYorkOpen){
-
-    label =
-      "LONDON + NEW YORK";
-
-  }
-  else if(londonOpen){
-
-    label =
-      "LONDON";
-
-  }
-  else if(newYorkOpen){
-
-    label =
-      "NEW YORK";
-
+  if(
+    londonActive &&
+    nyActive
+  ){
+    return "LONDON / NEW YORK OVERLAP";
   }
 
+  if(londonActive){
+    return "LONDON";
+  }
 
-  return {
+  if(nyActive){
+    return "NEW YORK";
+  }
 
-    tradeable:
-      londonOpen ||
-      newYorkOpen,
-
-    label,
-
-    istTime:
-      istHour +
-      ":" +
-      istMinute
-
-  };
-
+  return "OFF SESSION";
 }
 
 
@@ -4649,126 +2828,42 @@ function getTradingSession(){
 
 function updateDashboard(){
 
-  /* PRICE */
+  const price =
+    marketData.price;
 
   setText(
     "price",
-    formatPrice(
-      marketData.price
-    )
+    formatPrice(price)
   );
-
-
-  /* H4 */
 
   setText(
     "h4Trend",
-    marketData.h4.trend
+    marketData.h4Structure
   );
-
-  setText(
-    "quickH4Trend",
-    marketData.h4.trend
-  );
-
-
-  /* H1 */
 
   setText(
     "h1Trend",
-    marketData.h1.trend
+    marketData.h1Structure
   );
-
-  setText(
-    "quickH1Trend",
-    marketData.h1.trend
-  );
-
-
-  /* M15 / M5 */
 
   setText(
     "m15Structure",
-    marketData.m15.structure
+    marketData.m15Structure
   );
 
   setText(
     "m5Structure",
-    marketData.m5.structure
-  );
-
-
-  /* S/R */
-
-  setText(
-    "resistance1",
-    formatPrice(
-      marketData.resistance1
-    )
+    marketData.m5Structure
   );
 
   setText(
-    "resistance2",
-    formatPrice(
-      marketData.resistance2
-    )
+    "quickH4Trend",
+    marketData.h4Structure
   );
 
   setText(
-    "support1",
-    formatPrice(
-      marketData.support1
-    )
-  );
-
-  setText(
-    "support2",
-    formatPrice(
-      marketData.support2
-    )
-  );
-
-
-  /* RSI */
-
-  setText(
-    "h4Rsi",
-    formatNumber(
-      marketData.h4.rsi,
-      1
-    )
-  );
-
-  setText(
-    "h1Rsi",
-    formatNumber(
-      marketData.h1.rsi,
-      1
-    )
-  );
-
-  setText(
-    "m15Rsi",
-    formatNumber(
-      marketData.m15.rsi,
-      1
-    )
-  );
-
-  setText(
-    "m5Rsi",
-    formatNumber(
-      marketData.m5.rsi,
-      1
-    )
-  );
-
-
-  /* EMA */
-
-  setText(
-    "emaStructure",
-    marketData.emaStructure
+    "quickH1Trend",
+    marketData.h1Structure
   );
 
   setText(
@@ -4776,127 +2871,172 @@ function updateDashboard(){
     marketData.emaStructure
   );
 
+  setText(
+    "emaStructure",
+    marketData.emaStructure
+  );
 
-  /* NEWS */
 
-  updateNewsDashboard();
+  setText(
+    "resistance1",
+    formatPrice(
+      marketData.levels.resistance1
+    )
+  );
+
+  setText(
+    "resistance2",
+    formatPrice(
+      marketData.levels.resistance2
+    )
+  );
+
+  setText(
+    "support1",
+    formatPrice(
+      marketData.levels.support1
+    )
+  );
+
+  setText(
+    "support2",
+    formatPrice(
+      marketData.levels.support2
+    )
+  );
+
+
+  setText(
+    "h4Rsi",
+    formatNumber(marketData.h4Rsi)
+  );
+
+  setText(
+    "h1Rsi",
+    formatNumber(marketData.h1Rsi)
+  );
+
+  setText(
+    "m15Rsi",
+    formatNumber(marketData.m15Rsi)
+  );
+
+  setText(
+    "m5Rsi",
+    formatNumber(marketData.m5Rsi)
+  );
 
 }
 
 
 /* =========================================================
-   NEWS UI
+   NEWS DASHBOARD
    ========================================================= */
 
 function updateNewsDashboard(){
 
-  const events =
-    marketData.news.events || [];
+  const news =
+    marketData.news;
 
+  if(!news){
 
-  const eurEvents =
-    events.filter(
-      e =>
-        e.currency.includes("EUR") ||
-        e.currency.includes("EURO")
+    setText(
+      "newsFilter",
+      "UNKNOWN"
     );
 
-
-  const usdEvents =
-    events.filter(
-      e =>
-        e.currency.includes("USD") ||
-        e.currency.includes("US")
-    );
-
+    return;
+  }
 
   setText(
     "eurNews",
-    eurEvents.length
-      ? eurEvents.map(
-          formatNewsEvent
-        ).join(" • ")
-      : "No high-impact EUR event in forward window."
+    news.eur && news.eur.length
+      ? news.eur.map(formatNewsEvent).join(" | ")
+      : "No high-impact EUR event detected"
   );
-
 
   setText(
     "usdNews",
-    usdEvents.length
-      ? usdEvents.map(
-          formatNewsEvent
-        ).join(" • ")
-      : "No high-impact USD event in forward window."
+    news.usd && news.usd.length
+      ? news.usd.map(formatNewsEvent).join(" | ")
+      : "No high-impact USD event detected"
   );
-
 
   setText(
     "newsFilter",
-    marketData.news.clear
-      ? "CLEAR — NO HIGH-IMPACT EVENT IN WINDOW"
-      : marketData.news.risk === "UNKNOWN"
-        ? "UNKNOWN — NEWS DATA UNCONFIRMED"
-        : "BLOCKED — HIGH-IMPACT EVENT RISK"
+    news.clear
+      ? "CLEAR"
+      : news.risk === "HIGH"
+        ? "HIGH RISK"
+        : "UNKNOWN"
   );
 
+  setClass(
+    "newsFilter",
+    news.clear
+      ? "good"
+      : news.risk === "HIGH"
+        ? "bad"
+        : "warn"
+  );
 
-  if(events.length){
-
-    const first =
-      events[0];
-
-    setText(
-      "nextEvent",
-      formatNewsEvent(first)
-    );
-
-  }
-  else{
-
-    setText(
-      "nextEvent",
-      "No event detected"
-    );
-
-  }
-
+  setText(
+    "nextEvent",
+    news.nextEvent
+      ? formatNewsEvent(news.nextEvent)
+      : "No upcoming high-impact event found"
+  );
 
   setText(
     "tradingRisk",
-    marketData.news.risk
+    news.risk
   );
 
 }
 
 
 /* =========================================================
-   NEWS EVENT FORMAT
+   NEWS FORMAT
    ========================================================= */
 
-function formatNewsEvent(event){
+function formatNewsEvent(item){
 
-  const time =
-    event.time
-      ? new Date(
-          event.time
-        ).toLocaleTimeString(
+  if(!item){
+    return "--";
+  }
+
+  const event =
+    item.raw || item;
+
+  let name =
+    event.title ||
+    event.event ||
+    event.name ||
+    event.description ||
+    "High-impact event";
+
+  let currency =
+    event.currency ||
+    event.country ||
+    "";
+
+  let time =
+    item.time
+      ? item.time.toLocaleTimeString(
           "en-IN",
           {
             hour:"2-digit",
             minute:"2-digit"
           }
         )
-      : "--";
-
+      : "";
 
   return (
-    time +
-    " • " +
-    event.currency +
-    " • " +
-    event.title
-  );
-
+    currency +
+    " " +
+    name +
+    (time ? " — " + time : "")
+  ).trim();
 }
 
 
@@ -4904,88 +3044,60 @@ function formatNewsEvent(event){
    HELPERS
    ========================================================= */
 
-function getLastM5Low(){
+function setText(id,value){
 
-  const candle =
-    getLastCompletedM5Candle();
+  const el =
+    document.getElementById(id);
 
-  return candle
-    ? candle.low
-    : null;
+  if(el){
+    el.textContent =
+      value === undefined ||
+      value === null
+        ? "--"
+        : value;
+  }
 
 }
 
 
-function getLastM5High(){
+function setClass(id,className){
 
-  const candle =
-    getLastCompletedM5Candle();
+  const el =
+    document.getElementById(id);
 
-  return candle
-    ? candle.high
-    : null;
+  if(!el) return;
+
+  el.classList.remove(
+    "good",
+    "bad",
+    "warn",
+    "neutral"
+  );
+
+  el.classList.add(className);
 
 }
 
 
 function formatPrice(value){
 
-  if(
-    value === null ||
-    value === undefined ||
-    !Number.isFinite(Number(value))
-  ){
-
+  if(!Number.isFinite(Number(value))){
     return "--";
-
   }
 
   return Number(value).toFixed(5);
-
 }
 
 
-function formatNumber(
-  value,
-  decimals = 2
-){
+function formatNumber(value){
 
-  if(
-    value === null ||
-    value === undefined ||
-    !Number.isFinite(Number(value))
-  ){
-
+  if(!Number.isFinite(Number(value))){
     return "--";
-
   }
 
-  return Number(value).toFixed(decimals);
-
+  return Number(value).toFixed(1);
 }
 
-
-function setText(
-  id,
-  value
-){
-
-  const element =
-    document.getElementById(id);
-
-  if(element){
-
-    element.textContent =
-      value;
-
-  }
-
-}
-
-
-/* =========================================================
-   END
-   ========================================================= */
 </script>
 
 </body>
