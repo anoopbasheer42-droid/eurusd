@@ -4,19 +4,15 @@
 // ============================================================
 
 // IMPORTANT:
-// Create a NEW Twelve Data API key.
-// The key previously pasted in chat should be revoked.
-// Then paste your NEW key below.
-
+// Put your NEW Twelve Data API key here.
+// Do NOT use an exposed/old key.
 const API_KEY = "8908432b6c784bc49aad6ccf64845991";
 
 const SYMBOL = "EUR/USD";
 
-const TIME_SERIES_URL =
-    "https://api.twelvedata.com/time_series";
-
-const NEWS_URL =
-    "https://xoomar.com/api/markets/calendar?importance=high";
+const PRICE_URL = "https://api.twelvedata.com/price";
+const TIME_SERIES_URL = "https://api.twelvedata.com/time_series";
+const NEWS_URL = "https://xoomar.com/api/markets/calendar?importance=high";
 
 // ------------------------------------------------------------
 // SCALPING SETTINGS
@@ -38,10 +34,24 @@ const BULLISH_RSI_MAX = 68;
 const BEARISH_RSI_MIN = 32;
 const BEARISH_RSI_MAX = 48;
 
+// ------------------------------------------------------------
+// SNIPER SETTINGS
+// ------------------------------------------------------------
 
-// ============================================================
+const SNIPER_MIN_SCORE = 75;
+
+const SNIPER_MIN_RISK_PIPS = 3;
+const SNIPER_MAX_RISK_PIPS = 15;
+
+const SNIPER_SL_BUFFER = 0.00010;
+
+const SNIPER_MIN_TP1_R = 1.0;
+const SNIPER_MIN_TP2_R = 2.0;
+const SNIPER_MIN_TP3_R = 3.0;
+
+// ------------------------------------------------------------
 // GLOBAL DATA
-// ============================================================
+// ------------------------------------------------------------
 
 let marketData = {
 
@@ -94,10 +104,26 @@ let marketData = {
     }
 };
 
+// ------------------------------------------------------------
+// SNIPER SETUP MEMORY
+// ------------------------------------------------------------
 
-// ============================================================
+let sniperState = {
+
+    setupActive: false,
+
+    direction: null,
+
+    setupDetectedTime: null,
+
+    m5ConfirmationTime: null,
+
+    lastSetupKey: null
+};
+
+// ------------------------------------------------------------
 // PAGE LOAD
-// ============================================================
+// ------------------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -106,16 +132,11 @@ document.addEventListener("DOMContentLoaded", () => {
     // Refresh every 2 minutes
     setInterval(loadMarketData, 120000);
 
-    // Load TradingView chart
-    setTimeout(() => {
-        changeChart("15min");
-    }, 500);
 });
 
-
-// ============================================================
+// ------------------------------------------------------------
 // CHART SWITCHER
-// ============================================================
+// ------------------------------------------------------------
 
 function changeChart(interval) {
 
@@ -130,29 +151,23 @@ function changeChart(interval) {
         "15min": "15",
         "1h": "60",
         "4h": "240"
+
     };
 
     const tvInterval =
         intervals[interval] || "15";
 
-    /*
-       IMPORTANT:
-
-       Use FX:EURUSD.
-
-       This is the TradingView forex symbol.
-    */
-
     const url =
         "https://www.tradingview.com/widgetembed/" +
-        "?frameElementId=tradingChart" +
-        "&symbol=FX%3AEURUSD" +
-        "&interval=" + tvInterval +
+        "?frameElementId=tradingviewChart" +
+        "&symbol=FX:EURUSD" +
+        "&interval=" +
+        tvInterval +
         "&hidesidetoolbar=1" +
         "&symboledit=1" +
         "&saveimage=0" +
         "&toolbarbg=f1f3f6" +
-        "&studies=%5B%5D" +
+        "&studies=[]" +
         "&hideideas=1" +
         "&theme=dark" +
         "&style=1" +
@@ -163,7 +178,9 @@ function changeChart(interval) {
     document
         .querySelectorAll(".chart-btn")
         .forEach(btn => {
+
             btn.classList.remove("active");
+
         });
 
     const buttonMap = {
@@ -172,6 +189,7 @@ function changeChart(interval) {
         "15min": "btnM15",
         "1h": "btnH1",
         "4h": "btnH4"
+
     };
 
     const activeButton =
@@ -180,14 +198,15 @@ function changeChart(interval) {
         );
 
     if (activeButton) {
+
         activeButton.classList.add("active");
+
     }
 }
 
-
-// ============================================================
+// ------------------------------------------------------------
 // MAIN MARKET DATA LOADER
-// ============================================================
+// ------------------------------------------------------------
 
 async function loadMarketData() {
 
@@ -198,56 +217,31 @@ async function loadMarketData() {
 
     try {
 
-        /*
-           IMPORTANT:
+        const [
+            price,
+            h4Candles,
+            h1Candles,
+            m15Candles,
+            m5Candles,
+            news
+        ] = await Promise.all([
 
-           We NO LONGER call Twelve Data /price.
+            getPrice(),
 
-           The latest M5 candle is used for the live dashboard
-           price. This removes one API request and helps avoid
-           HTTP 429 rate-limit errors.
-        */
+            getCandles("4h", 100),
 
-        const h4Candles =
-            await getCandles("4h", 100);
+            getCandles("1h", 100),
 
-        await sleep(300);
+            getCandles("15min", 100),
 
-        const h1Candles =
-            await getCandles("1h", 100);
+            getCandles("5min", 100),
 
-        await sleep(300);
+            getNews()
 
-        const m15Candles =
-            await getCandles("15min", 100);
-
-        await sleep(300);
-
-        const m5Candles =
-            await getCandles("5min", 100);
-
-        // ----------------------------------------------------
-        // PRICE FROM M5 DATA
-        // ----------------------------------------------------
-
-        if (
-            !m5Candles ||
-            !m5Candles.length
-        ) {
-            throw new Error(
-                "M5 market data unavailable"
-            );
-        }
-
-        const latestM5 =
-            m5Candles[m5Candles.length - 1];
+        ]);
 
         marketData.price =
-            latestM5.close;
-
-        // ----------------------------------------------------
-        // SAVE CANDLES
-        // ----------------------------------------------------
+            price;
 
         marketData.h4.candles =
             h4Candles;
@@ -266,24 +260,16 @@ async function loadMarketData() {
         // ----------------------------------------------------
 
         marketData.h4.trend =
-            getMarketStructure(
-                h4Candles
-            );
+            getMarketStructure(h4Candles);
 
         marketData.h1.trend =
-            getMarketStructure(
-                h1Candles
-            );
+            getMarketStructure(h1Candles);
 
         marketData.m15.structure =
-            getMarketStructure(
-                m15Candles
-            );
+            getMarketStructure(m15Candles);
 
         marketData.m5.structure =
-            getMarketStructure(
-                m5Candles
-            );
+            getMarketStructure(m5Candles);
 
         // ----------------------------------------------------
         // RSI
@@ -306,52 +292,28 @@ async function loadMarketData() {
         // ----------------------------------------------------
 
         marketData.h4.ema20 =
-            calculateEMA(
-                h4Candles,
-                20
-            );
+            calculateEMA(h4Candles, 20);
 
         marketData.h4.ema50 =
-            calculateEMA(
-                h4Candles,
-                50
-            );
+            calculateEMA(h4Candles, 50);
 
         marketData.h1.ema20 =
-            calculateEMA(
-                h1Candles,
-                20
-            );
+            calculateEMA(h1Candles, 20);
 
         marketData.h1.ema50 =
-            calculateEMA(
-                h1Candles,
-                50
-            );
+            calculateEMA(h1Candles, 50);
 
         marketData.m15.ema20 =
-            calculateEMA(
-                m15Candles,
-                20
-            );
+            calculateEMA(m15Candles, 20);
 
         marketData.m15.ema50 =
-            calculateEMA(
-                m15Candles,
-                50
-            );
+            calculateEMA(m15Candles, 50);
 
         marketData.m5.ema20 =
-            calculateEMA(
-                m5Candles,
-                20
-            );
+            calculateEMA(m5Candles, 20);
 
         marketData.m5.ema50 =
-            calculateEMA(
-                m5Candles,
-                50
-            );
+            calculateEMA(m5Candles, 50);
 
         // ----------------------------------------------------
         // SUPPORT / RESISTANCE
@@ -386,10 +348,10 @@ async function loadMarketData() {
         // ----------------------------------------------------
 
         marketData.news =
-            await getNews();
+            news;
 
         // ----------------------------------------------------
-        // UPDATE DASHBOARD
+        // UPDATE UI
         // ----------------------------------------------------
 
         updateDashboard();
@@ -403,6 +365,8 @@ async function loadMarketData() {
         runEliteScalpingEngine();
 
         runProAnalysis();
+
+        updateEliteTradeGate();
 
         setText(
             "priceStatus",
@@ -418,37 +382,57 @@ async function loadMarketData() {
 
         setText(
             "priceStatus",
-            "DATA LOAD FAILED"
+            "DATA ERROR — " +
+            error.message
         );
 
-        /*
-           Do NOT erase existing dashboard data
-           if a temporary API request fails.
-        */
+        // Clear setup when data fails
+        resetSniperState();
 
-        setText(
-            "proExplanation",
-            error.message ||
-            "Market data request failed."
-        );
+        updateEliteTradeGate();
+
     }
 }
 
-
 // ============================================================
-// DELAY HELPER
+// PRICE
 // ============================================================
 
-function sleep(ms) {
+async function getPrice() {
 
-    return new Promise(
-        resolve => setTimeout(
-            resolve,
-            ms
-        )
-    );
+    const url =
+        PRICE_URL +
+        "?symbol=" +
+        encodeURIComponent(SYMBOL) +
+        "&apikey=" +
+        encodeURIComponent(API_KEY);
+
+    const response =
+        await fetch(url);
+
+    if (!response.ok) {
+
+        throw new Error(
+            "Price request HTTP " +
+            response.status
+        );
+
+    }
+
+    const data =
+        await response.json();
+
+    if (!data.price) {
+
+        throw new Error(
+            data.message ||
+            "Price unavailable"
+        );
+
+    }
+
+    return Number(data.price);
 }
-
 
 // ============================================================
 // CANDLES
@@ -458,18 +442,6 @@ async function getCandles(
     interval,
     outputsize = 100
 ) {
-
-    if (
-        !API_KEY ||
-        API_KEY.includes(
-            "PASTE_YOUR_NEW"
-        )
-    ) {
-
-        throw new Error(
-            "Twelve Data API key has not been added."
-        );
-    }
 
     const url =
         TIME_SERIES_URL +
@@ -485,40 +457,19 @@ async function getCandles(
     const response =
         await fetch(url);
 
-    /*
-       Twelve Data can return HTTP 200
-       with an error message, so check both.
-    */
-
-    const data =
-        await response.json();
-
     if (!response.ok) {
 
         throw new Error(
-            "HTTP " +
+            "Candle request HTTP " +
             response.status +
-            " — " +
-            (
-                data.message ||
-                "Twelve Data request failed."
-            )
+            ": " +
+            interval
         );
+
     }
 
-    if (
-        data.status === "error" ||
-        data.code
-    ) {
-
-        throw new Error(
-            "Twelve Data: " +
-            (
-                data.message ||
-                "API request failed."
-            )
-        );
-    }
+    const data =
+        await response.json();
 
     if (
         !data.values ||
@@ -526,42 +477,35 @@ async function getCandles(
     ) {
 
         throw new Error(
-            "No candle data returned for " +
+            data.message ||
+            "No candle data: " +
             interval
         );
+
     }
 
     return data.values
+
         .map(c => ({
 
-            datetime:
-                c.datetime,
+            datetime: c.datetime,
 
-            open:
-                Number(c.open),
+            open: Number(c.open),
 
-            high:
-                Number(c.high),
+            high: Number(c.high),
 
-            low:
-                Number(c.low),
+            low: Number(c.low),
 
-            close:
-                Number(c.close)
+            close: Number(c.close)
+
         }))
-        .filter(c =>
-            Number.isFinite(c.open) &&
-            Number.isFinite(c.high) &&
-            Number.isFinite(c.low) &&
-            Number.isFinite(c.close)
-        )
+
         .sort(
             (a, b) =>
                 new Date(a.datetime) -
                 new Date(b.datetime)
         );
 }
-
 
 // ============================================================
 // NEWS
@@ -577,7 +521,7 @@ async function getNews() {
         if (!response.ok) {
 
             console.warn(
-                "News service unavailable."
+                "News service unavailable"
             );
 
             return {
@@ -587,7 +531,9 @@ async function getNews() {
                 risk: "UNKNOWN",
 
                 events: []
+
             };
+
         }
 
         const raw =
@@ -610,6 +556,7 @@ async function getNews() {
         ) {
 
             events = raw.data;
+
         }
 
         const now =
@@ -647,7 +594,9 @@ async function getNews() {
                     title.includes("USD");
 
                 if (!relevantCurrency) {
+
                     return false;
+
                 }
 
                 const timeValue =
@@ -657,18 +606,19 @@ async function getNews() {
                     event.date;
 
                 const eventTime =
-                    parseEventTime(
-                        timeValue
-                    );
+                    parseEventTime(timeValue);
 
                 if (!eventTime) {
+
                     return false;
+
                 }
 
                 return (
                     eventTime >= now &&
                     eventTime <= futureLimit
                 );
+
             });
 
         return {
@@ -683,6 +633,7 @@ async function getNews() {
 
             events:
                 relevantEvents
+
         };
 
     } catch (error) {
@@ -699,10 +650,11 @@ async function getNews() {
             risk: "UNKNOWN",
 
             events: []
+
         };
+
     }
 }
-
 
 // ============================================================
 // EVENT TIME
@@ -710,9 +662,7 @@ async function getNews() {
 
 function parseEventTime(value) {
 
-    if (!value) {
-        return null;
-    }
+    if (!value) return null;
 
     if (
         typeof value === "number" ||
@@ -729,9 +679,11 @@ function parseEventTime(value) {
         ) {
 
             return numberValue * 1000;
+
         }
 
         return numberValue;
+
     }
 
     const parsed =
@@ -743,7 +695,6 @@ function parseEventTime(value) {
         ? null
         : parsed;
 }
-
 
 // ============================================================
 // MARKET STRUCTURE
@@ -757,21 +708,14 @@ function getMarketStructure(candles) {
     ) {
 
         return "RANGE";
-    }
 
-    /*
-       Ignore currently forming candle.
-    */
+    }
 
     const completed =
         candles.slice(0, -1);
 
     const recent =
         completed.slice(-8);
-
-    if (recent.length < 5) {
-        return "RANGE";
-    }
 
     const first =
         recent[0].close;
@@ -789,17 +733,21 @@ function getMarketStructure(candles) {
             recent
         );
 
-    if (movement > threshold) {
+    if (
+        movement > threshold
+    ) {
+
         return "BULLISH";
+
     }
 
-    if (movement < -threshold) {
+    if (
+        movement < -threshold
+    ) {
+
         return "BEARISH";
-    }
 
-    // --------------------------------------------------------
-    // SWING FALLBACK
-    // --------------------------------------------------------
+    }
 
     const highs =
         recent.map(
@@ -812,20 +760,24 @@ function getMarketStructure(candles) {
         );
 
     const higherHigh =
-        highs[highs.length - 1] >
-        highs[0];
+        highs[
+            highs.length - 1
+        ] > highs[0];
 
     const higherLow =
-        lows[lows.length - 1] >
-        lows[0];
+        lows[
+            lows.length - 1
+        ] > lows[0];
 
     const lowerHigh =
-        highs[highs.length - 1] <
-        highs[0];
+        highs[
+            highs.length - 1
+        ] < highs[0];
 
     const lowerLow =
-        lows[lows.length - 1] <
-        lows[0];
+        lows[
+            lows.length - 1
+        ] < lows[0];
 
     if (
         higherHigh &&
@@ -833,6 +785,7 @@ function getMarketStructure(candles) {
     ) {
 
         return "BULLISH";
+
     }
 
     if (
@@ -841,11 +794,11 @@ function getMarketStructure(candles) {
     ) {
 
         return "BEARISH";
+
     }
 
     return "RANGE";
 }
-
 
 // ============================================================
 // STRUCTURE THRESHOLD
@@ -855,22 +808,21 @@ function getStructureThreshold(candles) {
 
     const ranges =
         candles.map(
-            c => c.high - c.low
+            c =>
+                c.high -
+                c.low
         );
-
-    if (!ranges.length) {
-        return 0;
-    }
 
     const average =
         ranges.reduce(
-            (a, b) => a + b,
+            (a, b) =>
+                a + b,
             0
-        ) / ranges.length;
+        ) /
+        ranges.length;
 
     return average * 1.5;
 }
-
 
 // ============================================================
 // SUPPORT / RESISTANCE
@@ -886,16 +838,22 @@ function calculateSupportResistance(
     const recent =
         completed.slice(-50);
 
-    if (recent.length < 10) {
+    if (
+        recent.length < 10
+    ) {
 
         return {
 
             resistance1: null,
+
             resistance2: null,
 
             support1: null,
+
             support2: null
+
         };
+
     }
 
     const current =
@@ -904,6 +862,7 @@ function calculateSupportResistance(
         ].close;
 
     const swingHighs = [];
+
     const swingLows = [];
 
     for (
@@ -916,90 +875,105 @@ function calculateSupportResistance(
             recent[i];
 
         if (
+
             c.high >
-                recent[i - 1].high &&
+            recent[i - 1].high &&
+
             c.high >
-                recent[i - 2].high &&
+            recent[i - 2].high &&
+
             c.high >
-                recent[i + 1].high &&
+            recent[i + 1].high &&
+
             c.high >
-                recent[i + 2].high
+            recent[i + 2].high
+
         ) {
 
             swingHighs.push(
                 c.high
             );
+
         }
 
         if (
+
             c.low <
-                recent[i - 1].low &&
+            recent[i - 1].low &&
+
             c.low <
-                recent[i - 2].low &&
+            recent[i - 2].low &&
+
             c.low <
-                recent[i + 1].low &&
+            recent[i + 1].low &&
+
             c.low <
-                recent[i + 2].low
+            recent[i + 2].low
+
         ) {
 
             swingLows.push(
                 c.low
             );
+
         }
+
     }
 
     const resistances =
         swingHighs
+
             .filter(
-                x => x > current
+                x =>
+                    x > current
             )
+
             .sort(
-                (a, b) => a - b
+                (a, b) =>
+                    a - b
             );
 
     const supports =
         swingLows
+
             .filter(
-                x => x < current
+                x =>
+                    x < current
             )
+
             .sort(
-                (a, b) => b - a
+                (a, b) =>
+                    b - a
             );
-
-    const recentHigh =
-        Math.max(
-            ...recent.map(
-                c => c.high
-            )
-        );
-
-    const recentLow =
-        Math.min(
-            ...recent.map(
-                c => c.low
-            )
-        );
 
     return {
 
         resistance1:
             resistances[0] ||
-            recentHigh,
+            Math.max(
+                ...recent.map(
+                    c => c.high
+                )
+            ),
 
         resistance2:
             resistances[1] ||
-            recentHigh,
+            null,
 
         support1:
             supports[0] ||
-            recentLow,
+            Math.min(
+                ...recent.map(
+                    c => c.low
+                )
+            ),
 
         support2:
             supports[1] ||
-            recentLow
+            null
+
     };
 }
-
 
 // ============================================================
 // RSI
@@ -1019,9 +993,11 @@ function calculateRSI(
     ) {
 
         return null;
+
     }
 
     let gains = 0;
+
     let losses = 0;
 
     for (
@@ -1034,15 +1010,21 @@ function calculateRSI(
             completed[i].close -
             completed[i - 1].close;
 
-        if (change >= 0) {
+        if (
+            change >= 0
+        ) {
 
             gains += change;
 
         } else {
 
             losses +=
-                Math.abs(change);
+                Math.abs(
+                    change
+                );
+
         }
+
     }
 
     let averageGain =
@@ -1074,20 +1056,25 @@ function calculateRSI(
         averageGain =
             (
                 averageGain *
-                    (period - 1) +
+                (period - 1) +
                 gain
             ) / period;
 
         averageLoss =
             (
                 averageLoss *
-                    (period - 1) +
+                (period - 1) +
                 loss
             ) / period;
+
     }
 
-    if (averageLoss === 0) {
+    if (
+        averageLoss === 0
+    ) {
+
         return 100;
+
     }
 
     const rs =
@@ -1095,9 +1082,9 @@ function calculateRSI(
         averageLoss;
 
     return 100 -
-        100 / (1 + rs);
+        100 /
+        (1 + rs);
 }
-
 
 // ============================================================
 // EMA
@@ -1117,19 +1104,29 @@ function calculateEMA(
     ) {
 
         return null;
+
     }
 
     const multiplier =
-        2 / (period + 1);
+        2 /
+        (period + 1);
 
     let ema =
         completed
-            .slice(0, period)
+            .slice(
+                0,
+                period
+            )
             .reduce(
-                (sum, candle) =>
-                    sum + candle.close,
+                (
+                    sum,
+                    candle
+                ) =>
+                    sum +
+                    candle.close,
                 0
-            ) / period;
+            ) /
+        period;
 
     for (
         let i = period;
@@ -1142,13 +1139,13 @@ function calculateEMA(
                 completed[i].close -
                 ema
             ) *
-                multiplier +
+            multiplier +
             ema;
+
     }
 
     return ema;
 }
-
 
 // ============================================================
 // EMA STRUCTURE
@@ -1172,6 +1169,7 @@ function getEMAStructure() {
     ) {
 
         return "NEUTRAL";
+
     }
 
     if (
@@ -1180,6 +1178,7 @@ function getEMAStructure() {
     ) {
 
         return "BULLISH";
+
     }
 
     if (
@@ -1188,11 +1187,11 @@ function getEMAStructure() {
     ) {
 
         return "BEARISH";
+
     }
 
     return "NEUTRAL";
 }
-
 
 // ============================================================
 // M5 MOMENTUM TRIGGER
@@ -1205,8 +1204,12 @@ function getM5MomentumTrigger(
     const candles =
         marketData.m5.candles;
 
-    if (candles.length < 3) {
+    if (
+        candles.length < 3
+    ) {
+
         return false;
+
     }
 
     const completed =
@@ -1226,8 +1229,12 @@ function getM5MomentumTrigger(
         current.high -
         current.low;
 
-    if (range <= 0) {
+    if (
+        range <= 0
+    ) {
+
         return false;
+
     }
 
     const body =
@@ -1239,33 +1246,276 @@ function getM5MomentumTrigger(
     const bodyRatio =
         body / range;
 
-    if (bodyRatio < 0.55) {
+    if (
+        bodyRatio < 0.55
+    ) {
+
         return false;
+
     }
 
-    if (direction === "BULLISH") {
+    if (
+        direction === "BULLISH"
+    ) {
 
         return (
+
             current.close >
-                current.open &&
+            current.open &&
+
             current.close >
-                previous.high
+            previous.high
+
         );
+
     }
 
-    if (direction === "BEARISH") {
+    if (
+        direction === "BEARISH"
+    ) {
 
         return (
+
             current.close <
-                current.open &&
+            current.open &&
+
             current.close <
-                previous.low
+            previous.low
+
         );
+
     }
 
     return false;
 }
 
+// ============================================================
+// IST TIMESTAMP
+// ============================================================
+
+function getISTTime() {
+
+    return new Intl.DateTimeFormat(
+        "en-IN",
+        {
+            timeZone:
+                "Asia/Kolkata",
+
+            day: "2-digit",
+
+            month: "2-digit",
+
+            year: "numeric",
+
+            hour: "2-digit",
+
+            minute: "2-digit",
+
+            second: "2-digit",
+
+            hour12: true
+        }
+    ).format(
+        new Date()
+    );
+}
+
+// ============================================================
+// SETUP TIMESTAMP
+// ============================================================
+
+function registerSniperSetup(
+    direction,
+    entry,
+    sl,
+    tp1,
+    tp2,
+    tp3
+) {
+
+    const setupKey =
+        [
+            direction,
+
+            Number(entry).toFixed(5),
+
+            Number(sl).toFixed(5),
+
+            Number(tp1).toFixed(5),
+
+            Number(tp2).toFixed(5),
+
+            Number(tp3).toFixed(5)
+
+        ].join("|");
+
+    // New setup
+    if (
+        sniperState.lastSetupKey !==
+        setupKey
+    ) {
+
+        sniperState.setupDetectedTime =
+            getISTTime();
+
+        sniperState.m5ConfirmationTime =
+            null;
+
+        sniperState.lastSetupKey =
+            setupKey;
+
+    }
+
+    sniperState.setupActive =
+        true;
+
+    sniperState.direction =
+        direction;
+
+    setText(
+        "sniperSetupTime",
+        sniperState.setupDetectedTime
+            ? sniperState.setupDetectedTime +
+              " IST"
+            : "—"
+    );
+
+    setText(
+        "sniperConfirmationTime",
+        sniperState.m5ConfirmationTime
+            ? sniperState.m5ConfirmationTime +
+              " IST"
+            : "WAITING"
+    );
+}
+
+// ============================================================
+// M5 CONFIRMATION TIMESTAMP
+// ============================================================
+
+function registerM5Confirmation(
+    direction
+) {
+
+    if (
+        !sniperState.m5ConfirmationTime
+    ) {
+
+        sniperState.m5ConfirmationTime =
+            getISTTime();
+
+    }
+
+    setText(
+        "sniperConfirmationTime",
+        sniperState.m5ConfirmationTime +
+        " IST"
+    );
+}
+
+// ============================================================
+// RESET SNIPER
+// ============================================================
+
+function resetSniperState() {
+
+    sniperState = {
+
+        setupActive: false,
+
+        direction: null,
+
+        setupDetectedTime: null,
+
+        m5ConfirmationTime: null,
+
+        lastSetupKey: null
+
+    };
+
+    setText(
+        "sniperSetupTime",
+        "—"
+    );
+
+    setText(
+        "sniperConfirmationTime",
+        "—"
+    );
+}
+
+// ============================================================
+// SNIPER WAIT DISPLAY
+// ============================================================
+
+function setSniperWait(
+    status,
+    direction,
+    entry,
+    sl,
+    tp1,
+    tp2,
+    tp3,
+    validity,
+    trigger,
+    invalidation
+) {
+
+    setText(
+        "sniperStatus",
+        status
+    );
+
+    setText(
+        "direction",
+        direction || "WAIT"
+    );
+
+    setText(
+        "entry",
+        entry || "—"
+    );
+
+    setText(
+        "stopLoss",
+        sl || "—"
+    );
+
+    setText(
+        "tp1",
+        tp1 || "—"
+    );
+
+    setText(
+        "tp2",
+        tp2 || "—"
+    );
+
+    setText(
+        "tp3",
+        tp3 || "—"
+    );
+
+    setText(
+        "riskReward",
+        "—"
+    );
+
+    setText(
+        "validity",
+        validity
+    );
+
+    setText(
+        "trigger",
+        trigger
+    );
+
+    setText(
+        "invalidation",
+        invalidation
+    );
+}
 
 // ============================================================
 // A+ SNIPER ENGINE
@@ -1294,27 +1544,30 @@ function runSniperEngine() {
     const rsi5 =
         marketData.m5.rsi;
 
+    // --------------------------------------------------------
+    // SCORE
+    // --------------------------------------------------------
+
     let score = 0;
 
-    // H4 directional
     if (
         h4 === "BULLISH" ||
         h4 === "BEARISH"
     ) {
 
         score += 25;
+
     }
 
-    // H1 directional
     if (
         h1 === "BULLISH" ||
         h1 === "BEARISH"
     ) {
 
         score += 25;
+
     }
 
-    // H4 + H1 alignment
     if (
         h4 !== "RANGE" &&
         h1 !== "RANGE" &&
@@ -1322,6 +1575,7 @@ function runSniperEngine() {
     ) {
 
         score += 20;
+
     }
 
     let direction = null;
@@ -1339,37 +1593,38 @@ function runSniperEngine() {
     ) {
 
         direction = h1;
+
     }
 
-    // M15
     if (
         direction &&
         m15 === direction
     ) {
 
         score += 10;
+
     }
 
-    // M5
     if (
         direction &&
         m5 === direction
     ) {
 
         score += 10;
+
     }
 
-    // EMA
     if (
         direction &&
         ema === direction
     ) {
 
         score += 5;
+
     }
 
-    // RSI
-    let rsiConfirmed = false;
+    let rsiConfirmed =
+        false;
 
     if (
         direction === "BULLISH" &&
@@ -1380,6 +1635,7 @@ function runSniperEngine() {
     ) {
 
         rsiConfirmed = true;
+
     }
 
     if (
@@ -1391,10 +1647,13 @@ function runSniperEngine() {
     ) {
 
         rsiConfirmed = true;
+
     }
 
     if (rsiConfirmed) {
+
         score += 5;
+
     }
 
     setText(
@@ -1406,20 +1665,41 @@ function runSniperEngine() {
     // NEWS GATE
     // --------------------------------------------------------
 
-    if (!marketData.news.clear) {
+    if (
+        !marketData.news.clear
+    ) {
+
+        resetSniperState();
 
         setSniperWait(
+
             "WAIT — NEWS FILTER",
+
+            "WAIT",
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "—",
+
             "News filter is not clear.",
-            "Wait for news filter confirmation.",
+
+            "Wait for news confirmation.",
+
             "News risk."
+
         );
 
         return;
     }
 
     // --------------------------------------------------------
-    // H4 RANGE
+    // HIGHER TIMEFRAME RANGE
     // --------------------------------------------------------
 
     if (
@@ -1427,11 +1707,30 @@ function runSniperEngine() {
         h1 === "RANGE"
     ) {
 
+        resetSniperState();
+
         setSniperWait(
+
             "WAIT — HIGHER TIMEFRAME RANGE",
+
+            "WAIT",
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "—",
+
             "H4/H1 requires directional structure.",
-            "Wait for H4 and H1 directional structure.",
+
+            "Wait for H4 and H1 directional alignment.",
+
             "Higher timeframe range."
+
         );
 
         return;
@@ -1441,37 +1740,77 @@ function runSniperEngine() {
     // H4/H1 CONFLICT
     // --------------------------------------------------------
 
-    if (h4 !== h1) {
+    if (
+        h4 !== h1
+    ) {
+
+        resetSniperState();
 
         setSniperWait(
+
             "WAIT — H4/H1 CONFLICT",
+
+            "WAIT",
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "—",
+
             "H4 " +
-                h4 +
-                " but H1 " +
-                h1 +
-                ".",
-            "Wait for H1 to align with H4.",
-            "Higher timeframe conflict."
+            h4 +
+            " but H1 " +
+            h1 +
+            ".",
+
+            "Wait for higher-timeframe alignment.",
+
+            "H4/H1 conflict."
+
         );
 
         return;
     }
 
-    direction = h4;
-
     // --------------------------------------------------------
     // SCORE
     // --------------------------------------------------------
 
-    if (score < 75) {
+    if (
+        score < SNIPER_MIN_SCORE
+    ) {
+
+        resetSniperState();
 
         setSniperWait(
+
             "WAIT — SCORE BELOW A+",
+
+            direction,
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "—",
+
             "Score " +
-                score +
-                "/100.",
-            "Wait for additional timeframe confirmation.",
-            "Setup score below 75."
+            score +
+            "/100.",
+
+            "Wait for additional confirmation.",
+
+            "Score below Sniper minimum."
+
         );
 
         return;
@@ -1484,65 +1823,708 @@ function runSniperEngine() {
     const entry =
         marketData.price;
 
-    let sl;
-
-    if (direction === "BULLISH") {
-
-        sl =
-            marketData.support1 -
-            SCALP_SL_BUFFER;
-
-    } else {
-
-        sl =
-            marketData.resistance1 +
-            SCALP_SL_BUFFER;
-    }
-
     if (
-        !Number.isFinite(entry) ||
-        !Number.isFinite(sl)
+        !Number.isFinite(entry)
     ) {
 
+        resetSniperState();
+
         setSniperWait(
-            "WAIT — INVALID LEVELS",
-            "Market levels are unavailable.",
-            "Wait for valid support/resistance.",
-            "Invalid market levels."
+
+            "WAIT — INVALID PRICE",
+
+            direction,
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "Live price unavailable.",
+
+            "Wait for fresh market data.",
+
+            "Invalid price."
+
         );
 
         return;
     }
+
+    // --------------------------------------------------------
+    // STRUCTURAL SL
+    // --------------------------------------------------------
+
+    let sl;
+
+    if (
+        direction === "BEARISH"
+    ) {
+
+        const structuralHigh =
+            Math.max(
+
+                Number.isFinite(
+                    Number(
+                        marketData.resistance1
+                    )
+                )
+                    ? Number(
+                        marketData.resistance1
+                    )
+                    : -Infinity,
+
+                Number.isFinite(
+                    getLastM5High()
+                )
+                    ? getLastM5High()
+                    : -Infinity
+
+            );
+
+        if (
+            !Number.isFinite(
+                structuralHigh
+            )
+        ) {
+
+            resetSniperState();
+
+            setSniperWait(
+
+                "WAIT — INVALID SL",
+
+                "SELL",
+
+                formatPrice(entry),
+
+                "—",
+
+                "—",
+
+                "—",
+
+                "—",
+
+                "Unable to calculate structural resistance.",
+
+                "Wait for valid structure.",
+
+                "Invalid structural SL."
+
+            );
+
+            return;
+        }
+
+        sl =
+            structuralHigh +
+            SNIPER_SL_BUFFER;
+
+    } else {
+
+        const structuralLow =
+            Math.min(
+
+                Number.isFinite(
+                    Number(
+                        marketData.support1
+                    )
+                )
+                    ? Number(
+                        marketData.support1
+                    )
+                    : Infinity,
+
+                Number.isFinite(
+                    getLastM5Low()
+                )
+                    ? getLastM5Low()
+                    : Infinity
+
+            );
+
+        if (
+            !Number.isFinite(
+                structuralLow
+            )
+        ) {
+
+            resetSniperState();
+
+            setSniperWait(
+
+                "WAIT — INVALID SL",
+
+                "BUY",
+
+                formatPrice(entry),
+
+                "—",
+
+                "—",
+
+                "—",
+
+                "—",
+
+                "Unable to calculate structural support.",
+
+                "Wait for valid structure.",
+
+                "Invalid structural SL."
+
+            );
+
+            return;
+        }
+
+        sl =
+            structuralLow -
+            SNIPER_SL_BUFFER;
+    }
+
+    // --------------------------------------------------------
+    // RISK
+    // --------------------------------------------------------
 
     const risk =
         Math.abs(
             entry - sl
         );
 
-    const tp1 =
-        direction === "BULLISH"
-            ? entry + risk
-            : entry - risk;
+    const riskPips =
+        risk / 0.0001;
 
-    const tp2 =
-        direction === "BULLISH"
-            ? entry + risk * 2
-            : entry - risk * 2;
+    if (
+        riskPips <
+        SNIPER_MIN_RISK_PIPS ||
+        riskPips >
+        SNIPER_MAX_RISK_PIPS
+    ) {
 
-    const tp3 =
-        direction === "BULLISH"
-            ? entry + risk * 3
-            : entry - risk * 3;
+        resetSniperState();
+
+        setSniperWait(
+
+            "WAIT — STRUCTURAL RISK",
+
+            direction,
+
+            formatPrice(entry),
+
+            formatPrice(sl),
+
+            "—",
+
+            "—",
+
+            "—",
+
+            "Structural risk is " +
+            riskPips.toFixed(1) +
+            " pips.",
+
+            "Required Sniper risk: 3–15 pips.",
+
+            "Risk outside Sniper limits."
+
+        );
+
+        return;
+    }
+
+    // ========================================================
+    // STRUCTURAL TP LOGIC
+    // ========================================================
+
+    let tp1;
+    let tp2;
+    let tp3;
+
+    // --------------------------------------------------------
+    // SELL
+    // --------------------------------------------------------
+
+    if (
+        direction === "BEARISH"
+    ) {
+
+        const s1 =
+            Number(
+                marketData.support1
+            );
+
+        const s2 =
+            Number(
+                marketData.support2
+            );
+
+        const minimumTP1 =
+            entry -
+            risk *
+            SNIPER_MIN_TP1_R;
+
+        const minimumTP2 =
+            entry -
+            risk *
+            SNIPER_MIN_TP2_R;
+
+        const minimumTP3 =
+            entry -
+            risk *
+            SNIPER_MIN_TP3_R;
+
+        // ----------------------------------------------------
+        // TP1
+        // ----------------------------------------------------
+
+        if (
+            !Number.isFinite(s1) ||
+            s1 >= entry
+        ) {
+
+            resetSniperState();
+
+            setSniperWait(
+
+                "WAIT — NO CLEAN TP1",
+
+                "SELL",
+
+                formatPrice(entry),
+
+                formatPrice(sl),
+
+                "—",
+
+                "—",
+
+                "—",
+
+                "No valid structural support below entry.",
+
+                "Wait for clean downside structure.",
+
+                "No valid TP1."
+
+            );
+
+            return;
+        }
+
+        // Support must be at least 1R away.
+        if (
+            s1 > minimumTP1
+        ) {
+
+            resetSniperState();
+
+            setSniperWait(
+
+                "WAIT — TP1 TOO CLOSE",
+
+                "SELL",
+
+                formatPrice(entry),
+
+                formatPrice(sl),
+
+                formatPrice(s1),
+
+                "—",
+
+                "—",
+
+                "Nearest support is only " +
+                (
+                    (entry - s1) /
+                    0.0001
+                ).toFixed(1) +
+                " pips away.",
+
+                "Need at least 1R of clean room to TP1.",
+
+                "Nearby support blocks 1R."
+
+            );
+
+            return;
+        }
+
+        tp1 = s1;
+
+        // ----------------------------------------------------
+        // TP2
+        // ----------------------------------------------------
+
+        if (
+            !Number.isFinite(s2) ||
+            s2 >= entry
+        ) {
+
+            resetSniperState();
+
+            setSniperWait(
+
+                "WAIT — NO CLEAN TP2",
+
+                "SELL",
+
+                formatPrice(entry),
+
+                formatPrice(sl),
+
+                formatPrice(tp1),
+
+                "—",
+
+                "—",
+
+                "No second structural support available.",
+
+                "Need a clean minimum 1:2 structural target.",
+
+                "No valid TP2."
+
+            );
+
+            return;
+        }
+
+        // TP2 must be at least 2R away.
+        if (
+            s2 > minimumTP2
+        ) {
+
+            resetSniperState();
+
+            setSniperWait(
+
+                "WAIT — TP2 BELOW 1:2",
+
+                "SELL",
+
+                formatPrice(entry),
+
+                formatPrice(sl),
+
+                formatPrice(tp1),
+
+                formatPrice(s2),
+
+                "—",
+
+                "Second support is too close for minimum 1:2 RR.",
+
+                "Wait for better structure or entry.",
+
+                "Support blocks 1:2."
+
+            );
+
+            return;
+        }
+
+        tp2 = s2;
+
+        // ----------------------------------------------------
+        // TP3
+        // ----------------------------------------------------
+
+        tp3 =
+            minimumTP3;
+
+        // If TP3 would be beyond the available structural
+        // range, still use 3R only if no opposing structure
+        // blocks it.
+        //
+        // This is a minimum mathematical target, not a forced
+        // claim that price must reach it.
+    }
+
+    // --------------------------------------------------------
+    // BUY
+    // --------------------------------------------------------
+
+    else {
+
+        const r1 =
+            Number(
+                marketData.resistance1
+            );
+
+        const r2 =
+            Number(
+                marketData.resistance2
+            );
+
+        const minimumTP1 =
+            entry +
+            risk *
+            SNIPER_MIN_TP1_R;
+
+        const minimumTP2 =
+            entry +
+            risk *
+            SNIPER_MIN_TP2_R;
+
+        const minimumTP3 =
+            entry +
+            risk *
+            SNIPER_MIN_TP3_R;
+
+        // ----------------------------------------------------
+        // TP1
+        // ----------------------------------------------------
+
+        if (
+            !Number.isFinite(r1) ||
+            r1 <= entry
+        ) {
+
+            resetSniperState();
+
+            setSniperWait(
+
+                "WAIT — NO CLEAN TP1",
+
+                "BUY",
+
+                formatPrice(entry),
+
+                formatPrice(sl),
+
+                "—",
+
+                "—",
+
+                "—",
+
+                "No valid structural resistance above entry.",
+
+                "Wait for clean upside structure.",
+
+                "No valid TP1."
+
+            );
+
+            return;
+        }
+
+        if (
+            r1 < minimumTP1
+        ) {
+
+            resetSniperState();
+
+            setSniperWait(
+
+                "WAIT — TP1 TOO CLOSE",
+
+                "BUY",
+
+                formatPrice(entry),
+
+                formatPrice(sl),
+
+                formatPrice(r1),
+
+                "—",
+
+                "—",
+
+                "Nearest resistance is too close.",
+
+                "Need at least 1R of clean room to TP1.",
+
+                "Nearby resistance blocks 1R."
+
+            );
+
+            return;
+        }
+
+        tp1 = r1;
+
+        // ----------------------------------------------------
+        // TP2
+        // ----------------------------------------------------
+
+        if (
+            !Number.isFinite(r2) ||
+            r2 <= entry
+        ) {
+
+            resetSniperState();
+
+            setSniperWait(
+
+                "WAIT — NO CLEAN TP2",
+
+                "BUY",
+
+                formatPrice(entry),
+
+                formatPrice(sl),
+
+                formatPrice(tp1),
+
+                "—",
+
+                "—",
+
+                "No second structural resistance available.",
+
+                "Need a clean minimum 1:2 structural target.",
+
+                "No valid TP2."
+
+            );
+
+            return;
+        }
+
+        if (
+            r2 < minimumTP2
+        ) {
+
+            resetSniperState();
+
+            setSniperWait(
+
+                "WAIT — TP2 BELOW 1:2",
+
+                "BUY",
+
+                formatPrice(entry),
+
+                formatPrice(sl),
+
+                formatPrice(tp1),
+
+                formatPrice(r2),
+
+                "—",
+
+                "Second resistance is too close for minimum 1:2 RR.",
+
+                "Wait for better structure or entry.",
+
+                "Resistance blocks 1:2."
+
+            );
+
+            return;
+        }
+
+        tp2 = r2;
+
+        tp3 =
+            minimumTP3;
+    }
+
+    // ========================================================
+    // FINAL RR
+    // ========================================================
+
+    const actualRR =
+        Math.abs(
+            tp2 - entry
+        ) /
+        risk;
+
+    if (
+        actualRR < 2
+    ) {
+
+        resetSniperState();
+
+        setSniperWait(
+
+            "WAIT — RR BELOW 1:2",
+
+            direction,
+
+            formatPrice(entry),
+
+            formatPrice(sl),
+
+            formatPrice(tp1),
+
+            formatPrice(tp2),
+
+            formatPrice(tp3),
+
+            "Structural targets do not provide minimum 1:2 RR.",
+
+            "Wait for a better entry or improved structure.",
+
+            "Reward insufficient."
+
+        );
+
+        return;
+    }
+
+    // ========================================================
+    // SNIPER SETUP VALID
+    // ========================================================
+
+    registerSniperSetup(
+
+        direction,
+
+        entry,
+
+        sl,
+
+        tp1,
+
+        tp2,
+
+        tp3
+
+    );
+
+    // --------------------------------------------------------
+    // M5 CONFIRMATION
+    // --------------------------------------------------------
+
+    const m5Confirmed =
+        getM5MomentumTrigger(
+            direction
+        );
+
+    if (
+        m5Confirmed
+    ) {
+
+        registerM5Confirmation(
+            direction
+        );
+
+    }
+
+    // --------------------------------------------------------
+    // DISPLAY
+    // --------------------------------------------------------
 
     setText(
         "sniperStatus",
-        "A+ SNIPER — " +
-            direction
+        "A+ SETUP"
     );
 
     setText(
         "direction",
-        direction
+        direction === "BEARISH"
+            ? "SELL"
+            : "BUY"
     );
 
     setText(
@@ -1572,97 +2554,33 @@ function runSniperEngine() {
 
     setText(
         "riskReward",
-        "1:2.00"
+        "1:" +
+        actualRR.toFixed(2)
     );
 
     setText(
         "validity",
-        "A+ setup confirmed. Score " +
-            score +
-            "/100."
+        "Valid while H4/H1 structure remains aligned."
     );
 
     setText(
         "trigger",
-        "Execute only with current M5 confirmation."
+        m5Confirmed
+            ? "M5 bearish confirmation achieved."
+            : direction === "BEARISH"
+                ? "Wait for bearish M5 confirmation."
+                : "Wait for bullish M5 confirmation."
     );
 
     setText(
         "invalidation",
-        direction === "BULLISH"
-            ? "Below stop loss / bullish structure failure."
-            : "Above stop loss / bearish structure failure."
+        direction === "BEARISH"
+            ? formatPrice(sl) +
+              " / bearish structure failure."
+            : formatPrice(sl) +
+              " / bullish structure failure."
     );
 }
-
-
-// ============================================================
-// SNIPER WAIT
-// ============================================================
-
-function setSniperWait(
-    status,
-    validity,
-    trigger,
-    invalidation
-) {
-
-    setText(
-        "sniperStatus",
-        status
-    );
-
-    setText(
-        "direction",
-        "WAIT"
-    );
-
-    setText(
-        "entry",
-        "—"
-    );
-
-    setText(
-        "stopLoss",
-        "—"
-    );
-
-    setText(
-        "tp1",
-        "—"
-    );
-
-    setText(
-        "tp2",
-        "—"
-    );
-
-    setText(
-        "tp3",
-        "—"
-    );
-
-    setText(
-        "riskReward",
-        "—"
-    );
-
-    setText(
-        "validity",
-        validity
-    );
-
-    setText(
-        "trigger",
-        trigger
-    );
-
-    setText(
-        "invalidation",
-        invalidation
-    );
-}
-
 
 // ============================================================
 // ELITE SCALPING ENGINE
@@ -1670,7 +2588,9 @@ function setSniperWait(
 
 function runEliteScalpingEngine() {
 
-    if (!marketData.news.clear) {
+    if (
+        !marketData.news.clear
+    ) {
 
         showScalpWait(
             "WAIT — NEWS FILTER",
@@ -1715,19 +2635,32 @@ function runEliteScalpingEngine() {
 
     let score = 15;
 
-    if (m15 === direction) {
+    if (
+        m15 === direction
+    ) {
+
         score += 15;
+
     }
 
-    if (m5 === direction) {
+    if (
+        m5 === direction
+    ) {
+
         score += 20;
+
     }
 
-    if (ema === direction) {
+    if (
+        ema === direction
+    ) {
+
         score += 15;
+
     }
 
-    let rsiAligned = false;
+    let rsiAligned =
+        false;
 
     if (
         direction === "BULLISH" &&
@@ -1737,6 +2670,7 @@ function runEliteScalpingEngine() {
     ) {
 
         rsiAligned = true;
+
     }
 
     if (
@@ -1747,10 +2681,15 @@ function runEliteScalpingEngine() {
     ) {
 
         rsiAligned = true;
+
     }
 
-    if (rsiAligned) {
+    if (
+        rsiAligned
+    ) {
+
         score += 15;
+
     }
 
     const momentumTrigger =
@@ -1758,8 +2697,12 @@ function runEliteScalpingEngine() {
             direction
         );
 
-    if (momentumTrigger) {
+    if (
+        momentumTrigger
+    ) {
+
         score += 20;
+
     }
 
     setText(
@@ -1774,40 +2717,46 @@ function runEliteScalpingEngine() {
 
         showScalpWait(
             "WAIT — TIMEFRAME ALIGNMENT",
+
             "H1 " +
-                h1 +
-                " | M15 " +
-                m15 +
-                " | M5 " +
-                m5,
+            h1 +
+            " | M15 " +
+            m15 +
+            " | M5 " +
+            m5,
+
             "Required: H1 → M15 → M5 all " +
-                direction +
-                "."
+            direction +
+            "."
         );
 
         return;
     }
 
-    if (ema !== direction) {
+    if (
+        ema !== direction
+    ) {
 
         showScalpWait(
             "WAIT — EMA NOT ALIGNED",
             "M5 EMA20/EMA50 does not confirm " +
-                direction +
-                ".",
+            direction +
+            ".",
             "Required: M5 EMA20/EMA50 alignment."
         );
 
         return;
     }
 
-    if (!rsiAligned) {
+    if (
+        !rsiAligned
+    ) {
 
         showScalpWait(
             "WAIT — RSI NOT CONFIRMED",
             "M5 RSI is " +
-                formatNumber(rsi) +
-                ".",
+            formatNumber(rsi) +
+            ".",
             direction === "BULLISH"
                 ? "Required RSI: 52–68."
                 : "Required RSI: 32–48."
@@ -1816,7 +2765,9 @@ function runEliteScalpingEngine() {
         return;
     }
 
-    if (!momentumTrigger) {
+    if (
+        !momentumTrigger
+    ) {
 
         showScalpWait(
             "WAIT — PRICE ACTION",
@@ -1848,7 +2799,9 @@ function runEliteScalpingEngine() {
     }
 
     if (
-        Math.abs(entry - ema20) >
+        Math.abs(
+            entry - ema20
+        ) >
         SCALP_MAX_EMA_DISTANCE
     ) {
 
@@ -1863,7 +2816,9 @@ function runEliteScalpingEngine() {
 
     let sl;
 
-    if (direction === "BULLISH") {
+    if (
+        direction === "BULLISH"
+    ) {
 
         sl =
             Math.min(
@@ -1880,6 +2835,7 @@ function runEliteScalpingEngine() {
                 getLastM5High()
             ) +
             SCALP_SL_BUFFER;
+
     }
 
     const risk =
@@ -1892,16 +2848,16 @@ function runEliteScalpingEngine() {
 
     if (
         riskPips <
-            SCALP_MIN_RISK_PIPS ||
+        SCALP_MIN_RISK_PIPS ||
         riskPips >
-            SCALP_MAX_RISK_PIPS
+        SCALP_MAX_RISK_PIPS
     ) {
 
         showScalpWait(
             "WAIT — RISK OUT OF RANGE",
             "Current risk: " +
-                riskPips.toFixed(1) +
-                " pips.",
+            riskPips.toFixed(1) +
+            " pips.",
             "Required: 3–15 pips."
         );
 
@@ -1921,23 +2877,26 @@ function runEliteScalpingEngine() {
     const rr =
         Math.abs(
             tp2 - entry
-        ) / risk;
+        ) /
+        risk;
 
-    if (rr < SCALP_MIN_RR) {
+    if (
+        rr < SCALP_MIN_RR
+    ) {
 
         showScalpWait(
             "WAIT — RR BELOW MINIMUM",
             "Risk/Reward: 1:" +
-                rr.toFixed(2),
+            rr.toFixed(2),
             "Required minimum: 1:2."
         );
 
         return;
     }
 
-    // Higher timeframe S/R protection
-
-    if (direction === "BULLISH") {
+    if (
+        direction === "BULLISH"
+    ) {
 
         if (
             marketData.resistance1 &&
@@ -1971,29 +2930,24 @@ function runEliteScalpingEngine() {
     }
 
     if (
-        score <
-        SCALP_MIN_SCORE
+        score < SCALP_MIN_SCORE
     ) {
 
         showScalpWait(
             "WAIT — SCORE BELOW A+",
             "Score: " +
-                score +
-                "/100.",
+            score +
+            "/100.",
             "Required minimum: 80/100."
         );
 
         return;
     }
 
-    // --------------------------------------------------------
-    // APPROVED SCALP
-    // --------------------------------------------------------
-
     setText(
         "scalpVerdict",
         "ELITE SCALP — " +
-            direction
+        direction
     );
 
     setText(
@@ -2024,17 +2978,18 @@ function runEliteScalpingEngine() {
     setText(
         "scalpRR",
         "1:" +
-            rr.toFixed(2)
+        rr.toFixed(2)
     );
 
     setText(
         "scalpScore",
-        score + "/100"
+        score +
+        "/100"
     );
 
     setText(
         "scalpValidity",
-        "A+ conditions confirmed."
+        "Valid while M5 structure remains aligned."
     );
 
     setText(
@@ -2045,14 +3000,13 @@ function runEliteScalpingEngine() {
     setText(
         "scalpInvalidation",
         direction === "BULLISH"
-            ? "Below stop loss / bullish structure failure."
-            : "Above stop loss / bearish structure failure."
+            ? formatPrice(sl)
+            : formatPrice(sl)
     );
 }
 
-
 // ============================================================
-// SCALP WAIT DISPLAY
+// SCALP WAIT
 // ============================================================
 
 function showScalpWait(
@@ -2112,14 +3066,15 @@ function showScalpWait(
     );
 }
 
-
 // ============================================================
 // PRO ANALYSIS
 // ============================================================
 
 function runProAnalysis() {
 
-    if (!marketData.news.clear) {
+    if (
+        !marketData.news.clear
+    ) {
 
         setText(
             "proVerdict",
@@ -2167,7 +3122,9 @@ function runProAnalysis() {
         return;
     }
 
-    if (h4 !== h1) {
+    if (
+        h4 !== h1
+    ) {
 
         setText(
             "proVerdict",
@@ -2177,10 +3134,10 @@ function runProAnalysis() {
         setText(
             "proExplanation",
             "H4 is " +
-                h4 +
-                " while H1 is " +
-                h1 +
-                ". Wait for alignment."
+            h4 +
+            " while H1 is " +
+            h1 +
+            "."
         );
 
         return;
@@ -2200,8 +3157,8 @@ function runProAnalysis() {
         setText(
             "proExplanation",
             "H4/H1 agree " +
-                h4 +
-                ", but M15/M5/EMA confirmation is incomplete."
+            h4 +
+            ", but M15/M5/EMA confirmation is incomplete."
         );
 
         return;
@@ -2210,17 +3167,352 @@ function runProAnalysis() {
     setText(
         "proVerdict",
         "ALIGNED — " +
-            h4
+        h4
     );
 
     setText(
         "proExplanation",
         "H4, H1, M15, M5 and EMA structure are aligned " +
-            h4 +
-            "."
+        h4 +
+        "."
     );
 }
 
+// ============================================================
+// ELITE TRADE GATE
+// ============================================================
+
+function updateEliteTradeGate() {
+
+    // --------------------------------------------------------
+    // If data is unavailable
+    // --------------------------------------------------------
+
+    if (
+        marketData.price === null
+    ) {
+
+        setText(
+            "gateVerdict",
+            "STAY AWAY"
+        );
+
+        setText(
+            "gateExplanation",
+            "Market data unavailable."
+        );
+
+        setText(
+            "sessionDirection",
+            "—"
+        );
+
+        setText(
+            "sessionEntry",
+            "—"
+        );
+
+        setText(
+            "sessionSL",
+            "—"
+        );
+
+        setText(
+            "sessionTP1",
+            "—"
+        );
+
+        setText(
+            "sessionTP2",
+            "—"
+        );
+
+        setText(
+            "sessionRR",
+            "—"
+        );
+
+        setText(
+            "sessionRisk",
+            "DATA ERROR"
+        );
+
+        return;
+    }
+
+    const h4 =
+        marketData.h4.trend;
+
+    const h1 =
+        marketData.h1.trend;
+
+    const m15 =
+        marketData.m15.structure;
+
+    const m5 =
+        marketData.m5.structure;
+
+    const ema =
+        marketData.emaStructure;
+
+    const newsClear =
+        marketData.news.clear;
+
+    const m5Confirmed =
+        directionM5Confirmed();
+
+    // --------------------------------------------------------
+    // Determine direction
+    // --------------------------------------------------------
+
+    let direction = null;
+
+    if (
+        h4 === "BULLISH" &&
+        h1 === "BULLISH"
+    ) {
+
+        direction = "BULLISH";
+
+    }
+
+    if (
+        h4 === "BEARISH" &&
+        h1 === "BEARISH"
+    ) {
+
+        direction = "BEARISH";
+
+    }
+
+    // --------------------------------------------------------
+    // HARD NEWS GATE
+    // --------------------------------------------------------
+
+    if (
+        !newsClear
+    ) {
+
+        setGateWait(
+            "STAY AWAY",
+            "News filter is not clear.",
+            "NEWS"
+        );
+
+        return;
+    }
+
+    // --------------------------------------------------------
+    // H4/H1
+    // --------------------------------------------------------
+
+    if (
+        !direction
+    ) {
+
+        setGateWait(
+            "STAY AWAY",
+            "H4/H1 directional alignment is missing.",
+            "H4/H1"
+        );
+
+        return;
+    }
+
+    // --------------------------------------------------------
+    // M15
+    // --------------------------------------------------------
+
+    if (
+        m15 !== direction
+    ) {
+
+        setGateWait(
+            "STAY AWAY",
+            "M15 confirmation is missing.",
+            "M15"
+        );
+
+        return;
+    }
+
+    // --------------------------------------------------------
+    // M5 STRUCTURE
+    // --------------------------------------------------------
+
+    if (
+        m5 !== direction
+    ) {
+
+        setGateWait(
+            "STAY AWAY",
+            "M5 structure is not confirmed.",
+            "M5"
+        );
+
+        return;
+    }
+
+    // --------------------------------------------------------
+    // EMA
+    // --------------------------------------------------------
+
+    if (
+        ema !== direction
+    ) {
+
+        setGateWait(
+            "STAY AWAY",
+            "M5 EMA20/EMA50 alignment is missing.",
+            "EMA"
+        );
+
+        return;
+    }
+
+    // --------------------------------------------------------
+    // M5 MOMENTUM
+    // --------------------------------------------------------
+
+    if (
+        !m5Confirmed
+    ) {
+
+        setGateWait(
+            "STAY AWAY",
+            direction === "BEARISH"
+                ? "SELL setup needs bearish M5 confirmation."
+                : "BUY setup needs bullish M5 confirmation.",
+            "M5 MOMENTUM"
+        );
+
+        return;
+    }
+
+    // --------------------------------------------------------
+    // IF ALL HARD FILTERS PASS
+    // --------------------------------------------------------
+
+    setText(
+        "gateVerdict",
+        "A+ TRADE READY"
+    );
+
+    setText(
+        "gateExplanation",
+        "All primary filters are aligned. M5 confirmation achieved."
+    );
+
+    setText(
+        "sessionDirection",
+        direction === "BEARISH"
+            ? "SELL"
+            : "BUY"
+    );
+
+    setText(
+        "sessionEntry",
+        formatPrice(
+            marketData.price
+        )
+    );
+
+    setText(
+        "sessionRisk",
+        "NORMAL"
+    );
+}
+
+// ============================================================
+// GATE WAIT
+// ============================================================
+
+function setGateWait(
+    verdict,
+    explanation,
+    reason
+) {
+
+    setText(
+        "gateVerdict",
+        verdict
+    );
+
+    setText(
+        "gateExplanation",
+        explanation
+    );
+
+    setText(
+        "sessionDirection",
+        "—"
+    );
+
+    setText(
+        "sessionEntry",
+        "—"
+    );
+
+    setText(
+        "sessionSL",
+        "—"
+    );
+
+    setText(
+        "sessionTP1",
+        "—"
+    );
+
+    setText(
+        "sessionTP2",
+        "—"
+    );
+
+    setText(
+        "sessionRR",
+        "—"
+    );
+
+    setText(
+        "sessionRisk",
+        reason
+    );
+}
+
+// ============================================================
+// CHECK M5 CONFIRMATION
+// ============================================================
+
+function directionM5Confirmed() {
+
+    let direction = null;
+
+    if (
+        marketData.h4.trend ===
+        marketData.h1.trend &&
+        (
+            marketData.h4.trend ===
+            "BULLISH" ||
+            marketData.h4.trend ===
+            "BEARISH"
+        )
+    ) {
+
+        direction =
+            marketData.h4.trend;
+
+    }
+
+    if (!direction) {
+
+        return false;
+
+    }
+
+    return getM5MomentumTrigger(
+        direction
+    );
+}
 
 // ============================================================
 // DASHBOARD UPDATE
@@ -2323,7 +3615,9 @@ function updateDashboard() {
     const news =
         marketData.news;
 
-    if (news.clear) {
+    if (
+        news.clear
+    ) {
 
         setText(
             "eurNews",
@@ -2337,7 +3631,7 @@ function updateDashboard() {
 
         setText(
             "newsFilter",
-            "NEWS CLEAR"
+            "CLEAR"
         );
 
         setText(
@@ -2347,7 +3641,7 @@ function updateDashboard() {
 
         setText(
             "tradingRisk",
-            "NORMAL"
+            "LOW"
         );
 
     } else if (
@@ -2366,7 +3660,7 @@ function updateDashboard() {
 
         setText(
             "newsFilter",
-            "NEWS UNKNOWN"
+            "UNKNOWN"
         );
 
         setText(
@@ -2408,9 +3702,8 @@ function updateDashboard() {
     }
 }
 
-
 // ============================================================
-// HELPERS
+// LAST M5 LOW
 // ============================================================
 
 function getLastM5Low() {
@@ -2421,8 +3714,12 @@ function getLastM5Low() {
     const completed =
         candles.slice(0, -1);
 
-    if (!completed.length) {
+    if (
+        !completed.length
+    ) {
+
         return marketData.price;
+
     }
 
     return completed[
@@ -2430,6 +3727,9 @@ function getLastM5Low() {
     ].low;
 }
 
+// ============================================================
+// LAST M5 HIGH
+// ============================================================
 
 function getLastM5High() {
 
@@ -2439,8 +3739,12 @@ function getLastM5High() {
     const completed =
         candles.slice(0, -1);
 
-    if (!completed.length) {
+    if (
+        !completed.length
+    ) {
+
         return marketData.price;
+
     }
 
     return completed[
@@ -2448,6 +3752,9 @@ function getLastM5High() {
     ].high;
 }
 
+// ============================================================
+// FORMAT PRICE
+// ============================================================
 
 function formatPrice(value) {
 
@@ -2460,12 +3767,16 @@ function formatPrice(value) {
     ) {
 
         return "—";
+
     }
 
     return Number(value)
         .toFixed(5);
 }
 
+// ============================================================
+// FORMAT NUMBER
+// ============================================================
 
 function formatNumber(value) {
 
@@ -2478,12 +3789,16 @@ function formatNumber(value) {
     ) {
 
         return "—";
+
     }
 
     return Number(value)
         .toFixed(1);
 }
 
+// ============================================================
+// SET TEXT
+// ============================================================
 
 function setText(
     id,
@@ -2497,5 +3812,6 @@ function setText(
 
         element.textContent =
             value;
+
     }
 }
