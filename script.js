@@ -1,41 +1,87 @@
 /* =========================================================
    EUR/USD SNIPER DASHBOARD
    LOW-REQUEST / STABLE VERSION
+   + NEWS FILTER FRAMEWORK
    ========================================================= */
 
 const API_KEY = "4ba3968e609544bf8990192fdf3ed970";
 
 const SYMBOL = "EUR/USD";
-const TIME_SERIES_URL = "https://api.twelvedata.com/time_series";
+const TIME_SERIES_URL =
+    "https://api.twelvedata.com/time_series";
 
 /*
-   Dashboard refresh:
-   Every 5 minutes.
+   =========================================================
+   NEWS CONFIGURATION
+   =========================================================
 
    IMPORTANT:
-   Higher timeframes are cached so we do NOT request
-   all 4 timeframes every 5 minutes.
+   Do NOT put a private economic-calendar API key here.
 
-   H4  -> every 30 minutes
-   H1  -> every 15 minutes
-   M15 -> every 10 minutes
-   M5  -> every 5 minutes
+   NEWS_API_URL should eventually point to your own
+   secure backend/proxy.
+
+   Example:
+
+   const NEWS_API_URL =
+       "https://YOUR-BACKEND-URL/api/news";
+
+   The backend should return EUR/USD calendar events.
+
+   Until that is configured, the dashboard will safely
+   report NEWS UNAVAILABLE rather than invent news.
 */
 
-const REFRESH_INTERVAL = 300000;
+const NEWS_API_URL = "";
+
+const NEWS_REFRESH_INTERVAL =
+    15 * 60 * 1000;
+
+/*
+   High-impact news protection window.
+
+   Before event:
+       30 minutes
+
+   After event:
+       15 minutes
+*/
+
+const NEWS_BEFORE_MINUTES = 30;
+const NEWS_AFTER_MINUTES = 15;
+
+
+/* =========================================================
+   DASHBOARD REFRESH
+   ========================================================= */
+
+const REFRESH_INTERVAL =
+    300000;
+
+
+/* =========================================================
+   DATA CACHE
+   ========================================================= */
 
 const DATA_TTL = {
 
-    h4: 30 * 60 * 1000,
+    h4:
+        30 * 60 * 1000,
 
-    h1: 15 * 60 * 1000,
+    h1:
+        15 * 60 * 1000,
 
-    m15: 10 * 60 * 1000,
+    m15:
+        10 * 60 * 1000,
 
-    m5: 5 * 60 * 1000
+    m5:
+        5 * 60 * 1000
 };
 
-let marketDataLoading = false;
+
+let marketDataLoading =
+    false;
+
 
 let marketData = {
 
@@ -47,6 +93,7 @@ let marketData = {
 
     m5: null
 };
+
 
 let marketDataUpdated = {
 
@@ -61,12 +108,35 @@ let marketDataUpdated = {
 
 
 /* =========================================================
+   NEWS STATE
+   ========================================================= */
+
+let newsData = {
+
+    available: false,
+
+    events: [],
+
+    lastUpdated: 0,
+
+    error: null
+};
+
+
+let newsLoading =
+    false;
+
+
+/* =========================================================
    SNIPER SETUP CLOCK
    ========================================================= */
 
-let sniperSetupTime = null;
+let sniperSetupTime =
+    null;
 
-let sniperSetupActive = false;
+
+let sniperSetupActive =
+    false;
 
 
 function getISTTime() {
@@ -74,11 +144,20 @@ function getISTTime() {
     return new Date().toLocaleTimeString(
         "en-IN",
         {
-            timeZone: "Asia/Kolkata",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: true
+            timeZone:
+                "Asia/Kolkata",
+
+            hour:
+                "2-digit",
+
+            minute:
+                "2-digit",
+
+            second:
+                "2-digit",
+
+            hour12:
+                true
         }
     ) + " IST";
 }
@@ -91,8 +170,10 @@ function startSniperSetup() {
         sniperSetupTime =
             getISTTime();
 
-        sniperSetupActive = true;
+        sniperSetupActive =
+            true;
     }
+
 
     setText(
         "setupTime",
@@ -103,9 +184,12 @@ function startSniperSetup() {
 
 function invalidateSniperSetup() {
 
-    sniperSetupActive = false;
+    sniperSetupActive =
+        false;
 
-    sniperSetupTime = null;
+    sniperSetupTime =
+        null;
+
 
     setText(
         "setupTime",
@@ -118,14 +202,19 @@ function invalidateSniperSetup() {
    BASIC HELPERS
    ========================================================= */
 
-function setText(id, value) {
+function setText(
+    id,
+    value
+) {
 
     const el =
         document.getElementById(id);
 
+
     if (el) {
 
-        el.textContent = value;
+        el.textContent =
+            value;
     }
 }
 
@@ -134,6 +223,7 @@ function num(value) {
 
     const n =
         parseFloat(value);
+
 
     return Number.isFinite(n)
         ? n
@@ -158,7 +248,9 @@ function formatPrice(value) {
         return "--";
     }
 
-    return Number(value).toFixed(5);
+
+    return Number(value)
+        .toFixed(5);
 }
 
 
@@ -176,9 +268,9 @@ function formatNumber(
         return "--";
     }
 
-    return Number(value).toFixed(
-        decimals
-    );
+
+    return Number(value)
+        .toFixed(decimals);
 }
 
 
@@ -213,7 +305,9 @@ async function getCandles(
         `&outputsize=${outputsize}` +
         `&apikey=${encodeURIComponent(API_KEY)}`;
 
+
     let response;
+
 
     try {
 
@@ -228,21 +322,17 @@ async function getCandles(
     }
 
 
-    /*
-       Do NOT retry HTTP 429 automatically.
-
-       Retrying a rate-limited request can make
-       the quota situation worse.
-    */
-
     if (!response.ok) {
 
-        if (response.status === 429) {
+        if (
+            response.status === 429
+        ) {
 
             throw new Error(
                 "Twelve Data HTTP 429 - rate limit or API quota reached"
             );
         }
+
 
         throw new Error(
             `Twelve Data HTTP ${response.status}`
@@ -251,6 +341,7 @@ async function getCandles(
 
 
     let data;
+
 
     try {
 
@@ -265,16 +356,15 @@ async function getCandles(
     }
 
 
-    /*
-       Twelve Data can return an API error
-       inside a normal HTTP response.
-    */
-
-    if (data.status === "error") {
+    if (
+        data.status === "error"
+    ) {
 
         if (
             data.code === 429 ||
-            String(data.message || "")
+            String(
+                data.message || ""
+            )
                 .toLowerCase()
                 .includes("rate")
         ) {
@@ -283,6 +373,7 @@ async function getCandles(
                 "Twelve Data rate limit or quota reached"
             );
         }
+
 
         throw new Error(
             data.message ||
@@ -304,32 +395,34 @@ async function getCandles(
 
     return data.values
 
-        .map(c => ({
+        .map(
+            c => ({
 
-            datetime:
-                c.datetime,
+                datetime:
+                    c.datetime,
 
-            open:
-                num(c.open),
+                open:
+                    num(c.open),
 
-            high:
-                num(c.high),
+                high:
+                    num(c.high),
 
-            low:
-                num(c.low),
+                low:
+                    num(c.low),
 
-            close:
-                num(c.close)
+                close:
+                    num(c.close)
 
-        }))
+            })
+        )
 
-        .filter(c =>
+        .filter(
+            c =>
 
-            c.open !== null &&
-            c.high !== null &&
-            c.low !== null &&
-            c.close !== null
-
+                c.open !== null &&
+                c.high !== null &&
+                c.low !== null &&
+                c.close !== null
         )
 
         .sort(
@@ -354,24 +447,24 @@ async function getCachedCandles(
     const now =
         Date.now();
 
+
     const existing =
         marketData[key];
+
 
     const lastUpdated =
         marketDataUpdated[key] || 0;
 
+
     const age =
         now - lastUpdated;
+
 
     const fresh =
         existing &&
         existing.length > 0 &&
         age < DATA_TTL[key];
 
-
-    /*
-       Use cached data when still fresh.
-    */
 
     if (
         !force &&
@@ -382,10 +475,6 @@ async function getCachedCandles(
     }
 
 
-    /*
-       Fetch fresh data.
-    */
-
     const candles =
         await getCandles(
             interval,
@@ -393,16 +482,13 @@ async function getCachedCandles(
         );
 
 
-    /*
-       Only replace cache after
-       successful API response.
-    */
-
     marketData[key] =
         candles;
 
+
     marketDataUpdated[key] =
         Date.now();
+
 
     return candles;
 }
@@ -432,7 +518,10 @@ function calculateEMA(
 
     let ema =
         candles
-            .slice(0, period)
+            .slice(
+                0,
+                period
+            )
             .reduce(
                 (sum, c) =>
                     sum + c.close,
@@ -447,7 +536,10 @@ function calculateEMA(
     ) {
 
         ema =
-            (candles[i].close - ema) *
+            (
+                candles[i].close -
+                ema
+            ) *
             multiplier +
             ema;
     }
@@ -487,7 +579,9 @@ function calculateRSI(
             candles[i - 1].close;
 
 
-        if (change >= 0) {
+        if (
+            change >= 0
+        ) {
 
             gains += change;
 
@@ -501,6 +595,7 @@ function calculateRSI(
 
     let avgGain =
         gains / period;
+
 
     let avgLoss =
         losses / period;
@@ -518,39 +613,58 @@ function calculateRSI(
 
 
         const gain =
-            Math.max(change, 0);
+            Math.max(
+                change,
+                0
+            );
+
 
         const loss =
-            Math.max(-change, 0);
+            Math.max(
+                -change,
+                0
+            );
 
 
         avgGain =
             (
-                (avgGain * (period - 1)) +
+                (
+                    avgGain *
+                    (period - 1)
+                ) +
                 gain
             ) / period;
 
 
         avgLoss =
             (
-                (avgLoss * (period - 1)) +
+                (
+                    avgLoss *
+                    (period - 1)
+                ) +
                 loss
             ) / period;
     }
 
 
-    if (avgLoss === 0) {
+    if (
+        avgLoss === 0
+    ) {
 
         return 100;
     }
 
 
     const rs =
-        avgGain / avgLoss;
+        avgGain /
+        avgLoss;
 
 
     return 100 -
-        (100 / (1 + rs));
+        (
+            100 /
+            (1 + rs)
+        );
 }
 
 
@@ -575,6 +689,7 @@ function getTrend(candles) {
             20
         );
 
+
     const ema50 =
         calculateEMA(
             candles,
@@ -591,13 +706,17 @@ function getTrend(candles) {
     }
 
 
-    if (ema20 > ema50) {
+    if (
+        ema20 > ema50
+    ) {
 
         return "BULLISH";
     }
 
 
-    if (ema20 < ema50) {
+    if (
+        ema20 < ema50
+    ) {
 
         return "BEARISH";
     }
@@ -726,13 +845,15 @@ function calculateSR(candles) {
 
     const sortedHighs =
         [...highs].sort(
-            (a, b) => b - a
+            (a, b) =>
+                b - a
         );
 
 
     const sortedLows =
         [...lows].sort(
-            (a, b) => a - b
+            (a, b) =>
+                a - b
         );
 
 
@@ -794,7 +915,9 @@ function getMomentum(candles) {
         c1.low;
 
 
-    if (range === 0) {
+    if (
+        range === 0
+    ) {
 
         return "WAIT";
     }
@@ -834,19 +957,25 @@ function getMomentum(candles) {
 
 function rsiDirection(rsi) {
 
-    if (rsi === null) {
+    if (
+        rsi === null
+    ) {
 
         return "WAIT";
     }
 
 
-    if (rsi >= 50) {
+    if (
+        rsi >= 50
+    ) {
 
         return "BULLISH";
     }
 
 
-    if (rsi < 50) {
+    if (
+        rsi < 50
+    ) {
 
         return "BEARISH";
     }
@@ -894,13 +1023,17 @@ function getEMADirection(candles) {
     }
 
 
-    if (ema20 > ema50) {
+    if (
+        ema20 > ema50
+    ) {
 
         return "BULLISH";
     }
 
 
-    if (ema20 < ema50) {
+    if (
+        ema20 < ema50
+    ) {
 
         return "BEARISH";
     }
@@ -935,10 +1068,6 @@ function getSession() {
             )
         );
 
-
-    /*
-       Existing session logic preserved.
-    */
 
     if (
         hour >= 12 &&
@@ -976,7 +1105,9 @@ function getLatestCompletedCandle(
 }
 
 
-function getMarketPrice(candles) {
+function getMarketPrice(
+    candles
+) {
 
     const candle =
         getLatestCompletedCandle(
@@ -991,6 +1122,761 @@ function getMarketPrice(candles) {
 
 
     return candle.close;
+}
+
+
+/* =========================================================
+   NEWS HELPERS
+   ========================================================= */
+
+/*
+   Normalize different possible calendar formats.
+
+   This allows our backend to return either:
+
+   {
+       currency: "USD",
+       name: "Nonfarm Payrolls",
+       impact: "high",
+       datetime: "2026-10-02T12:30:00Z"
+   }
+
+   or similar common field names.
+*/
+
+function normalizeNewsEvent(
+    raw
+) {
+
+    if (!raw) {
+
+        return null;
+    }
+
+
+    const currency =
+        String(
+            raw.currency ||
+            raw.country ||
+            raw.ccy ||
+            ""
+        )
+            .toUpperCase();
+
+
+    if (
+        currency !== "EUR" &&
+        currency !== "USD"
+    ) {
+
+        return null;
+    }
+
+
+    const impact =
+        String(
+            raw.impact ||
+            raw.importance ||
+            raw.event_importance ||
+            raw.priority ||
+            ""
+        )
+            .toLowerCase();
+
+
+    const eventTime =
+        raw.datetime ||
+        raw.dateTime ||
+        raw.scheduledAt ||
+        raw.announcement_datetime_utc ||
+        raw.time ||
+        raw.date;
+
+
+    if (!eventTime) {
+
+        return null;
+    }
+
+
+    const timestamp =
+        new Date(eventTime)
+            .getTime();
+
+
+    if (
+        !Number.isFinite(timestamp)
+    ) {
+
+        return null;
+    }
+
+
+    const name =
+        String(
+            raw.event ||
+            raw.name ||
+            raw.eventName ||
+            raw.title ||
+            raw.release ||
+            "Economic event"
+        );
+
+
+    return {
+
+        currency,
+
+        name,
+
+        impact,
+
+        timestamp,
+
+        datetime:
+            new Date(timestamp),
+
+        forecast:
+            raw.forecast ??
+            null,
+
+        previous:
+            raw.previous ??
+            null,
+
+        actual:
+            raw.actual ??
+            null
+    };
+}
+
+
+/*
+   High impact detector.
+
+   We deliberately require explicit high-impact
+   information. We do NOT guess an event's importance
+   from its name.
+*/
+
+function isHighImpact(
+    event
+) {
+
+    if (!event) {
+
+        return false;
+    }
+
+
+    return (
+        event.impact === "high" ||
+        event.impact === "3" ||
+        event.impact === "red"
+    );
+}
+
+
+/*
+   Return only future/recent high-impact events.
+*/
+
+function getRelevantNewsEvents() {
+
+    const now =
+        Date.now();
+
+
+    const before =
+        NEWS_BEFORE_MINUTES *
+        60 *
+        1000;
+
+
+    const after =
+        NEWS_AFTER_MINUTES *
+        60 *
+        1000;
+
+
+    return newsData.events
+
+        .filter(
+            event =>
+                isHighImpact(event) &&
+                (
+                    event.timestamp >=
+                    now - after
+                ) &&
+                (
+                    event.timestamp <=
+                    now +
+                    24 *
+                    60 *
+                    60 *
+                    1000
+                )
+        )
+
+        .sort(
+            (a, b) =>
+                a.timestamp -
+                b.timestamp
+        );
+}
+
+
+/*
+   Determine whether EUR/USD trading should be
+   blocked because of high-impact news.
+*/
+
+function getNewsRisk() {
+
+    if (
+        !newsData.available
+    ) {
+
+        return {
+
+            status:
+                "UNAVAILABLE",
+
+            blocked:
+                true,
+
+            reason:
+                "Live news calendar unavailable",
+
+            event:
+                null
+        };
+    }
+
+
+    const now =
+        Date.now();
+
+
+    const before =
+        NEWS_BEFORE_MINUTES *
+        60 *
+        1000;
+
+
+    const after =
+        NEWS_AFTER_MINUTES *
+        60 *
+        1000;
+
+
+    const relevant =
+        newsData.events
+            .filter(
+                event =>
+                    isHighImpact(event)
+            )
+            .sort(
+                (a, b) =>
+                    a.timestamp -
+                    b.timestamp
+            );
+
+
+    for (
+        const event of relevant
+    ) {
+
+        const difference =
+            event.timestamp -
+            now;
+
+
+        /*
+           Event is approaching.
+        */
+
+        if (
+            difference >= 0 &&
+            difference <= before
+        ) {
+
+            return {
+
+                status:
+                    "BLOCKED",
+
+                blocked:
+                    true,
+
+                reason:
+                    `${event.currency} high-impact news within ${NEWS_BEFORE_MINUTES} minutes`,
+
+                event
+            };
+        }
+
+
+        /*
+           Event has just released.
+        */
+
+        if (
+            difference < 0 &&
+            Math.abs(difference) <= after
+        ) {
+
+            return {
+
+                status:
+                    "BLOCKED",
+
+                blocked:
+                    true,
+
+                reason:
+                    `${event.currency} high-impact news just released`,
+
+                event
+            };
+        }
+    }
+
+
+    return {
+
+        status:
+            "CLEAR",
+
+        blocked:
+            false,
+
+        reason:
+            "No high-impact EUR/USD event inside protection window",
+
+        event:
+            relevant.find(
+                event =>
+                    event.timestamp >
+                    now
+            ) || null
+    };
+}
+
+
+/* =========================================================
+   NEWS API LOADER
+   ========================================================= */
+
+async function loadNewsData() {
+
+    /*
+       No backend configured yet.
+
+       Fail safely rather than inventing news.
+    */
+
+    if (
+        !NEWS_API_URL
+    ) {
+
+        newsData = {
+
+            available:
+                false,
+
+            events:
+                [],
+
+            lastUpdated:
+                Date.now(),
+
+            error:
+                "NEWS_API_URL not configured"
+        };
+
+
+        displayNews();
+
+
+        return;
+    }
+
+
+    if (
+        newsLoading
+    ) {
+
+        return;
+    }
+
+
+    newsLoading =
+        true;
+
+
+    try {
+
+        const response =
+            await fetch(
+                NEWS_API_URL,
+                {
+                    method:
+                        "GET",
+
+                    cache:
+                        "no-store"
+                }
+            );
+
+
+        if (
+            !response.ok
+        ) {
+
+            throw new Error(
+                `News API HTTP ${response.status}`
+            );
+        }
+
+
+        const payload =
+            await response.json();
+
+
+        /*
+           Accept several common response shapes.
+        */
+
+        let rawEvents =
+            payload.events ||
+            payload.data ||
+            payload.results ||
+            payload;
+
+
+        if (
+            !Array.isArray(rawEvents)
+        ) {
+
+            throw new Error(
+                "News API returned no event array"
+            );
+        }
+
+
+        const normalized =
+            rawEvents
+
+                .map(
+                    normalizeNewsEvent
+                )
+
+                .filter(
+                    Boolean
+                );
+
+
+        newsData = {
+
+            available:
+                true,
+
+            events:
+                normalized,
+
+            lastUpdated:
+                Date.now(),
+
+            error:
+                null
+        };
+
+
+        displayNews();
+
+    } catch (error) {
+
+        console.error(
+            "News calendar error:",
+            error
+        );
+
+
+        newsData = {
+
+            available:
+                false,
+
+            events:
+                [],
+
+            lastUpdated:
+                Date.now(),
+
+            error:
+                error.message
+        };
+
+
+        displayNews();
+
+    } finally {
+
+        newsLoading =
+            false;
+    }
+}
+
+
+/* =========================================================
+   NEWS DISPLAY
+   ========================================================= */
+
+function formatNewsCountdown(
+    timestamp
+) {
+
+    const difference =
+        timestamp -
+        Date.now();
+
+
+    if (
+        difference <= 0
+    ) {
+
+        return "NOW";
+    }
+
+
+    const totalMinutes =
+        Math.floor(
+            difference /
+            60000
+        );
+
+
+    const hours =
+        Math.floor(
+            totalMinutes /
+            60
+        );
+
+
+    const minutes =
+        totalMinutes %
+        60;
+
+
+    if (
+        hours > 0
+    ) {
+
+        return (
+            `${hours}h ${minutes}m`
+        );
+    }
+
+
+    return (
+        `${minutes}m`
+    );
+}
+
+
+function formatNewsTime(
+    timestamp
+) {
+
+    return new Date(
+        timestamp
+    ).toLocaleString(
+        "en-IN",
+        {
+            timeZone:
+                "Asia/Kolkata",
+
+            day:
+                "2-digit",
+
+            month:
+                "short",
+
+            hour:
+                "2-digit",
+
+            minute:
+                "2-digit",
+
+            hour12:
+                true
+        }
+    ) + " IST";
+}
+
+
+function displayNews() {
+
+    /*
+       No live calendar available.
+    */
+
+    if (
+        !newsData.available
+    ) {
+
+        setText(
+            "eurNews",
+            "EUR NEWS — UNAVAILABLE"
+        );
+
+
+        setText(
+            "usdNews",
+            "USD NEWS — UNAVAILABLE"
+        );
+
+
+        setText(
+            "newsFilter",
+            "NEWS FILTER — UNAVAILABLE"
+        );
+
+
+        setText(
+            "nextEvent",
+            "NEXT EVENT — --"
+        );
+
+
+        setText(
+            "tradingRisk",
+            "TRADING RISK — UNKNOWN"
+        );
+
+
+        setText(
+            "checkNews",
+            "— EUR/USD high-impact news clear"
+        );
+
+
+        return;
+    }
+
+
+    const events =
+        getRelevantNewsEvents();
+
+
+    const eurEvents =
+        events.filter(
+            e =>
+                e.currency === "EUR"
+        );
+
+
+    const usdEvents =
+        events.filter(
+            e =>
+                e.currency === "USD"
+        );
+
+
+    const risk =
+        getNewsRisk();
+
+
+    setText(
+        "eurNews",
+
+        eurEvents.length > 0
+
+            ? `EUR NEWS — HIGH IMPACT (${eurEvents.length})`
+
+            : "EUR NEWS — CLEAR"
+    );
+
+
+    setText(
+        "usdNews",
+
+        usdEvents.length > 0
+
+            ? `USD NEWS — HIGH IMPACT (${usdEvents.length})`
+
+            : "USD NEWS — CLEAR"
+    );
+
+
+    if (
+        risk.blocked
+    ) {
+
+        setText(
+            "newsFilter",
+            "NEWS FILTER — BLOCKED"
+        );
+
+
+        setText(
+            "tradingRisk",
+            "TRADING RISK — HIGH"
+        );
+
+
+        setText(
+            "checkNews",
+            "— EUR/USD high-impact news clear"
+        );
+
+    } else {
+
+        setText(
+            "newsFilter",
+            "NEWS FILTER — CLEAR"
+        );
+
+
+        setText(
+            "tradingRisk",
+            "TRADING RISK — NORMAL"
+        );
+
+
+        setText(
+            "checkNews",
+            "✓ EUR/USD high-impact news clear"
+        );
+    }
+
+
+    const nextEvent =
+        events.find(
+            event =>
+                event.timestamp >
+                Date.now()
+        );
+
+
+    if (
+        nextEvent
+    ) {
+
+        setText(
+            "nextEvent",
+
+            `NEXT EVENT — ${nextEvent.currency} ${nextEvent.name} — ${formatNewsCountdown(nextEvent.timestamp)}`
+        );
+
+    } else {
+
+        setText(
+            "nextEvent",
+            "NEXT EVENT — None in next 24h"
+        );
+    }
 }
 
 
@@ -1034,11 +1920,8 @@ function evaluateSniper(
         calculateRSI(m5);
 
 
-    const sr =
-        calculateSR(h1);
-
-
-    let direction = null;
+    let direction =
+        null;
 
 
     if (
@@ -1052,7 +1935,8 @@ function evaluateSniper(
         rsi < 50
     ) {
 
-        direction = "SELL";
+        direction =
+            "SELL";
     }
 
 
@@ -1067,7 +1951,8 @@ function evaluateSniper(
         rsi >= 50
     ) {
 
-        direction = "BUY";
+        direction =
+            "BUY";
     }
 
 
@@ -1226,12 +2111,16 @@ function evaluateSniper(
 
         trigger:
             direction === "SELL"
+
                 ? "Bearish M5 momentum confirmed"
+
                 : "Bullish M5 momentum confirmed",
 
         invalidation:
             direction === "SELL"
+
                 ? "M5 closes bullish / alignment breaks"
+
                 : "M5 closes bearish / alignment breaks",
 
         score
@@ -1243,7 +2132,9 @@ function evaluateSniper(
    DISPLAY SNIPER
    ========================================================= */
 
-function displaySniper(setup) {
+function displaySniper(
+    setup
+) {
 
     setText(
         "sniperStatus",
@@ -1329,6 +2220,7 @@ function displaySniper(setup) {
 
     setText(
         "setupTime",
+
         sniperSetupActive
             ? sniperSetupTime
             : "--"
@@ -1337,8 +2229,12 @@ function displaySniper(setup) {
 
     setText(
         "setupScore",
+
         setup.score
-            ? setup.score + "/100"
+
+            ? setup.score +
+              "/100"
+
             : "--"
     );
 }
@@ -1511,7 +2407,9 @@ function evaluateScalp(
 }
 
 
-function displayScalp(setup) {
+function displayScalp(
+    setup
+) {
 
     setText(
         "scalpVerdict",
@@ -1664,15 +2562,13 @@ function evaluateTradeGate(
         direction !== "--";
 
 
-    /*
-       Direction-specific momentum confirmation.
-    */
-
     const momentumOK =
         direction === "SELL"
+
             ? momentum === "BEARISH"
 
             : direction === "BUY"
+
                 ? momentum === "BULLISH"
 
                 : false;
@@ -1692,12 +2588,42 @@ function evaluateTradeGate(
                 : false;
 
 
+    /*
+       =====================================================
+       NEWS GATE
+       =====================================================
+
+       IMPORTANT:
+
+       If the calendar is unavailable we do NOT allow
+       the dashboard to claim that news is clear.
+
+       This is intentionally conservative.
+    */
+
+    const newsRisk =
+        getNewsRisk();
+
+
+    const newsOK =
+        newsRisk.available !== false &&
+        newsRisk.blocked === false;
+
+
     const gateOK =
         session === "ACTIVE" &&
         allAligned &&
-        ema === direction &&
+        ema ===
+            (
+                direction === "SELL"
+                    ? "BEARISH"
+                    : direction === "BUY"
+                        ? "BULLISH"
+                        : "WAIT"
+            ) &&
         rsiOK &&
-        momentumOK;
+        momentumOK &&
+        newsOK;
 
 
     if (!gateOK) {
@@ -1708,9 +2634,29 @@ function evaluateTradeGate(
         );
 
 
+        let reason =
+            "Required confirmation not complete";
+
+
+        if (
+            !newsRisk.available
+        ) {
+
+            reason =
+                "Live news confirmation unavailable";
+
+        } else if (
+            newsRisk.blocked
+        ) {
+
+            reason =
+                newsRisk.reason;
+        }
+
+
         setText(
             "gateReason",
-            "Required confirmation not complete"
+            reason
         );
 
 
@@ -1774,7 +2720,7 @@ function evaluateTradeGate(
 
     setText(
         "gateReason",
-        "All primary confirmations aligned"
+        "All primary confirmations aligned and news clear"
     );
 
 
@@ -1961,12 +2907,6 @@ function displayChecklist(
     );
 
 
-    /*
-       Display-only correction:
-       direction here is BULLISH/BEARISH,
-       not BUY/SELL.
-    */
-
     const rsiConfirmed =
         direction === "BEARISH"
 
@@ -2020,6 +2960,10 @@ function displayChecklist(
         "✓ Minimum 1:2 Risk / Reward"
     );
 
+
+    /*
+       S/R remains unchanged from your current engine.
+    */
 
     setText(
         "checkSR",
@@ -2193,7 +3137,9 @@ function displayTechnicalData(
    ERROR DISPLAY
    ========================================================= */
 
-function displayDataError(error) {
+function displayDataError(
+    error
+) {
 
     console.error(
         "EUR/USD Dashboard Error:",
@@ -2277,13 +3223,16 @@ function displayDataError(error) {
 
 async function loadMarketData() {
 
-    if (marketDataLoading) {
+    if (
+        marketDataLoading
+    ) {
 
         return;
     }
 
 
-    marketDataLoading = true;
+    marketDataLoading =
+        true;
 
 
     setText(
@@ -2296,10 +3245,17 @@ async function loadMarketData() {
 
         /*
            =====================================================
+           LOAD NEWS
+           =====================================================
+        */
+
+        await loadNewsData();
+
+
+        /*
+           =====================================================
            H4
            =====================================================
-
-           Only request when cache is older than 30 minutes.
         */
 
         const h4 =
@@ -2308,20 +3264,6 @@ async function loadMarketData() {
                 "4h",
                 100
             );
-
-
-        /*
-           Small delay before a NEW API request.
-           If H4 came from cache, this is unnecessary.
-        */
-
-        if (
-            marketDataUpdated.h4 ===
-            Date.now()
-        ) {
-
-            await delay(1200);
-        }
 
 
         /*
@@ -2356,8 +3298,6 @@ async function loadMarketData() {
            =====================================================
            M5
            =====================================================
-
-           M5 is refreshed every dashboard cycle.
         */
 
         const m5 =
@@ -2370,7 +3310,7 @@ async function loadMarketData() {
 
         /*
            =====================================================
-           VALIDATE ALL REQUIRED DATA
+           VALIDATE DATA
            =====================================================
         */
 
@@ -2391,7 +3331,9 @@ async function loadMarketData() {
             getMarketPrice(m5);
 
 
-        if (price === null) {
+        if (
+            price === null
+        ) {
 
             throw new Error(
                 "Unable to determine EUR/USD market price"
@@ -2486,6 +3428,15 @@ async function loadMarketData() {
 
         /*
            =====================================================
+           NEWS DISPLAY
+           =====================================================
+        */
+
+        displayNews();
+
+
+        /*
+           =====================================================
            PRO VERDICT
            =====================================================
         */
@@ -2493,7 +3444,8 @@ async function loadMarketData() {
         setText(
             "proVerdict",
 
-            sniper.status === "A+ SETUP"
+            sniper.status ===
+                "A+ SETUP"
 
                 ? "A+ SETUP"
 
@@ -2520,7 +3472,8 @@ async function loadMarketData() {
 
     } finally {
 
-        marketDataLoading = false;
+        marketDataLoading =
+            false;
     }
 }
 
@@ -2531,7 +3484,9 @@ async function loadMarketData() {
 
 function manualRefresh() {
 
-    if (marketDataLoading) {
+    if (
+        marketDataLoading
+    ) {
 
         return;
     }
@@ -2549,21 +3504,62 @@ document.addEventListener(
     "DOMContentLoaded",
     () => {
 
+        /*
+           Load market data.
+        */
+
         loadMarketData();
 
 
         /*
-           Automatic dashboard refresh:
-           every 5 minutes.
-
-           Because of the timeframe cache,
-           this does NOT mean four API requests
+           Market data refresh:
            every 5 minutes.
         */
 
         setInterval(
             loadMarketData,
             REFRESH_INTERVAL
+        );
+
+
+        /*
+           News display refresh:
+           every 15 minutes.
+
+           Once NEWS_API_URL is connected,
+           this will update the calendar without
+           unnecessarily hitting Twelve Data.
+        */
+
+        setInterval(
+            async () => {
+
+                await loadNewsData();
+
+                displayNews();
+
+            },
+            NEWS_REFRESH_INTERVAL
+        );
+
+
+        /*
+           Update countdown / news status
+           every 30 seconds.
+        */
+
+        setInterval(
+            () => {
+
+                if (
+                    newsData.available
+                ) {
+
+                    displayNews();
+                }
+
+            },
+            30000
         );
     }
 );
