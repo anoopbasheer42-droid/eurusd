@@ -15,7 +15,6 @@ const PRICE_URL =
 const TIME_SERIES_URL =
     "https://api.twelvedata.com/time_series";
 
-// CORRECT XOOMAR HIGH-IMPACT CALENDAR ENDPOINT
 const NEWS_URL =
     "https://xoomar.com/api/markets/calendar?importance=high";
 
@@ -43,7 +42,9 @@ window.newsClear = false;
 // ============================================================
 
 function setText(id, value) {
-    const element = document.getElementById(id);
+
+    const element =
+        document.getElementById(id);
 
     if (element) {
         element.textContent = value;
@@ -74,11 +75,15 @@ async function fetchPrice() {
     try {
 
         const response =
-            await fetch(PRICE_URL, {
-                cache: "no-store"
-            });
+            await fetch(
+                PRICE_URL,
+                {
+                    cache: "no-store"
+                }
+            );
 
         if (!response.ok) {
+
             throw new Error(
                 `Price HTTP ${response.status}`
             );
@@ -88,8 +93,10 @@ async function fetchPrice() {
             await response.json();
 
         if (!data.price) {
+
             throw new Error(
-                data.message || "Price unavailable"
+                data.message ||
+                "Price unavailable"
             );
         }
 
@@ -150,6 +157,7 @@ async function fetchCandles(
         );
 
     if (!response.ok) {
+
         throw new Error(
             `Candle HTTP ${response.status}`
         );
@@ -159,6 +167,7 @@ async function fetchCandles(
         await response.json();
 
     if (!data.values) {
+
         throw new Error(
             data.message ||
             `No ${interval} candle data`
@@ -167,6 +176,7 @@ async function fetchCandles(
 
     return data.values
         .map(candle => ({
+
             time:
                 new Date(
                     candle.datetime
@@ -183,6 +193,7 @@ async function fetchCandles(
 
             close:
                 Number(candle.close)
+
         }))
         .sort(
             (a, b) =>
@@ -314,8 +325,11 @@ function calculateRSI(
             closes[i - 1];
 
         if (change >= 0) {
+
             gains += change;
+
         } else {
+
             losses -= change;
         }
     }
@@ -362,6 +376,7 @@ function calculateRSI(
     }
 
     if (averageLoss === 0) {
+
         return 100;
     }
 
@@ -389,6 +404,7 @@ function getStructure(candles) {
         !candles ||
         candles.length < 10
     ) {
+
         return "INSUFFICIENT DATA";
     }
 
@@ -443,6 +459,7 @@ function getStructure(candles) {
         lastLow < firstLow &&
         lastClose < firstClose
     ) {
+
         return "BEARISH";
     }
 
@@ -452,6 +469,7 @@ function getStructure(candles) {
         lastLow > firstLow &&
         lastClose > firstClose
     ) {
+
         return "BULLISH";
     }
 
@@ -474,8 +492,10 @@ function calculateLevels(
     ) {
 
         return {
+
             resistance1: null,
             resistance2: null,
+
             support1: null,
             support2: null
         };
@@ -817,12 +837,6 @@ async function loadNews() {
         );
 
 
-        // XOOMAR response is:
-        // {
-        //   data: [...]
-        // }
-
-
         if (
             !json.data ||
             !Array.isArray(json.data)
@@ -895,7 +909,7 @@ async function loadNews() {
 
 
 // ============================================================
-// NEWS EVENT TIME
+// EVENT TIME
 // ============================================================
 
 function getEventTime(event) {
@@ -903,13 +917,9 @@ function getEventTime(event) {
     const possibleTimes = [
 
         event.scheduledAt,
-
         event.date,
-
         event.datetime,
-
         event.time,
-
         event.releaseDate
 
     ];
@@ -931,6 +941,7 @@ function getEventTime(event) {
                 date.getTime()
             )
         ) {
+
             return date;
         }
     }
@@ -1007,18 +1018,16 @@ function isUSDEvent(event) {
         .toLowerCase();
 
 
-    // Direct USD/currency information.
     if (
         currency.includes("usd") ||
         currency.includes("united states") ||
         currency === "us"
     ) {
+
         return true;
     }
 
 
-    // Sources present in the XOOMAR
-    // data you showed.
     if (
         source.includes("bls") ||
         source.includes("bea") ||
@@ -1028,11 +1037,11 @@ function isUSDEvent(event) {
         source.includes("federal reserve") ||
         source.includes("fed")
     ) {
+
         return true;
     }
 
 
-    // Important US releases.
     const usdKeywords = [
 
         "nonfarm payroll",
@@ -1107,14 +1116,18 @@ function isEURRelevant(event) {
         currency.includes("europe") ||
         currency.includes("eurozone")
     ) {
+
         return true;
     }
 
 
     if (
         source.includes("ecb") ||
-        source.includes("european central bank")
+        source.includes(
+            "european central bank"
+        )
     ) {
+
         return true;
     }
 
@@ -1185,7 +1198,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // Get valid events
+    // Convert events into usable objects
     // --------------------------------------------------------
 
     const events =
@@ -1196,16 +1209,25 @@ function processNews() {
                     getEventTime(event);
 
                 return {
-                    original: event,
-                    date: date,
+
+                    original:
+                        event,
+
+                    date:
+                        date,
+
                     name:
                         getEventName(event),
+
                     high:
                         isHighImpact(event),
+
                     usd:
                         isUSDEvent(event),
+
                     eur:
                         isEURRelevant(event)
+
                 };
 
             })
@@ -1216,7 +1238,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // High impact EUR events
+    // EUR HIGH-IMPACT EVENTS
     // --------------------------------------------------------
 
     const eurEvents =
@@ -1233,7 +1255,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // High impact USD events
+    // USD HIGH-IMPACT EVENTS
     // --------------------------------------------------------
 
     const usdEvents =
@@ -1250,7 +1272,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // EUR display
+    // NEXT EUR EVENT
     // --------------------------------------------------------
 
     const nextEUR =
@@ -1277,7 +1299,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // USD display
+    // NEXT USD EVENT
     // --------------------------------------------------------
 
     const nextUSD =
@@ -1304,7 +1326,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // Relevant EUR/USD events
+    // EUR/USD RELEVANT EVENTS
     // --------------------------------------------------------
 
     const relevantHighImpact =
@@ -1312,7 +1334,10 @@ function processNews() {
             .filter(
                 event =>
                     event.high &&
-                    (event.usd || event.eur)
+                    (
+                        event.usd ||
+                        event.eur
+                    )
             )
             .sort(
                 (a, b) =>
@@ -1321,7 +1346,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // Find nearest future high impact
+    // NEXT HIGH-IMPACT EVENT
     // --------------------------------------------------------
 
     const nextEvent =
@@ -1350,10 +1375,9 @@ function processNews() {
     // ========================================================
     // NEWS BLOCK WINDOW
     //
-    // Block trading:
-    // 30 minutes BEFORE high-impact news
+    // 30 minutes BEFORE
     // through
-    // 30 minutes AFTER high-impact news.
+    // 30 minutes AFTER
     // ========================================================
 
     const BLOCK_BEFORE =
@@ -1363,7 +1387,8 @@ function processNews() {
         30 * 60 * 1000;
 
 
-    let activeNews = null;
+    let activeNews =
+        null;
 
 
     for (
@@ -1391,7 +1416,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // ACTIVE NEWS = BLOCK
+    // ACTIVE NEWS = TRADING BLOCKED
     // --------------------------------------------------------
 
     if (activeNews) {
@@ -1448,7 +1473,7 @@ function processNews() {
 
 
     // --------------------------------------------------------
-    // UPCOMING NEWS BUT OUTSIDE BLOCK WINDOW
+    // NEWS WITHIN NEXT 2 HOURS
     // --------------------------------------------------------
 
     if (nextEvent) {
@@ -1479,8 +1504,6 @@ function processNews() {
             );
 
 
-            // Keep filter closed if news
-            // is within 2 hours.
             window.newsClear =
                 false;
 
@@ -1561,7 +1584,7 @@ function runSniperEngine(
 
         setText(
             "validity",
-            "H4/H1 conflict detected. News filter is also closed."
+            "H4/H1 direction → M15 confirmation → M5 trigger → news clearance"
         );
 
         setText(
@@ -1572,6 +1595,11 @@ function runSniperEngine(
         setText(
             "invalidation",
             "No trade while NEWS FILTER is CLOSED"
+        );
+
+        setText(
+            "setupScore",
+            "—"
         );
 
         return;
@@ -1618,6 +1646,11 @@ function runSniperEngine(
             "No trade while higher timeframes conflict"
         );
 
+        setText(
+            "setupScore",
+            "—"
+        );
+
         return;
     }
 
@@ -1632,6 +1665,7 @@ function runSniperEngine(
     if (
         h4Trend === direction
     ) {
+
         score += 2;
     }
 
@@ -1639,6 +1673,7 @@ function runSniperEngine(
     if (
         h1Trend === direction
     ) {
+
         score += 2;
     }
 
@@ -1646,6 +1681,7 @@ function runSniperEngine(
     if (
         m15Structure === direction
     ) {
+
         score += 2;
     }
 
@@ -1653,6 +1689,7 @@ function runSniperEngine(
     if (
         m5Structure === direction
     ) {
+
         score += 1;
     }
 
@@ -1660,6 +1697,7 @@ function runSniperEngine(
     if (
         emaStructure === direction
     ) {
+
         score += 1;
     }
 
@@ -1669,6 +1707,7 @@ function runSniperEngine(
         h1RSI !== null &&
         h1RSI < 65
     ) {
+
         score += 1;
     }
 
@@ -1678,11 +1717,13 @@ function runSniperEngine(
         h1RSI !== null &&
         h1RSI > 35
     ) {
+
         score += 1;
     }
 
 
     if (newsClear) {
+
         score += 1;
     }
 
@@ -1936,6 +1977,11 @@ function runScalpingEngine(
         );
 
         setText(
+            "scalpScore",
+            "—"
+        );
+
+        setText(
             "scalpValidity",
             "NEXT 2 HOURS — NEWS CHECK REQUIRED"
         );
@@ -1961,6 +2007,7 @@ function runScalpingEngine(
         h1Trend === "BULLISH" ||
         h1Trend === "BEARISH"
     ) {
+
         score += 2;
     }
 
@@ -1968,6 +2015,7 @@ function runScalpingEngine(
     if (
         m5Structure === h1Trend
     ) {
+
         score += 2;
     }
 
@@ -1981,6 +2029,7 @@ function runScalpingEngine(
             m5RSI > 40 &&
             m5RSI < 70
         ) {
+
             score += 2;
         }
 
@@ -1990,6 +2039,7 @@ function runScalpingEngine(
             m5RSI > 30 &&
             m5RSI < 60
         ) {
+
             score += 2;
         }
     }
@@ -1999,6 +2049,7 @@ function runScalpingEngine(
         levels.support1 &&
         levels.resistance1
     ) {
+
         score += 2;
     }
 
@@ -2316,6 +2367,12 @@ function updateProVerdict(
 // ============================================================
 // MAIN MARKET DATA LOADER
 // ============================================================
+//
+// IMPORTANT FIX:
+// NEWS IS LOADED BEFORE TECHNICAL ANALYSIS.
+// This means Sniper, Scalping and PRO receive the
+// current newsClear value instead of the old false value.
+// ============================================================
 
 async function loadMarketData() {
 
@@ -2338,19 +2395,44 @@ async function loadMarketData() {
     );
 
 
-    // 1. Price
+    // --------------------------------------------------------
+    // 1. LIVE PRICE
+    // --------------------------------------------------------
+
     await fetchPrice();
 
 
-    // 2. Candles
+    // --------------------------------------------------------
+    // 2. CANDLE DATA
+    // --------------------------------------------------------
+
     const candlesLoaded =
         await loadCandles();
 
 
-    // 3. Technical analysis
+    // --------------------------------------------------------
+    // 3. NEWS / ECONOMIC CALENDAR
+    //
+    // NEWS MUST LOAD BEFORE TECHNICAL ENGINES.
+    // --------------------------------------------------------
+
+    await loadNews();
+
+
+    // --------------------------------------------------------
+    // 4. TECHNICAL ANALYSIS
+    //
+    // At this point window.newsClear is already updated.
+    // --------------------------------------------------------
+
     if (candlesLoaded) {
 
         updateTechnicalAnalysis();
+
+        setText(
+            "priceStatus",
+            "MARKET DATA LOADED"
+        );
 
     } else {
 
@@ -2361,8 +2443,10 @@ async function loadMarketData() {
     }
 
 
-    // 4. Economic calendar
-    await loadNews();
+    console.log(
+        "NEWS CLEAR STATUS:",
+        window.newsClear
+    );
 
 
     console.log(
