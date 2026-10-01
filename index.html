@@ -3,202 +3,562 @@
 
 <head>
 
-<meta charset="UTF-8">
+    <meta charset="UTF-8">
 
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-<title>EUR/USD Sniper Dashboard</title>
+    <meta
+        name="theme-color"
+        content="#111111"
+    >
 
-<style>
-
-* {
-    box-sizing: border-box;
-}
-
-body {
-    margin: 0;
-    padding: 15px;
-    background: #111;
-    color: white;
-    font-family: Arial, sans-serif;
-}
-
-h1 {
-    text-align: center;
-    margin-bottom: 5px;
-}
-
-h2 {
-    margin-top: 0;
-}
-
-.live {
-    text-align: center;
-    color: #00ff66;
-    font-weight: bold;
-    margin-bottom: 15px;
-}
-
-.price-box {
-    text-align: center;
-    background: #1b1b1b;
-    padding: 18px;
-    border-radius: 10px;
-    margin-bottom: 15px;
-}
-
-.price {
-    font-size: 32px;
-    font-weight: bold;
-}
-
-.card {
-    background: #1b1b1b;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-}
-
-.card h2 {
-    color: #00d9ff;
-    border-bottom: 1px solid #333;
-    padding-bottom: 8px;
-}
-
-.row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid #292929;
-    gap: 10px;
-}
-
-.row:last-child {
-    border-bottom: none;
-}
-
-.row span {
-    color: #bbb;
-}
-
-.row strong {
-    color: white;
-    text-align: right;
-}
-
-.green {
-    color: #00ff66 !important;
-}
-
-.red {
-    color: #ff4444 !important;
-}
-
-.yellow {
-    color: #ffd000 !important;
-}
-
-.blue {
-    color: #00d9ff !important;
-}
-
-.big-status {
-    text-align: center;
-    font-size: 24px;
-    font-weight: bold;
-    padding: 12px;
-}
-
-.score {
-    font-size: 22px;
-}
-
-.setup-time {
-    color: #00ff66 !important;
-    font-size: 18px;
-}
-
-.gate {
-    text-align: center;
-    font-size: 24px;
-    font-weight: bold;
-    padding: 15px;
-}
-
-.reason {
-    color: #bbb;
-    text-align: center;
-    line-height: 1.5;
-}
-
-.checklist div {
-    padding: 7px 0;
-    border-bottom: 1px solid #292929;
-}
-
-.refresh {
-    width: 100%;
-    border: none;
-    border-radius: 8px;
-    padding: 14px;
-    background: #00aaff;
-    color: white;
-    font-size: 17px;
-    font-weight: bold;
-}
-
-.footer {
-    text-align: center;
-    color: #777;
-    font-size: 12px;
-    margin-top: 20px;
-}
+    <title>
+        EUR/USD Sniper Dashboard
+    </title>
 
 
-/* ============================= */
-/* TRADINGVIEW CHART */
-/* ============================= */
+    <style>
 
-.tradingview-widget-container {
-    width: 100%;
-    height: 500px;
-}
-
-.tradingview-widget-container iframe {
-    width: 100%;
-    height: 100%;
-    border: 0;
-}
+        * {
+            box-sizing: border-box;
+        }
 
 
-/* ============================= */
-/* MOBILE */
-/* ============================= */
+        body {
 
-@media (max-width: 600px) {
+            margin: 0;
 
-    body {
-        padding: 8px;
-    }
+            padding: 0;
 
-    .price {
-        font-size: 27px;
-    }
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
 
-    .tradingview-widget-container {
-        height: 400px;
-    }
+            background: #111;
 
-    .row strong {
-        max-width: 55%;
-        word-break: break-word;
-    }
+            color: #fff;
 
-}
+            line-height: 1.5;
+        }
 
-</style>
+
+        .container {
+
+            width: 100%;
+
+            max-width: 1100px;
+
+            margin: auto;
+
+            padding: 12px;
+        }
+
+
+        header {
+
+            text-align: center;
+
+            padding: 15px 10px;
+
+            margin-bottom: 12px;
+
+            background: #181818;
+
+            border-radius: 10px;
+
+            border: 1px solid #292929;
+        }
+
+
+        header h1 {
+
+            margin: 0 0 5px;
+
+            font-size: 24px;
+
+            letter-spacing: 1px;
+        }
+
+
+        .live-status {
+
+            color: #00ff88;
+
+            font-size: 13px;
+
+            font-weight: bold;
+        }
+
+
+        .card {
+
+            background: #181818;
+
+            border: 1px solid #292929;
+
+            border-radius: 10px;
+
+            padding: 14px;
+
+            margin-bottom: 12px;
+
+            overflow: hidden;
+        }
+
+
+        .card h2 {
+
+            margin: 0 0 12px;
+
+            font-size: 18px;
+
+            color: #fff;
+
+            border-bottom: 1px solid #333;
+
+            padding-bottom: 8px;
+        }
+
+
+        .price-card {
+
+            text-align: center;
+
+            padding: 20px 10px;
+        }
+
+
+        .price-label {
+
+            font-size: 13px;
+
+            color: #aaa;
+
+            margin-bottom: 5px;
+        }
+
+
+        #livePrice {
+
+            font-size: 38px;
+
+            font-weight: bold;
+
+            letter-spacing: 1px;
+        }
+
+
+        .grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, minmax(0, 1fr));
+
+            gap: 10px;
+        }
+
+
+        .three-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, minmax(0, 1fr));
+
+            gap: 10px;
+        }
+
+
+        .four-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(4, minmax(0, 1fr));
+
+            gap: 10px;
+        }
+
+
+        .box {
+
+            background: #111;
+
+            border: 1px solid #303030;
+
+            border-radius: 8px;
+
+            padding: 12px;
+
+            min-width: 0;
+        }
+
+
+        .box-label {
+
+            color: #999;
+
+            font-size: 11px;
+
+            text-transform: uppercase;
+
+            margin-bottom: 5px;
+        }
+
+
+        .box-value {
+
+            font-size: 16px;
+
+            font-weight: bold;
+
+            word-break: break-word;
+        }
+
+
+        .value {
+
+            font-size: 16px;
+
+            font-weight: bold;
+        }
+
+
+        .green {
+
+            color: #00ff88;
+        }
+
+
+        .red {
+
+            color: #ff4d4d;
+        }
+
+
+        .yellow {
+
+            color: #ffd84d;
+        }
+
+
+        .orange {
+
+            color: #ff9f43;
+        }
+
+
+        .muted {
+
+            color: #aaa;
+        }
+
+
+        .big-status {
+
+            text-align: center;
+
+            font-size: 28px;
+
+            font-weight: bold;
+
+            padding: 15px 5px;
+        }
+
+
+        .trade-box {
+
+            background: #111;
+
+            border: 1px solid #333;
+
+            border-radius: 8px;
+
+            padding: 12px;
+
+            margin-top: 10px;
+        }
+
+
+        .trade-row {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            gap: 10px;
+
+            padding: 7px 0;
+
+            border-bottom: 1px solid #252525;
+        }
+
+
+        .trade-row:last-child {
+
+            border-bottom: none;
+        }
+
+
+        .trade-row span:first-child {
+
+            color: #999;
+        }
+
+
+        .trade-row span:last-child {
+
+            font-weight: bold;
+
+            text-align: right;
+        }
+
+
+        .checklist {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, minmax(0, 1fr));
+
+            gap: 8px;
+        }
+
+
+        .check {
+
+            background: #111;
+
+            border: 1px solid #292929;
+
+            border-radius: 7px;
+
+            padding: 9px;
+
+            font-size: 13px;
+        }
+
+
+        .news-box {
+
+            background: #111;
+
+            border: 1px solid #333;
+
+            border-radius: 8px;
+
+            padding: 12px;
+
+            margin-bottom: 10px;
+
+            word-break: break-word;
+        }
+
+
+        .news-title {
+
+            font-size: 12px;
+
+            color: #aaa;
+
+            margin-bottom: 5px;
+
+            text-transform: uppercase;
+        }
+
+
+        .news-value {
+
+            font-size: 14px;
+
+            font-weight: bold;
+
+            line-height: 1.5;
+        }
+
+
+        .news-warning {
+
+            border-color: #ff4d4d;
+        }
+
+
+        .news-clear {
+
+            border-color: #00aa66;
+        }
+
+
+        .news-unknown {
+
+            border-color: #777;
+        }
+
+
+        button {
+
+            width: 100%;
+
+            padding: 13px;
+
+            border: none;
+
+            border-radius: 8px;
+
+            background: #252525;
+
+            color: #fff;
+
+            font-size: 15px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+        }
+
+
+        button:hover {
+
+            background: #333;
+        }
+
+
+        .chart-wrapper {
+
+            width: 100%;
+
+            height: 500px;
+
+            overflow: hidden;
+
+            background: #111;
+
+            border-radius: 8px;
+
+            border: 1px solid #292929;
+        }
+
+
+        .chart-wrapper iframe {
+
+            width: 100%;
+
+            height: 100%;
+
+            border: 0;
+        }
+
+
+        .footer {
+
+            text-align: center;
+
+            color: #777;
+
+            font-size: 11px;
+
+            padding: 15px 5px 25px;
+        }
+
+
+        .footer a {
+
+            color: #aaa;
+
+            text-decoration: none;
+        }
+
+
+        @media (max-width: 700px) {
+
+            .container {
+
+                padding: 8px;
+            }
+
+
+            header h1 {
+
+                font-size: 20px;
+            }
+
+
+            #livePrice {
+
+                font-size: 32px;
+            }
+
+
+            .grid {
+
+                grid-template-columns:
+                    1fr 1fr;
+            }
+
+
+            .three-grid {
+
+                grid-template-columns:
+                    1fr 1fr;
+            }
+
+
+            .four-grid {
+
+                grid-template-columns:
+                    1fr 1fr;
+            }
+
+
+            .checklist {
+
+                grid-template-columns:
+                    1fr;
+            }
+
+
+            .chart-wrapper {
+
+                height: 420px;
+            }
+        }
+
+
+        @media (max-width: 430px) {
+
+            .grid,
+            .three-grid,
+            .four-grid {
+
+                grid-template-columns:
+                    1fr 1fr;
+            }
+
+
+            .box {
+
+                padding: 10px;
+            }
+
+
+            .box-value {
+
+                font-size: 14px;
+            }
+
+
+            .chart-wrapper {
+
+                height: 380px;
+            }
+        }
+
+    </style>
 
 </head>
 
@@ -206,535 +566,1222 @@ h2 {
 <body>
 
 
-<!-- ================================= -->
-<!-- HEADER -->
-<!-- ================================= -->
-
-<h1>EUR/USD SNIPER DASHBOARD</h1>
-
-<div class="live">
-    ● <span id="dataStatus">LIVE</span>
-</div>
+<div class="container">
 
 
-<!-- ================================= -->
-<!-- LIVE PRICE -->
-<!-- ================================= -->
+    <!-- =================================================
+         HEADER
+         ================================================= -->
 
-<div class="price-box">
+    <header>
 
-    <div>
-        LIVE MARKET PRICE — EUR / USD
+        <h1>
+            EUR/USD SNIPER DASHBOARD
+        </h1>
+
+        <div class="live-status">
+            ● LIVE
+        </div>
+
+    </header>
+
+
+    <!-- =================================================
+         LIVE PRICE
+         ================================================= -->
+
+    <div class="card price-card">
+
+        <div class="price-label">
+            LIVE MARKET PRICE — EUR / USD
+        </div>
+
+        <div id="livePrice">
+            Loading...
+        </div>
+
     </div>
 
-    <div id="livePrice"
-         class="price">
-        --
+
+    <!-- =================================================
+         MARKET STRUCTURE
+         ================================================= -->
+
+    <div class="card">
+
+        <h2>
+            MARKET STRUCTURE
+        </h2>
+
+
+        <div class="four-grid">
+
+
+            <div class="box">
+
+                <div class="box-label">
+                    H4 Bias
+                </div>
+
+                <div
+                    id="h4Bias"
+                    class="box-value"
+                >
+                    --
+                </div>
+
+            </div>
+
+
+            <div class="box">
+
+                <div class="box-label">
+                    H1 Bias
+                </div>
+
+                <div
+                    id="h1Bias"
+                    class="box-value"
+                >
+                    --
+                </div>
+
+            </div>
+
+
+            <div class="box">
+
+                <div class="box-label">
+                    M15 Structure
+                </div>
+
+                <div
+                    id="m15Structure"
+                    class="box-value"
+                >
+                    --
+                </div>
+
+            </div>
+
+
+            <div class="box">
+
+                <div class="box-label">
+                    M5 Structure
+                </div>
+
+                <div
+                    id="m5Structure"
+                    class="box-value"
+                >
+                    --
+                </div>
+
+            </div>
+
+
+        </div>
+
     </div>
 
-</div>
 
+    <!-- =================================================
+         LIVE CHART
+         ================================================= -->
 
-<!-- ================================= -->
-<!-- MARKET STRUCTURE -->
-<!-- ================================= -->
+    <div class="card">
 
-<div class="card">
+        <h2>
+            EUR/USD LIVE CHART
+        </h2>
 
-<h2>MARKET STRUCTURE</h2>
 
-<div class="row">
-    <span>H4 BIAS</span>
-    <strong id="h4Bias">--</strong>
-</div>
+        <div class="chart-wrapper">
 
-<div class="row">
-    <span>H1 BIAS</span>
-    <strong id="h1Bias">--</strong>
-</div>
+            <iframe
+                src="https://www.tradingview.com/chart/?symbol=FX%3AEURUSD"
+                frameborder="0"
+                allowfullscreen
+                title="EUR/USD TradingView Chart"
+            >
+            </iframe>
 
-<div class="row">
-    <span>M15 STRUCTURE</span>
-    <strong id="m15Structure">--</strong>
-</div>
+        </div>
 
-<div class="row">
-    <span>M5 STRUCTURE</span>
-    <strong id="m5Structure">--</strong>
-</div>
+    </div>
 
-</div>
 
+    <!-- =================================================
+         QUICK MARKET ANALYSIS
+         ================================================= -->
 
-<!-- ================================= -->
-<!-- LIVE CHART -->
-<!-- ================================= -->
+    <div class="card">
 
-<div class="card">
+        <h2>
+            QUICK MARKET ANALYSIS
+        </h2>
 
-<h2>EUR/USD LIVE CHART</h2>
 
-<div class="tradingview-widget-container">
+        <div class="four-grid">
 
-<iframe
-src="https://www.tradingview.com/widgetembed/?symbol=FX%3AEURUSD&interval=5&theme=dark&style=1&timezone=Asia%2FKolkata&withdateranges=1&hideideas=1&hidesidetoolbar=0&symboledit=0&saveimage=0&toolbarbg=111111&hidelegend=0&hidevolume=0&hidefullscreen=0"
-allowtransparency="true"
-frameborder="0"
-allowfullscreen>
-</iframe>
 
-</div>
+            <div class="box">
 
-</div>
+                <div class="box-label">
+                    H4 Trend
+                </div>
 
+                <div
+                    id="h4Trend"
+                    class="box-value"
+                >
+                    --
+                </div>
 
-<!-- ================================= -->
-<!-- QUICK MARKET ANALYSIS -->
-<!-- ================================= -->
+            </div>
 
-<div class="card">
 
-<h2>QUICK MARKET ANALYSIS</h2>
+            <div class="box">
 
-<div class="row">
-    <span>H4 TREND</span>
-    <strong id="h4Trend">--</strong>
-</div>
+                <div class="box-label">
+                    H1 Trend
+                </div>
 
-<div class="row">
-    <span>H1 TREND</span>
-    <strong id="h1Trend">--</strong>
-</div>
+                <div
+                    id="h1Trend"
+                    class="box-value"
+                >
+                    --
+                </div>
 
-<div class="row">
-    <span>EMA STRUCTURE</span>
-    <strong id="emaStructure">--</strong>
-</div>
+            </div>
 
-<div class="row">
-    <span>SETUP SCORE</span>
-    <strong id="setupScore"
-            class="score">
-        --
-    </strong>
-</div>
 
-</div>
+            <div class="box">
 
+                <div class="box-label">
+                    EMA Structure
+                </div>
 
-<!-- ================================= -->
-<!-- SUPPORT RESISTANCE -->
-<!-- ================================= -->
+                <div
+                    id="emaStructure"
+                    class="box-value"
+                >
+                    --
+                </div>
 
-<div class="card">
+            </div>
 
-<h2>SUPPORT &amp; RESISTANCE</h2>
 
-<div class="row">
-    <span>R2</span>
-    <strong id="r2">--</strong>
-</div>
+            <div class="box">
 
-<div class="row">
-    <span>R1</span>
-    <strong id="r1">--</strong>
-</div>
+                <div class="box-label">
+                    Setup Score
+                </div>
 
-<div class="row">
-    <span>S1</span>
-    <strong id="s1">--</strong>
-</div>
+                <div
+                    id="setupScore"
+                    class="box-value"
+                >
+                    --
+                </div>
 
-<div class="row">
-    <span>S2</span>
-    <strong id="s2">--</strong>
-</div>
+            </div>
 
-</div>
 
+        </div>
 
-<!-- ================================= -->
-<!-- TECHNICAL INDICATORS -->
-<!-- ================================= -->
+    </div>
 
-<div class="card">
 
-<h2>TECHNICAL INDICATORS</h2>
+    <!-- =================================================
+         SUPPORT / RESISTANCE
+         ================================================= -->
 
-<div class="row">
-    <span>H4 RSI</span>
-    <strong id="h4Rsi">--</strong>
-</div>
+    <div class="card">
 
-<div class="row">
-    <span>H1 RSI</span>
-    <strong id="h1Rsi">--</strong>
-</div>
+        <h2>
+            SUPPORT &amp; RESISTANCE
+        </h2>
 
-<div class="row">
-    <span>M15 RSI</span>
-    <strong id="m15Rsi">--</strong>
-</div>
 
-<div class="row">
-    <span>M5 RSI</span>
-    <strong id="m5Rsi">--</strong>
-</div>
+        <div class="four-grid">
 
-<div class="row">
-    <span>EMA STRUCTURE</span>
-    <strong id="emaStructure2">--</strong>
-</div>
 
-</div>
+            <div class="box">
 
+                <div class="box-label">
+                    R2
+                </div>
 
-<!-- ================================= -->
-<!-- SNIPER -->
-<!-- ================================= -->
+                <div
+                    id="r2"
+                    class="box-value red"
+                >
+                    --
+                </div>
 
-<div class="card">
+            </div>
 
-<h2>A+ SNIPER SETUP</h2>
 
-<div id="sniperStatusBig"
-     class="big-status">
-    WAIT
-</div>
+            <div class="box">
 
-<div class="row">
-    <span>Status</span>
-    <strong id="sniperStatus">WAIT</strong>
-</div>
+                <div class="box-label">
+                    R1
+                </div>
 
-<div class="row">
-    <span>Direction</span>
-    <strong id="sniperDirection">--</strong>
-</div>
+                <div
+                    id="r1"
+                    class="box-value red"
+                >
+                    --
+                </div>
 
-<div class="row">
-    <span>Entry</span>
-    <strong id="sniperEntry">--</strong>
-</div>
+            </div>
 
-<div class="row">
-    <span>Stop Loss</span>
-    <strong id="sniperSL">--</strong>
-</div>
 
-<div class="row">
-    <span>TP1</span>
-    <strong id="sniperTP1">--</strong>
-</div>
+            <div class="box">
 
-<div class="row">
-    <span>TP2</span>
-    <strong id="sniperTP2">--</strong>
-</div>
+                <div class="box-label">
+                    S1
+                </div>
 
-<div class="row">
-    <span>TP3</span>
-    <strong id="sniperTP3">--</strong>
-</div>
+                <div
+                    id="s1"
+                    class="box-value green"
+                >
+                    --
+                </div>
 
-<div class="row">
-    <span>Risk / Reward</span>
-    <strong id="sniperRR">--</strong>
-</div>
+            </div>
 
-<div class="row">
-    <span>Validity</span>
-    <strong id="sniperValidity">--</strong>
-</div>
 
-<div class="row">
-    <span>Trigger</span>
-    <strong id="sniperTrigger">--</strong>
-</div>
+            <div class="box">
 
-<div class="row">
-    <span>Invalidation</span>
-    <strong id="sniperInvalidation">--</strong>
-</div>
+                <div class="box-label">
+                    S2
+                </div>
 
-<div class="row">
-    <span>Setup Time</span>
-    <strong id="setupTime"
-            class="setup-time">
-        --
-    </strong>
-</div>
+                <div
+                    id="s2"
+                    class="box-value green"
+                >
+                    --
+                </div>
 
-</div>
+            </div>
 
 
-<!-- ================================= -->
-<!-- ELITE SCALP -->
-<!-- ================================= -->
+        </div>
 
-<div class="card">
+    </div>
 
-<h2>ELITE SCALP</h2>
 
-<div class="row">
-    <span>Verdict</span>
-    <strong id="scalpVerdict">WAIT</strong>
-</div>
+    <!-- =================================================
+         TECHNICAL INDICATORS
+         ================================================= -->
 
-<div class="row">
-    <span>Direction</span>
-    <strong id="scalpDirection">--</strong>
-</div>
+    <div class="card">
 
-<div class="row">
-    <span>Entry</span>
-    <strong id="scalpEntry">--</strong>
-</div>
+        <h2>
+            TECHNICAL INDICATORS
+        </h2>
 
-<div class="row">
-    <span>Stop Loss</span>
-    <strong id="scalpSL">--</strong>
-</div>
 
-<div class="row">
-    <span>TP1</span>
-    <strong id="scalpTP1">--</strong>
-</div>
+        <div class="four-grid">
 
-<div class="row">
-    <span>TP2</span>
-    <strong id="scalpTP2">--</strong>
-</div>
 
-<div class="row">
-    <span>RR</span>
-    <strong id="scalpRR">--</strong>
-</div>
+            <div class="box">
 
-<div class="row">
-    <span>Score</span>
-    <strong id="scalpScore">--</strong>
-</div>
+                <div class="box-label">
+                    H4 RSI
+                </div>
 
-<div class="row">
-    <span>Validity</span>
-    <strong id="scalpValidity">--</strong>
-</div>
+                <div
+                    id="h4Rsi"
+                    class="box-value"
+                >
+                    --
+                </div>
 
-<div class="row">
-    <span>Trigger</span>
-    <strong id="scalpTrigger">--</strong>
-</div>
+            </div>
 
-<div class="row">
-    <span>Invalidation</span>
-    <strong id="scalpInvalidation">--</strong>
-</div>
 
-</div>
+            <div class="box">
 
+                <div class="box-label">
+                    H1 RSI
+                </div>
 
-<!-- ================================= -->
-<!-- PRO VERDICT -->
-<!-- ================================= -->
+                <div
+                    id="h1Rsi"
+                    class="box-value"
+                >
+                    --
+                </div>
 
-<div class="card">
+            </div>
 
-<h2>PRO VERDICT</h2>
 
-<div id="proVerdict"
-     class="big-status">
-    WAIT
-</div>
+            <div class="box">
 
-</div>
+                <div class="box-label">
+                    M15 RSI
+                </div>
 
+                <div
+                    id="m15Rsi"
+                    class="box-value"
+                >
+                    --
+                </div>
 
-<!-- ================================= -->
-<!-- ELITE TRADE GATE -->
-<!-- ================================= -->
+            </div>
 
-<div class="card">
 
-<h2>ELITE TRADE GATE</h2>
+            <div class="box">
 
-<div id="eliteTradeGate"
-     class="gate">
-    STAY AWAY
-</div>
+                <div class="box-label">
+                    M5 RSI
+                </div>
 
-<div id="gateReason"
-     class="reason">
-    Waiting for complete market data...
-</div>
+                <div
+                    id="m5Rsi"
+                    class="box-value"
+                >
+                    --
+                </div>
 
-<div class="row">
-    <span>SESSION</span>
-    <strong id="gateSession">--</strong>
-</div>
+            </div>
 
-<div class="row">
-    <span>DIRECTION</span>
-    <strong id="gateDirection">--</strong>
-</div>
 
-<div class="row">
-    <span>ENTRY</span>
-    <strong id="gateEntry">--</strong>
-</div>
+        </div>
 
-<div class="row">
-    <span>STOP LOSS</span>
-    <strong id="gateSL">--</strong>
-</div>
 
-<div class="row">
-    <span>TP1</span>
-    <strong id="gateTP1">--</strong>
-</div>
+        <div class="trade-box">
 
-<div class="row">
-    <span>TP2</span>
-    <strong id="gateTP2">--</strong>
-</div>
+            <div class="trade-row">
 
-<div class="row">
-    <span>RR</span>
-    <strong id="gateRR">--</strong>
-</div>
+                <span>
+                    EMA STRUCTURE
+                </span>
 
-<div class="row">
-    <span>RISK</span>
-    <strong id="gateRisk">--</strong>
-</div>
+                <span id="emaStructure2">
+                    --
+                </span>
 
-</div>
+            </div>
 
+        </div>
 
-<!-- ================================= -->
-<!-- CHECKLIST -->
-<!-- ================================= -->
+    </div>
 
-<div class="card">
 
-<h2>EXECUTION CHECKLIST</h2>
+    <!-- =================================================
+         A+ SNIPER SETUP
+         ================================================= -->
 
-<div class="checklist">
+    <div class="card">
 
-<div id="checkSession">
-— Active London / New York session
-</div>
+        <h2>
+            A+ SNIPER SETUP
+        </h2>
 
-<div id="checkNews">
-— EUR/USD high-impact news clear
-</div>
 
-<div id="checkHtf">
-— H4 + H1 directional alignment
-</div>
+        <div
+            id="sniperStatusBig"
+            class="big-status"
+        >
+            WAIT
+        </div>
 
-<div id="checkM15">
-— M15 confirmation
-</div>
 
-<div id="checkM5">
-— M5 confirmation
-</div>
+        <div class="trade-box">
 
-<div id="checkEMA">
-— M5 EMA20 / EMA50 alignment
-</div>
 
-<div id="checkRSI">
-— M5 RSI confirmation
-</div>
+            <div class="trade-row">
 
-<div id="checkMomentum">
-— Completed M5 momentum candle
-</div>
+                <span>
+                    Status
+                </span>
 
-<div id="checkExtension">
-— No excessive EMA extension
-</div>
+                <span id="sniperStatus">
+                    WAIT
+                </span>
 
-<div id="checkRisk">
-— 3–15 pip structural risk
-</div>
+            </div>
 
-<div id="checkRR">
-— Minimum 1:2 Risk / Reward
-</div>
 
-<div id="checkSR">
-— Higher-timeframe S/R does not block TP2
-</div>
+            <div class="trade-row">
 
-</div>
+                <span>
+                    Direction
+                </span>
 
-</div>
+                <span id="sniperDirection">
+                    --
+                </span>
 
+            </div>
 
-<!-- ================================= -->
-<!-- NEWS -->
-<!-- ================================= -->
 
-<div class="card">
+            <div class="trade-row">
 
-<h2>EUR/USD NEWS FILTER</h2>
+                <span>
+                    Entry
+                </span>
 
-<div class="row">
-    <span>EUR NEWS</span>
-    <strong id="eurNews">Loading...</strong>
-</div>
+                <span id="sniperEntry">
+                    --
+                </span>
 
-<div class="row">
-    <span>USD NEWS</span>
-    <strong id="usdNews">Loading...</strong>
-</div>
+            </div>
 
-<div class="row">
-    <span>NEWS FILTER</span>
-    <strong id="newsFilter">--</strong>
-</div>
 
-<div class="row">
-    <span>NEXT EVENT</span>
-    <strong id="nextEvent">--</strong>
-</div>
+            <div class="trade-row">
 
-<div class="row">
-    <span>TRADING RISK</span>
-    <strong id="tradingRisk">--</strong>
-</div>
+                <span>
+                    Stop Loss
+                </span>
 
-</div>
+                <span id="sniperSL">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    TP1
+                </span>
+
+                <span id="sniperTP1">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    TP2
+                </span>
+
+                <span id="sniperTP2">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    TP3
+                </span>
+
+                <span id="sniperTP3">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Risk / Reward
+                </span>
+
+                <span id="sniperRR">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Validity
+                </span>
+
+                <span id="sniperValidity">
+                    NO A+ SETUP
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Trigger
+                </span>
+
+                <span id="sniperTrigger">
+                    WAIT
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Invalidation
+                </span>
+
+                <span id="sniperInvalidation">
+                    Alignment or momentum missing
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Setup Time
+                </span>
+
+                <span id="setupTime">
+                    --
+                </span>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         ELITE SCALP
+         ================================================= -->
+
+    <div class="card">
+
+        <h2>
+            ELITE SCALP
+        </h2>
+
+
+        <div
+            id="scalpVerdict"
+            class="big-status"
+        >
+            WAIT
+        </div>
+
+
+        <div class="trade-box">
+
+
+            <div class="trade-row">
+
+                <span>
+                    Direction
+                </span>
+
+                <span id="scalpDirection">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Entry
+                </span>
+
+                <span id="scalpEntry">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Stop Loss
+                </span>
+
+                <span id="scalpSL">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    TP1
+                </span>
+
+                <span id="scalpTP1">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    TP2
+                </span>
+
+                <span id="scalpTP2">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    RR
+                </span>
+
+                <span id="scalpRR">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Score
+                </span>
+
+                <span id="scalpScore">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Validity
+                </span>
+
+                <span id="scalpValidity">
+                    NO SETUP
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Trigger
+                </span>
+
+                <span id="scalpTrigger">
+                    WAIT
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Invalidation
+                </span>
+
+                <span id="scalpInvalidation">
+                    Confirmation missing
+                </span>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         PRO VERDICT
+         ================================================= -->
+
+    <div class="card">
+
+        <h2>
+            PRO VERDICT
+        </h2>
+
+
+        <div
+            id="proVerdict"
+            class="big-status"
+        >
+            WAIT
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         ELITE TRADE GATE
+         ================================================= -->
+
+    <div class="card">
+
+        <h2>
+            ELITE TRADE GATE
+        </h2>
+
+
+        <div
+            id="eliteTradeGate"
+            class="big-status"
+        >
+            STAY AWAY
+        </div>
+
+
+        <div class="trade-box">
+
+
+            <div class="trade-row">
+
+                <span>
+                    Gate Reason
+                </span>
+
+                <span id="gateReason">
+                    Required confirmation not complete
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Session
+                </span>
+
+                <span id="gateSession">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Direction
+                </span>
+
+                <span id="gateDirection">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Entry
+                </span>
+
+                <span id="gateEntry">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Stop Loss
+                </span>
+
+                <span id="gateSL">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    TP1
+                </span>
+
+                <span id="gateTP1">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    TP2
+                </span>
+
+                <span id="gateTP2">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    RR
+                </span>
+
+                <span id="gateRR">
+                    --
+                </span>
+
+            </div>
+
+
+            <div class="trade-row">
+
+                <span>
+                    Risk
+                </span>
+
+                <span id="gateRisk">
+                    NOT APPROVED
+                </span>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         EXECUTION CHECKLIST
+         ================================================= -->
+
+    <div class="card">
+
+        <h2>
+            EXECUTION CHECKLIST
+        </h2>
+
+
+        <div class="checklist">
+
+
+            <div
+                id="checkSession"
+                class="check"
+            >
+                — Active London / New York session
+            </div>
+
+
+            <div
+                id="checkNews"
+                class="check"
+            >
+                — EUR/USD high-impact news clear
+            </div>
+
+
+            <div
+                id="checkHtf"
+                class="check"
+            >
+                — H4 + H1 directional alignment
+            </div>
+
+
+            <div
+                id="checkM15"
+                class="check"
+            >
+                — M15 confirmation
+            </div>
+
+
+            <div
+                id="checkM5"
+                class="check"
+            >
+                — M5 confirmation
+            </div>
+
+
+            <div
+                id="checkEMA"
+                class="check"
+            >
+                — M5 EMA20 / EMA50 alignment
+            </div>
+
+
+            <div
+                id="checkRSI"
+                class="check"
+            >
+                — M5 RSI confirmation
+            </div>
+
+
+            <div
+                id="checkMomentum"
+                class="check"
+            >
+                — Completed M5 momentum candle
+            </div>
+
+
+            <div
+                id="checkExtension"
+                class="check"
+            >
+                — No excessive EMA extension
+            </div>
+
+
+            <div
+                id="checkRisk"
+                class="check"
+            >
+                ✓ 3–15 pip structural risk
+            </div>
+
+
+            <div
+                id="checkRR"
+                class="check"
+            >
+                ✓ Minimum 1:2 Risk / Reward
+            </div>
+
+
+            <div
+                id="checkSR"
+                class="check"
+            >
+                — Higher-timeframe S/R does not block TP2
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         LIVE NEWS FILTER
+         ================================================= -->
+
+    <div class="card">
+
+        <h2>
+            EUR/USD NEWS FILTER
+        </h2>
+
+
+        <div
+            id="eurNewsBox"
+            class="news-box"
+        >
+
+            <div class="news-title">
+                EUR
+            </div>
+
+            <div
+                id="eurNews"
+                class="news-value"
+            >
+                EUR NEWS — Loading...
+            </div>
+
+        </div>
+
+
+        <div
+            id="usdNewsBox"
+            class="news-box"
+        >
+
+            <div class="news-title">
+                USD
+            </div>
+
+            <div
+                id="usdNews"
+                class="news-value"
+            >
+                USD NEWS — Loading...
+            </div>
+
+        </div>
+
+
+        <div
+            id="newsFilterBox"
+            class="news-box"
+        >
+
+            <div class="news-title">
+                NEWS FILTER
+            </div>
+
+            <div
+                id="newsFilter"
+                class="news-value"
+            >
+                NEWS FILTER — Loading...
+            </div>
+
+        </div>
+
+
+        <div
+            id="nextEventBox"
+            class="news-box"
+        >
+
+            <div class="news-title">
+                NEXT EVENT
+            </div>
+
+            <div
+                id="nextEvent"
+                class="news-value"
+            >
+                NEXT EVENT — Loading...
+            </div>
+
+        </div>
+
+
+        <div
+            id="tradingRiskBox"
+            class="news-box"
+        >
+
+            <div class="news-title">
+                TRADING RISK
+            </div>
+
+            <div
+                id="tradingRisk"
+                class="news-value"
+            >
+                TRADING RISK — Loading...
+            </div>
+
+        </div>
+
+
+        <!-- Finance Calendar attribution -->
+
+        <div
+            style="
+                font-size:11px;
+                opacity:0.65;
+                margin-top:8px;
+                text-align:center;
+            "
+        >
+
+            Economic calendar data:
+
+            <a
+                href="https://www.financecalendar.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style="
+                    color:#aaa;
+                    text-decoration:none;
+                "
+            >
+                Finance Calendar
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         REFRESH BUTTON
+         ================================================= -->
+
+    <div class="card">
+
+        <button
+            onclick="manualRefresh()"
+        >
+            🔄 REFRESH MARKET DATA
+        </button>
+
+    </div>
 
 
-<!-- ================================= -->
-<!-- REFRESH -->
-<!-- ================================= -->
+    <!-- =================================================
+         FOOTER
+         ================================================= -->
 
-<button class="refresh"
-        onclick="manualRefresh()">
+    <div class="footer">
 
-🔄 REFRESH MARKET DATA
+        EUR/USD Sniper Dashboard
+        •
+        Market data refreshes automatically
 
-</button>
+        <br><br>
 
+        Economic calendar:
+        <a
+            href="https://www.financecalendar.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+        >
+            Finance Calendar
+        </a>
 
-<div class="footer">
+    </div>
 
-EUR/USD Sniper Dashboard •
-Data refreshes automatically
 
 </div>
 
 
-<!-- ================================= -->
-<!-- DASHBOARD SCRIPT -->
-<!-- ================================= -->
+<!-- =====================================================
+     DASHBOARD JAVASCRIPT
+     ===================================================== -->
 
 <script src="script.js"></script>
+
 
 </body>
 
