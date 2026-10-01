@@ -1,20 +1,8 @@
 /* =========================================================
    EUR/USD SNIPER DASHBOARD
-   API-SAFE VERSION
    H4 → H1 → M15 → M5
-
-   PRICE ACTION
-   MARKET STRUCTURE
-   SUPPORT / RESISTANCE
-   EMA
-   RSI
-   A+ SNIPER ENGINE
-   NEWS SAFETY GATE
-
-   IMPORTANT:
-   Twelve Data free limit can be very low.
-   This version fetches timeframes ONE AT A TIME
-   with a delay to avoid hitting the per-minute limit.
+   A+ PRICE ACTION ENGINE
+   FIXED S/R + API RATE LIMIT VERSION
    ========================================================= */
 
 
@@ -27,37 +15,32 @@ const API_KEY = "8908432b6c784bc49aad6ccf64845991";
 const SYMBOL = "EUR/USD";
 
 /*
-   Wait 5 minutes between complete dashboard updates.
-   This is deliberately conservative for the API limit.
+   15 minutes between automatic full updates.
 */
-const REFRESH_MS = 300000;
+const REFRESH_MS = 900000;
 
 /*
-   Delay between individual API requests.
+   Twelve Data free plans can have a per-minute limit.
+
+   We use ONE request per timeframe = 4 requests/update.
 */
-const REQUEST_DELAY_MS = 9000;
+const REQUEST_DELAY_MS = 1200;
 
 /*
-   News gate remains CLOSED until a real economic
-   calendar source is connected.
+   News is still closed until a real calendar
+   source is connected.
 */
 const NEWS_CLEAR = false;
 
 const MIN_SETUP_SCORE = 8;
 
-/*
-   Maximum allowed stop distance.
-*/
 const MAX_RISK = 0.0030;
 
-/*
-   Small buffer beyond structural level.
-*/
 const SL_BUFFER = 0.00015;
 
 
 /* =========================================================
-   GLOBAL MARKET DATA
+   GLOBAL DATA
    ========================================================= */
 
 let marketData = {
@@ -75,10 +58,6 @@ let marketData = {
 
 };
 
-
-/*
-   Prevent duplicate loading.
-*/
 window.__dashboardLoading = false;
 
 
@@ -116,9 +95,7 @@ function num(value) {
 
     const n = Number(value);
 
-    return Number.isFinite(n)
-        ? n
-        : null;
+    return Number.isFinite(n) ? n : null;
 }
 
 
@@ -153,7 +130,7 @@ function roundRSI(value) {
 
 
 /* =========================================================
-   WAIT / DELAY
+   DELAY
    ========================================================= */
 
 function sleep(ms) {
@@ -170,10 +147,7 @@ function sleep(ms) {
    FETCH CANDLES
    ========================================================= */
 
-async function getCandles(
-    interval,
-    outputsize = 100
-) {
+async function getCandles(interval, outputsize = 100) {
 
     const url =
         "https://api.twelvedata.com/time_series" +
@@ -188,10 +162,7 @@ async function getCandles(
         encodeURIComponent(API_KEY);
 
 
-    console.log(
-        "Requesting Twelve Data:",
-        interval
-    );
+    console.log("Requesting:", interval);
 
 
     const response = await fetch(url);
@@ -208,11 +179,7 @@ async function getCandles(
     const data = await response.json();
 
 
-    console.log(
-        interval,
-        "API:",
-        data
-    );
+    console.log(interval, "API response:", data);
 
 
     if (data.status === "error") {
@@ -237,35 +204,34 @@ async function getCandles(
     }
 
 
-    const candles =
-        data.values
+    const candles = data.values
 
-            .map(c => ({
+        .map(c => ({
 
-                datetime: c.datetime,
+            datetime: c.datetime,
 
-                open: num(c.open),
+            open: num(c.open),
 
-                high: num(c.high),
+            high: num(c.high),
 
-                low: num(c.low),
+            low: num(c.low),
 
-                close: num(c.close),
+            close: num(c.close),
 
-                volume: num(c.volume) || 0
+            volume: num(c.volume) || 0
 
-            }))
+        }))
 
-            .filter(c =>
+        .filter(c =>
 
-                c.open !== null &&
-                c.high !== null &&
-                c.low !== null &&
-                c.close !== null
+            c.open !== null &&
+            c.high !== null &&
+            c.low !== null &&
+            c.close !== null
 
-            )
+        )
 
-            .reverse();
+        .reverse();
 
 
     if (!candles.length) {
@@ -284,10 +250,7 @@ async function getCandles(
    EMA
    ========================================================= */
 
-function calculateEMA(
-    candles,
-    period
-) {
+function calculateEMA(candles, period) {
 
     if (
         !candles ||
@@ -298,16 +261,14 @@ function calculateEMA(
     }
 
 
-    const multiplier =
-        2 / (period + 1);
+    const multiplier = 2 / (period + 1);
 
 
     let ema =
         candles
             .slice(0, period)
             .reduce(
-                (sum, c) =>
-                    sum + c.close,
+                (sum, c) => sum + c.close,
                 0
             ) / period;
 
@@ -334,10 +295,7 @@ function calculateEMA(
    RSI
    ========================================================= */
 
-function calculateRSI(
-    candles,
-    period = 14
-) {
+function calculateRSI(candles, period = 14) {
 
     if (
         !candles ||
@@ -349,6 +307,7 @@ function calculateRSI(
 
 
     let gains = 0;
+
     let losses = 0;
 
 
@@ -521,13 +480,10 @@ function candleStrength(candle) {
 
 
 /* =========================================================
-   SWING HIGH / LOW
+   SWINGS
    ========================================================= */
 
-function isSwingHigh(
-    candles,
-    index
-) {
+function isSwingHigh(candles, index) {
 
     if (
         index < 2 ||
@@ -559,10 +515,7 @@ function isSwingHigh(
 }
 
 
-function isSwingLow(
-    candles,
-    index
-) {
+function isSwingLow(candles, index) {
 
     if (
         index < 2 ||
@@ -594,14 +547,7 @@ function isSwingLow(
 }
 
 
-/* =========================================================
-   SWING LEVELS
-   ========================================================= */
-
-function getSwingLevels(
-    candles,
-    lookback = 80
-) {
+function getSwingLevels(candles, lookback = 80) {
 
     if (
         !candles ||
@@ -622,6 +568,7 @@ function getSwingLevels(
 
 
     const swingHighs = [];
+
     const swingLows = [];
 
 
@@ -632,10 +579,7 @@ function getSwingLevels(
     ) {
 
         if (
-            isSwingHigh(
-                data,
-                i
-            )
+            isSwingHigh(data, i)
         ) {
 
             swingHighs.push(
@@ -645,10 +589,7 @@ function getSwingLevels(
 
 
         if (
-            isSwingLow(
-                data,
-                i
-            )
+            isSwingLow(data, i)
         ) {
 
             swingLows.push(
@@ -694,16 +635,12 @@ function clusterLevels(
     const clusters = [];
 
 
-    for (
-        const level of sorted
-    ) {
+    for (const level of sorted) {
 
         let found = null;
 
 
-        for (
-            const cluster of clusters
-        ) {
+        for (const cluster of clusters) {
 
             if (
                 Math.abs(
@@ -712,9 +649,7 @@ function clusterLevels(
                 ) <= tolerance
             ) {
 
-                cluster.values.push(
-                    level
-                );
+                cluster.values.push(level);
 
 
                 cluster.mean =
@@ -760,12 +695,10 @@ function clusterLevels(
 
 
 /* =========================================================
-   SUPPORT / RESISTANCE
+   IMPROVED SUPPORT / RESISTANCE
    ========================================================= */
 
-function calculateSupportResistance(
-    candles
-) {
+function calculateSupportResistance(candles) {
 
     if (
         !candles ||
@@ -790,26 +723,38 @@ function calculateSupportResistance(
         ].close;
 
 
+    /*
+       Use a wider lookback so we have
+       more opportunities to find R2/S2.
+    */
+
     const swings =
         getSwingLevels(
             candles,
-            80
+            Math.min(100, candles.length)
         );
 
 
-    const resistanceLevels =
+    let resistanceLevels =
         clusterLevels(
-            swings.swingHighs
+            swings.swingHighs,
+            0.00020
         );
 
 
-    const supportLevels =
+    let supportLevels =
         clusterLevels(
-            swings.swingLows
+            swings.swingLows,
+            0.00020
         );
 
 
-    const resistances =
+    /*
+       Keep only levels on the correct
+       side of current price.
+    */
+
+    let resistances =
         resistanceLevels
 
             .filter(
@@ -823,7 +768,7 @@ function calculateSupportResistance(
             );
 
 
-    const supports =
+    let supports =
         supportLevels
 
             .filter(
@@ -835,6 +780,110 @@ function calculateSupportResistance(
                 (a, b) =>
                     b - a
             );
+
+
+    /*
+       FALLBACK:
+       If swing detection does not give
+       enough levels, use recent highs/lows.
+
+       This is what fixes the missing R2/S2.
+    */
+
+    if (resistances.length < 2) {
+
+        const recentHighs =
+            candles
+                .slice(-60)
+                .map(c => c.high)
+                .filter(
+                    h => h > current
+                )
+                .sort(
+                    (a, b) => a - b
+                );
+
+
+        for (const high of recentHighs) {
+
+            if (
+                !resistances.some(
+                    r =>
+                        Math.abs(r - high) <
+                        0.00010
+                )
+            ) {
+
+                resistances.push(high);
+            }
+
+
+            if (resistances.length >= 2) {
+
+                break;
+            }
+        }
+    }
+
+
+    if (supports.length < 2) {
+
+        const recentLows =
+            candles
+                .slice(-60)
+                .map(c => c.low)
+                .filter(
+                    l => l < current
+                )
+                .sort(
+                    (a, b) => b - a
+                );
+
+
+        for (const low of recentLows) {
+
+            if (
+                !supports.some(
+                    s =>
+                        Math.abs(s - low) <
+                        0.00010
+                )
+            ) {
+
+                supports.push(low);
+            }
+
+
+            if (supports.length >= 2) {
+
+                break;
+            }
+        }
+    }
+
+
+    /*
+       Final cleanup.
+    */
+
+    resistances =
+        [...new Set(
+            resistances.map(
+                x => Number(x.toFixed(5))
+            )
+        )]
+        .filter(r => r > current)
+        .sort((a, b) => a - b);
+
+
+    supports =
+        [...new Set(
+            supports.map(
+                x => Number(x.toFixed(5))
+            )
+        )]
+        .filter(s => s < current)
+        .sort((a, b) => b - a);
 
 
     return {
@@ -859,9 +908,7 @@ function calculateSupportResistance(
    MARKET STRUCTURE
    ========================================================= */
 
-function calculateStructure(
-    candles
-) {
+function calculateStructure(candles) {
 
     if (
         !candles ||
@@ -897,27 +944,19 @@ function calculateStructure(
 
 
     const lastHigh =
-        highs[
-            highs.length - 1
-        ];
+        highs[highs.length - 1];
 
 
     const previousHigh =
-        highs[
-            highs.length - 2
-        ];
+        highs[highs.length - 2];
 
 
     const lastLow =
-        lows[
-            lows.length - 1
-        ];
+        lows[lows.length - 1];
 
 
     const previousLow =
-        lows[
-            lows.length - 2
-        ];
+        lows[lows.length - 2];
 
 
     if (
@@ -946,9 +985,7 @@ function calculateStructure(
    EMA ANALYSIS
    ========================================================= */
 
-function getEMAAnalysis(
-    candles
-) {
+function getEMAAnalysis(candles) {
 
     const ema20 =
         calculateEMA(
@@ -978,19 +1015,19 @@ function getEMAAnalysis(
 
         return {
 
-            text:
-                "CALCULATING",
+            text: "CALCULATING",
 
             ema20,
+
             ema50,
+
             ema200
 
         };
     }
 
 
-    let text =
-        "MIXED";
+    let text = "MIXED";
 
 
     if (
@@ -1001,8 +1038,7 @@ function getEMAAnalysis(
         )
     ) {
 
-        text =
-            "BULLISH";
+        text = "BULLISH";
     }
 
 
@@ -1014,8 +1050,7 @@ function getEMAAnalysis(
         )
     ) {
 
-        text =
-            "BEARISH";
+        text = "BEARISH";
     }
 
 
@@ -1037,9 +1072,7 @@ function getEMAAnalysis(
    TIMEFRAME ANALYSIS
    ========================================================= */
 
-function analyzeTimeframe(
-    candles
-) {
+function analyzeTimeframe(candles) {
 
     if (
         !candles ||
@@ -1056,11 +1089,9 @@ function analyzeTimeframe(
             candle:
                 "NEUTRAL",
 
-            candleStrength:
-                0,
+            candleStrength: 0,
 
-            rsi:
-                null,
+            rsi: null,
 
             ema: {
 
@@ -1161,12 +1192,10 @@ function buildAnalysis() {
 
 
 /* =========================================================
-   M5 BUY CONFIRMATION
+   M5 CANDLE CONFIRMATION
    ========================================================= */
 
-function bullishCandleConfirmation(
-    candles
-) {
+function bullishCandleConfirmation(candles) {
 
     if (
         !candles ||
@@ -1178,15 +1207,11 @@ function bullishCandleConfirmation(
 
 
     const last =
-        candles[
-            candles.length - 1
-        ];
+        candles[candles.length - 1];
 
 
     const previous =
-        candles[
-            candles.length - 2
-        ];
+        candles[candles.length - 2];
 
 
     return (
@@ -1197,20 +1222,13 @@ function bullishCandleConfirmation(
         last.close >
         previous.high &&
 
-        candleStrength(last) >=
-        0.45
+        candleStrength(last) >= 0.45
 
     );
 }
 
 
-/* =========================================================
-   M5 SELL CONFIRMATION
-   ========================================================= */
-
-function bearishCandleConfirmation(
-    candles
-) {
+function bearishCandleConfirmation(candles) {
 
     if (
         !candles ||
@@ -1222,15 +1240,11 @@ function bearishCandleConfirmation(
 
 
     const last =
-        candles[
-            candles.length - 1
-        ];
+        candles[candles.length - 1];
 
 
     const previous =
-        candles[
-            candles.length - 2
-        ];
+        candles[candles.length - 2];
 
 
     return (
@@ -1241,8 +1255,7 @@ function bearishCandleConfirmation(
         last.close <
         previous.low &&
 
-        candleStrength(last) >=
-        0.45
+        candleStrength(last) >= 0.45
 
     );
 }
@@ -1258,26 +1271,22 @@ function calculateBuyScore(a) {
 
 
     if (
-        a.H4.structure ===
-        "BULLISH"
+        a.H4.structure === "BULLISH"
     ) score += 2;
 
 
     if (
-        a.H1.structure ===
-        "BULLISH"
+        a.H1.structure === "BULLISH"
     ) score += 2;
 
 
     if (
-        a.M15.structure ===
-        "BULLISH"
+        a.M15.structure === "BULLISH"
     ) score += 2;
 
 
     if (
-        a.M5.structure ===
-        "BULLISH"
+        a.M5.structure === "BULLISH"
     ) score += 1;
 
 
@@ -1296,8 +1305,7 @@ function calculateBuyScore(a) {
 
 
     if (
-        a.M15.ema.text ===
-        "BULLISH"
+        a.M15.ema.text === "BULLISH"
     ) score += 1;
 
 
@@ -1315,26 +1323,22 @@ function calculateSellScore(a) {
 
 
     if (
-        a.H4.structure ===
-        "BEARISH"
+        a.H4.structure === "BEARISH"
     ) score += 2;
 
 
     if (
-        a.H1.structure ===
-        "BEARISH"
+        a.H1.structure === "BEARISH"
     ) score += 2;
 
 
     if (
-        a.M15.structure ===
-        "BEARISH"
+        a.M15.structure === "BEARISH"
     ) score += 2;
 
 
     if (
-        a.M5.structure ===
-        "BEARISH"
+        a.M5.structure === "BEARISH"
     ) score += 1;
 
 
@@ -1353,8 +1357,7 @@ function calculateSellScore(a) {
 
 
     if (
-        a.M15.ema.text ===
-        "BEARISH"
+        a.M15.ema.text === "BEARISH"
     ) score += 1;
 
 
@@ -1366,10 +1369,7 @@ function calculateSellScore(a) {
    BUY SETUP
    ========================================================= */
 
-function calculateBuySetup(
-    a,
-    price
-) {
+function calculateBuySetup(a, price) {
 
     const score =
         calculateBuyScore(a);
@@ -1429,7 +1429,7 @@ function calculateBuySetup(
         const lows =
             getSwingLevels(
                 marketData.m5,
-                30
+                40
             ).swingLows;
 
 
@@ -1460,8 +1460,7 @@ function calculateBuySetup(
 
     return {
 
-        direction:
-            "BUY",
+        direction: "BUY",
 
         entry,
 
@@ -1478,8 +1477,7 @@ function calculateBuySetup(
 
         score,
 
-        rr:
-            "1:3",
+        rr: "1:3",
 
         validity:
             "Valid while H4/H1 bullish structure remains intact",
@@ -1501,10 +1499,7 @@ function calculateBuySetup(
    SELL SETUP
    ========================================================= */
 
-function calculateSellSetup(
-    a,
-    price
-) {
+function calculateSellSetup(a, price) {
 
     const score =
         calculateSellScore(a);
@@ -1564,7 +1559,7 @@ function calculateSellSetup(
         const highs =
             getSwingLevels(
                 marketData.m5,
-                30
+                40
             ).swingHighs;
 
 
@@ -1595,8 +1590,7 @@ function calculateSellSetup(
 
     return {
 
-        direction:
-            "SELL",
+        direction: "SELL",
 
         entry,
 
@@ -1613,8 +1607,7 @@ function calculateSellSetup(
 
         score,
 
-        rr:
-            "1:3",
+        rr: "1:3",
 
         validity:
             "Valid while H4/H1 bearish structure remains intact",
@@ -1642,15 +1635,11 @@ function calculateSniperSetup(
 ) {
 
     const buyScore =
-        calculateBuyScore(
-            analysis
-        );
+        calculateBuyScore(analysis);
 
 
     const sellScore =
-        calculateSellScore(
-            analysis
-        );
+        calculateSellScore(analysis);
 
 
     const bestScore =
@@ -1661,15 +1650,27 @@ function calculateSniperSetup(
 
 
     /*
-       NEWS SAFETY GATE
+       First safety gate:
+       H4 and H1 must agree.
     */
 
-    if (!NEWS_CLEAR) {
+    const h4 =
+        analysis.H4.structure;
+
+
+    const h1 =
+        analysis.H1.structure;
+
+
+    if (
+        h4 !== h1 ||
+        h4 === "RANGE" ||
+        h1 === "RANGE"
+    ) {
 
         return {
 
-            direction:
-                "WAIT",
+            direction: "WAIT",
 
             entry: null,
             sl: null,
@@ -1679,8 +1680,44 @@ function calculateSniperSetup(
 
             rr: null,
 
-            score:
-                bestScore,
+            score: bestScore,
+
+            validity:
+                "H4/H1 conflict detected. News filter is also closed.",
+
+            trigger:
+                "H4/H1 direction → M15 confirmation → M5 trigger → news clearance",
+
+            invalidation:
+                "No trade while NEWS FILTER is CLOSED",
+
+            verdict:
+                "WAIT — NEWS FILTER NOT CONFIRMED"
+
+        };
+    }
+
+
+    /*
+       Second safety gate:
+       News must be confirmed.
+    */
+
+    if (!NEWS_CLEAR) {
+
+        return {
+
+            direction: "WAIT",
+
+            entry: null,
+            sl: null,
+            tp1: null,
+            tp2: null,
+            tp3: null,
+
+            rr: null,
+
+            score: bestScore,
 
             validity:
                 "Trading blocked until real economic news is checked",
@@ -1712,10 +1749,7 @@ function calculateSniperSetup(
         );
 
 
-    if (
-        buy &&
-        sell
-    ) {
+    if (buy && sell) {
 
         return buy.score >= sell.score
             ? buy
@@ -1723,15 +1757,21 @@ function calculateSniperSetup(
     }
 
 
-    if (buy) return buy;
+    if (buy) {
 
-    if (sell) return sell;
+        return buy;
+    }
+
+
+    if (sell) {
+
+        return sell;
+    }
 
 
     return {
 
-        direction:
-            "WAIT",
+        direction: "WAIT",
 
         entry: null,
         sl: null,
@@ -1741,8 +1781,7 @@ function calculateSniperSetup(
 
         rr: null,
 
-        score:
-            bestScore,
+        score: bestScore,
 
         validity:
             "No valid A+ setup currently",
@@ -1761,15 +1800,15 @@ function calculateSniperSetup(
 
 
 /* =========================================================
-   UPDATE PRICE
+   PRICE UI
    ========================================================= */
 
 function updatePriceUI(price) {
 
     setTextAny(
         [
-            "price",
             "livePrice",
+            "price",
             "currentPrice",
             "live-price"
         ],
@@ -1779,8 +1818,8 @@ function updatePriceUI(price) {
 
     setTextAny(
         [
-            "priceStatus",
             "trend",
+            "priceStatus",
             "status",
             "marketStatus"
         ],
@@ -1790,7 +1829,7 @@ function updatePriceUI(price) {
 
 
 /* =========================================================
-   UPDATE STRUCTURE
+   STRUCTURE UI
    ========================================================= */
 
 function updateStructureUI(a) {
@@ -1821,10 +1860,14 @@ function updateStructureUI(a) {
 
 
 /* =========================================================
-   UPDATE SUPPORT / RESISTANCE
+   SUPPORT / RESISTANCE UI
    ========================================================= */
 
 function updateSRUI(a) {
+
+    /*
+       H1 remains the main dashboard S/R timeframe.
+    */
 
     const sr =
         a.H1.sr;
@@ -1864,7 +1907,7 @@ function updateSRUI(a) {
 
 
 /* =========================================================
-   UPDATE INDICATORS
+   INDICATORS UI
    ========================================================= */
 
 function updateIndicatorsUI(a) {
@@ -1901,10 +1944,6 @@ function updateIndicatorsUI(a) {
     );
 
 
-    /*
-       H1 EMA is used as the main dashboard EMA state.
-    */
-
     setTextAny(
         "emaStructure",
         a.H1.ema.text
@@ -1913,7 +1952,7 @@ function updateIndicatorsUI(a) {
 
 
 /* =========================================================
-   UPDATE NEWS
+   NEWS UI
    ========================================================= */
 
 function updateNewsUI() {
@@ -1950,15 +1989,15 @@ function updateNewsUI() {
 
 
 /* =========================================================
-   UPDATE SNIPER
+   SNIPER UI
    ========================================================= */
 
 function updateSniperUI(setup) {
 
     setTextAny(
         [
-            "sniperStatus",
-            "sniperVerdict"
+            "sniperVerdict",
+            "sniperStatus"
         ],
         setup.verdict
     );
@@ -2034,21 +2073,18 @@ function updateSniperUI(setup) {
     );
 
 
-    /*
-       FIX:
-       Your HTML contains setupScore.
-       The previous script was not updating it.
-    */
-
     setTextAny(
         "setupScore",
-        `${setup.score}/10`
+        setup.score !== null &&
+        setup.score !== undefined
+            ? `${setup.score} / 11`
+            : "—"
     );
 }
 
 
 /* =========================================================
-   UPDATE PRO VERDICT
+   PRO VERDICT
    ========================================================= */
 
 function updateProVerdictUI(setup) {
@@ -2060,8 +2096,7 @@ function updateProVerdictUI(setup) {
 
 
     if (
-        setup.direction ===
-        "BUY"
+        setup.direction === "BUY"
     ) {
 
         setTextAny(
@@ -2069,12 +2104,12 @@ function updateProVerdictUI(setup) {
             "BUY: H4 + H1 bullish structure, M15 confirmation and M5 bullish trigger."
         );
 
+        return;
     }
 
 
-    else if (
-        setup.direction ===
-        "SELL"
+    if (
+        setup.direction === "SELL"
     ) {
 
         setTextAny(
@@ -2082,33 +2117,48 @@ function updateProVerdictUI(setup) {
             "SELL: H4 + H1 bearish structure, M15 confirmation and M5 bearish trigger."
         );
 
+        return;
     }
 
 
-    else if (
-        !NEWS_CLEAR
+    if (
+        marketData.h4.length &&
+        marketData.h1.length
     ) {
 
-        setTextAny(
-            "proExplanation",
-            "Technical analysis is running, but trading remains blocked until the economic news filter is connected."
-        );
+        const h4 =
+            calculateStructure(
+                marketData.h4
+            );
 
+
+        const h1 =
+            calculateStructure(
+                marketData.h1
+            );
+
+
+        if (h4 !== h1) {
+
+            setTextAny(
+                "proExplanation",
+                `STAY OUT — H4 is ${h4} while H1 is ${h1}. Higher-timeframe conflict.`
+            );
+
+            return;
+        }
     }
 
 
-    else {
-
-        setTextAny(
-            "proExplanation",
-            "No A+ multi-timeframe alignment. Stay out and wait."
-        );
-    }
+    setTextAny(
+        "proExplanation",
+        "Technical analysis is running, but trading remains blocked until the economic news filter is connected."
+    );
 }
 
 
 /* =========================================================
-   UPDATE TIMESTAMP
+   TIMESTAMP
    ========================================================= */
 
 function updateTimestamp() {
@@ -2121,6 +2171,7 @@ function updateTimestamp() {
         now.toLocaleString(
             "en-IN",
             {
+
                 timeZone:
                     "Asia/Kolkata",
 
@@ -2144,6 +2195,7 @@ function updateTimestamp() {
 
                 hour12:
                     false
+
             }
         );
 
@@ -2179,25 +2231,20 @@ function showDashboardError(error) {
 
     setTextAny(
         [
-            "priceStatus",
             "trend",
+            "priceStatus",
             "status",
             "marketStatus"
         ],
-        "API LIMIT / MARKET DATA ERROR"
+        `ERROR: ${message}`
     );
 
 
     setTextAny(
         [
-            "price"
+            "sniperVerdict",
+            "sniperStatus"
         ],
-        "ERROR"
-    );
-
-
-    setTextAny(
-        "sniperStatus",
         "WAIT — MARKET DATA ERROR"
     );
 
@@ -2212,14 +2259,6 @@ function showDashboardError(error) {
         "proExplanation",
         message
     );
-
-
-    /*
-       Do NOT erase the previous successful
-       technical values. They remain visible
-       so the user knows what the last valid
-       analysis was.
-    */
 }
 
 
@@ -2233,22 +2272,17 @@ async function loadMarketData() {
         window.__dashboardLoading
     ) {
 
-        console.log(
-            "Dashboard already loading."
-        );
-
         return;
     }
 
 
-    window.__dashboardLoading =
-        true;
+    window.__dashboardLoading = true;
 
 
     setTextAny(
         [
-            "priceStatus",
             "trend",
+            "priceStatus",
             "status",
             "marketStatus"
         ],
@@ -2259,18 +2293,16 @@ async function loadMarketData() {
     try {
 
         console.log(
-            "===================================="
-        );
-
-
-        console.log(
             "EUR/USD DASHBOARD UPDATE START"
         );
 
 
         /*
-           IMPORTANT:
-           Requests are intentionally sequential.
+           Four requests.
+
+           We deliberately space them out to
+           reduce the chance of hitting the
+           Twelve Data per-minute limit.
         */
 
         const h4 =
@@ -2316,24 +2348,13 @@ async function loadMarketData() {
             );
 
 
-        /*
-           Save successful data.
-        */
+        marketData.h4 = h4;
 
-        marketData.h4 =
-            h4;
+        marketData.h1 = h1;
 
+        marketData.m15 = m15;
 
-        marketData.h1 =
-            h1;
-
-
-        marketData.m15 =
-            m15;
-
-
-        marketData.m5 =
-            m5;
+        marketData.m5 = m5;
 
 
         /*
@@ -2355,14 +2376,10 @@ async function loadMarketData() {
 
 
         console.log(
-            "LIVE PRICE:",
+            "PRICE:",
             marketData.price
         );
 
-
-        /*
-           Build analysis.
-        */
 
         const analysis =
             buildAnalysis();
@@ -2374,10 +2391,6 @@ async function loadMarketData() {
         );
 
 
-        /*
-           Build sniper setup.
-        */
-
         const setup =
             calculateSniperSetup(
                 analysis,
@@ -2386,14 +2399,10 @@ async function loadMarketData() {
 
 
         console.log(
-            "SNIPER SETUP:",
+            "SETUP:",
             setup
         );
 
-
-        /*
-           Update dashboard.
-        */
 
         updatePriceUI(
             marketData.price
@@ -2433,8 +2442,8 @@ async function loadMarketData() {
 
         setTextAny(
             [
-                "priceStatus",
                 "trend",
+                "priceStatus",
                 "status",
                 "marketStatus"
             ],
@@ -2444,11 +2453,6 @@ async function loadMarketData() {
 
         console.log(
             "EUR/USD DASHBOARD UPDATE COMPLETE"
-        );
-
-
-        console.log(
-            "===================================="
         );
 
     }
@@ -2476,154 +2480,6 @@ async function loadMarketData() {
 
 
 /* =========================================================
-   MANUAL REFRESH
-   ========================================================= */
-
-function manualRefresh() {
-
-    console.log(
-        "Manual refresh requested."
-    );
-
-
-    loadMarketData();
-}
-
-
-/*
-   Make the function available to the HTML
-   if you later add:
-   onclick="manualRefresh()"
-*/
-
-window.manualRefresh =
-    manualRefresh;
-
-
-/* =========================================================
-   CHART TIMEFRAME
-   ========================================================= */
-
-function changeChart(interval) {
-
-    const iframe =
-        document.getElementById(
-            "tradingChart"
-        );
-
-
-    if (!iframe) {
-
-        return;
-    }
-
-
-    const buttons = {
-
-        "5":
-            "btn5",
-
-        "15":
-            "btn15",
-
-        "60":
-            "btn60",
-
-        "4H":
-            "btn240"
-
-    };
-
-
-    /*
-       Remove active state.
-    */
-
-    Object.values(buttons)
-        .forEach(id => {
-
-            const button =
-                document.getElementById(id);
-
-            if (button) {
-
-                button.classList.remove(
-                    "active"
-                );
-            }
-
-        });
-
-
-    /*
-       Add active state.
-    */
-
-    const activeButton =
-        document.getElementById(
-            buttons[interval]
-        );
-
-
-    if (activeButton) {
-
-        activeButton.classList.add(
-            "active"
-        );
-    }
-
-
-    /*
-       TradingView interval.
-    */
-
-    let tvInterval =
-        interval;
-
-
-    if (
-        interval === "4H"
-    ) {
-
-        tvInterval = "240";
-    }
-
-
-    const url =
-        "https://www.tradingview.com/widgetembed/" +
-        "?frameElementId=tradingview_chart" +
-        "&symbol=FX%3AEURUSD" +
-        "&interval=" +
-        tvInterval +
-        "&hidesidetoolbar=1" +
-        "&hidetoptoolbar=0" +
-        "&symboledit=1" +
-        "&saveimage=0" +
-        "&toolbarbg=f1f3f6" +
-        "&theme=dark" +
-        "&style=1" +
-        "&timezone=Asia%2FKolkata" +
-        "&withdateranges=1" +
-        "&hideideas=1" +
-        "&studies=%5B%5D" +
-        "&overrides=%7B%7D" +
-        "&locale=en";
-
-
-    iframe.src =
-        url;
-}
-
-
-/*
-   Make chart function globally available.
-*/
-
-window.changeChart =
-    changeChart;
-
-
-/* =========================================================
    START DASHBOARD
    ========================================================= */
 
@@ -2634,16 +2490,8 @@ function startDashboard() {
     );
 
 
-    /*
-       First load.
-    */
-
     loadMarketData();
 
-
-    /*
-       Automatic refresh every 5 minutes.
-    */
 
     setInterval(
         loadMarketData,
@@ -2657,8 +2505,7 @@ function startDashboard() {
    ========================================================= */
 
 if (
-    document.readyState ===
-    "loading"
+    document.readyState === "loading"
 ) {
 
     document.addEventListener(
