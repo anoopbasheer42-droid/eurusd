@@ -2,6 +2,7 @@
    EUR/USD SNIPER DASHBOARD
    FULL VERSION
    MARKET DATA + TECHNICALS + LIVE NEWS FILTER
+   + INDEPENDENT ELITE TRADE GATE
    ========================================================= */
 
 
@@ -17,11 +18,10 @@ const TIME_SERIES_URL =
     "https://api.twelvedata.com/time_series";
 
 
-/*
-   Finance Calendar
-   No API key required.
-   Browser CORS supported.
-*/
+/* =========================================================
+   NEWS API
+   ========================================================= */
+
 const NEWS_API_URL =
     "https://www.financecalendar.com/wp-json/fc/v1/calendar";
 
@@ -34,15 +34,6 @@ const REFRESH_INTERVAL =
     5 * 60 * 1000;
 
 
-/*
-   Technical-data cache.
-
-   H4  = 30 minutes
-   H1  = 15 minutes
-   M15 = 10 minutes
-   M5  = 5 minutes
-*/
-
 const DATA_TTL = {
 
     h4: 30 * 60 * 1000,
@@ -52,17 +43,9 @@ const DATA_TTL = {
     m15: 10 * 60 * 1000,
 
     m5: 5 * 60 * 1000
+
 };
 
-
-/*
-   News cache.
-
-   News does not need to be requested
-   every 5 minutes.
-
-   Five minutes is enough.
-*/
 
 const NEWS_TTL =
     5 * 60 * 1000;
@@ -86,6 +69,7 @@ let marketData = {
     m15: null,
 
     m5: null
+
 };
 
 
@@ -98,6 +82,7 @@ let marketDataUpdated = {
     m15: 0,
 
     m5: 0
+
 };
 
 
@@ -106,9 +91,9 @@ let newsData = [];
 let newsUpdated = 0;
 
 
-/*
-   News state used by the trade gate.
-*/
+/* =========================================================
+   NEWS STATE
+   ========================================================= */
 
 let newsState = {
 
@@ -125,6 +110,7 @@ let newsState = {
     currency: null,
 
     event: null
+
 };
 
 
@@ -136,6 +122,19 @@ let sniperSetupTime = null;
 
 let sniperSetupActive = false;
 
+
+/* =========================================================
+   TRADE GATE SETUP CLOCK
+   ========================================================= */
+
+let tradeGateSetupTime = null;
+
+let tradeGateSetupActive = false;
+
+
+/* =========================================================
+   IST TIME
+   ========================================================= */
 
 function getISTTime() {
 
@@ -163,8 +162,13 @@ function getISTTime() {
         }
 
     ) + " IST";
+
 }
 
+
+/* =========================================================
+   SNIPER SETUP TIME
+   ========================================================= */
 
 function startSniperSetup() {
 
@@ -174,6 +178,7 @@ function startSniperSetup() {
             getISTTime();
 
         sniperSetupActive = true;
+
     }
 
 
@@ -181,6 +186,7 @@ function startSniperSetup() {
         "setupTime",
         sniperSetupTime
     );
+
 }
 
 
@@ -197,6 +203,57 @@ function invalidateSniperSetup() {
         "setupTime",
         "--"
     );
+
+}
+
+
+/* =========================================================
+   TRADE GATE SETUP TIME
+   ========================================================= */
+
+function startTradeGateSetup() {
+
+    /*
+       IMPORTANT:
+
+       The timestamp is created ONLY when the
+       Trade Gate becomes valid.
+
+       It does NOT reset on every refresh.
+    */
+
+    if (!tradeGateSetupActive) {
+
+        tradeGateSetupTime =
+            getISTTime();
+
+        tradeGateSetupActive = true;
+
+    }
+
+
+    setText(
+        "gateSetupTime",
+        tradeGateSetupTime
+    );
+
+}
+
+
+function invalidateTradeGateSetup() {
+
+    tradeGateSetupActive =
+        false;
+
+    tradeGateSetupTime =
+        null;
+
+
+    setText(
+        "gateSetupTime",
+        "--"
+    );
+
 }
 
 
@@ -217,7 +274,9 @@ function setText(
 
         el.textContent =
             value;
+
     }
+
 }
 
 
@@ -230,12 +289,14 @@ function num(value) {
     return Number.isFinite(n)
         ? n
         : null;
+
 }
 
 
 function pipSize() {
 
     return 0.0001;
+
 }
 
 
@@ -252,11 +313,13 @@ function formatPrice(value) {
     ) {
 
         return "--";
+
     }
 
 
     return Number(value)
         .toFixed(5);
+
 }
 
 
@@ -276,11 +339,13 @@ function formatNumber(
     ) {
 
         return "--";
+
     }
 
 
     return Number(value)
         .toFixed(decimals);
+
 }
 
 
@@ -299,6 +364,7 @@ function delay(ms) {
             )
 
     );
+
 }
 
 
@@ -342,6 +408,7 @@ async function getCandles(
         throw new Error(
             "Network error connecting to Twelve Data"
         );
+
     }
 
 
@@ -354,12 +421,14 @@ async function getCandles(
             throw new Error(
                 "Twelve Data rate limit or API quota reached"
             );
+
         }
 
 
         throw new Error(
             `Twelve Data HTTP ${response.status}`
         );
+
     }
 
 
@@ -378,6 +447,7 @@ async function getCandles(
         throw new Error(
             "Invalid response from Twelve Data"
         );
+
     }
 
 
@@ -404,6 +474,7 @@ async function getCandles(
             throw new Error(
                 "Twelve Data rate limit or quota reached"
             );
+
         }
 
 
@@ -411,6 +482,7 @@ async function getCandles(
             data.message ||
             "Twelve Data API error"
         );
+
     }
 
 
@@ -427,6 +499,7 @@ async function getCandles(
         throw new Error(
             "No candle data returned by Twelve Data"
         );
+
     }
 
 
@@ -476,6 +549,7 @@ async function getCandles(
                 )
 
         );
+
 }
 
 
@@ -529,6 +603,7 @@ async function getCachedCandles(
     ) {
 
         return existing;
+
     }
 
 
@@ -551,6 +626,7 @@ async function getCachedCandles(
 
 
     return candles;
+
 }
 
 
@@ -575,6 +651,7 @@ function calculateEMA(
     ) {
 
         return null;
+
     }
 
 
@@ -625,10 +702,12 @@ function calculateEMA(
             multiplier +
 
             ema;
+
     }
 
 
     return ema;
+
 }
 
 
@@ -653,6 +732,7 @@ function calculateRSI(
     ) {
 
         return null;
+
     }
 
 
@@ -690,7 +770,9 @@ function calculateRSI(
 
             losses +=
                 Math.abs(change);
+
         }
+
     }
 
 
@@ -755,6 +837,7 @@ function calculateRSI(
                 loss
 
             ) / period;
+
     }
 
 
@@ -763,6 +846,7 @@ function calculateRSI(
     ) {
 
         return 100;
+
     }
 
 
@@ -775,6 +859,7 @@ function calculateRSI(
             100 /
             (1 + rs)
         );
+
 }
 
 
@@ -795,6 +880,7 @@ function getTrend(
     ) {
 
         return "--";
+
     }
 
 
@@ -821,6 +907,7 @@ function getTrend(
     ) {
 
         return "--";
+
     }
 
 
@@ -829,6 +916,7 @@ function getTrend(
     ) {
 
         return "BULLISH";
+
     }
 
 
@@ -837,10 +925,12 @@ function getTrend(
     ) {
 
         return "BEARISH";
+
     }
 
 
     return "NEUTRAL";
+
 }
 
 
@@ -861,6 +951,7 @@ function getStructure(
     ) {
 
         return "--";
+
     }
 
 
@@ -913,6 +1004,7 @@ function getStructure(
     ) {
 
         return "BULLISH";
+
     }
 
 
@@ -925,10 +1017,12 @@ function getStructure(
     ) {
 
         return "BEARISH";
+
     }
 
 
     return "RANGE";
+
 }
 
 
@@ -959,6 +1053,7 @@ function calculateSR(
             s2: null
 
         };
+
     }
 
 
@@ -1007,6 +1102,7 @@ function calculateSR(
             sortedLows[0]
 
     };
+
 }
 
 
@@ -1027,16 +1123,9 @@ function getMomentum(
     ) {
 
         return "WAIT";
+
     }
 
-
-    /*
-       IMPORTANT:
-       candles[length - 1]
-       may be the currently forming candle.
-
-       We therefore use the previous completed candle.
-    */
 
     const c1 =
         candles[
@@ -1067,6 +1156,7 @@ function getMomentum(
     ) {
 
         return "WAIT";
+
     }
 
 
@@ -1085,6 +1175,7 @@ function getMomentum(
     ) {
 
         return "BEARISH";
+
     }
 
 
@@ -1099,10 +1190,12 @@ function getMomentum(
     ) {
 
         return "BULLISH";
+
     }
 
 
     return "WAIT";
+
 }
 
 
@@ -1123,6 +1216,7 @@ function getEMADirection(
     ) {
 
         return "WAIT";
+
     }
 
 
@@ -1149,6 +1243,7 @@ function getEMADirection(
     ) {
 
         return "WAIT";
+
     }
 
 
@@ -1157,6 +1252,7 @@ function getEMADirection(
     ) {
 
         return "BULLISH";
+
     }
 
 
@@ -1165,68 +1261,330 @@ function getEMADirection(
     ) {
 
         return "BEARISH";
+
     }
 
 
     return "WAIT";
+
 }
 
 
 /* =========================================================
-   SESSION
+   SESSION ENGINE
+   =========================================================
+
+   IMPORTANT:
+
+   Session is a preference/risk modifier.
+
+   OFF SESSION DOES NOT BLOCK THE TRADE.
+
+   London / New York times are calculated using
+   their actual IANA time zones so DST is handled.
    ========================================================= */
+
+function getZonedHourMinute(
+    timeZone
+) {
+
+    const parts =
+        new Intl.DateTimeFormat(
+
+            "en-GB",
+
+            {
+
+                timeZone,
+
+                hour:
+                    "2-digit",
+
+                minute:
+                    "2-digit",
+
+                hour12:
+                    false
+
+            }
+
+        ).formatToParts(
+            new Date()
+        );
+
+
+    let hour = 0;
+
+    let minute = 0;
+
+
+    for (
+        const part of parts
+    ) {
+
+        if (
+            part.type === "hour"
+        ) {
+
+            hour =
+                Number(part.value);
+
+        }
+
+
+        if (
+            part.type === "minute"
+        ) {
+
+            minute =
+                Number(part.value);
+
+        }
+
+    }
+
+
+    return {
+
+        hour,
+
+        minute
+
+    };
+
+}
+
+
+function minutesFromMidnight(
+    time
+) {
+
+    return (
+        time.hour * 60 +
+        time.minute
+    );
+
+}
+
 
 function getSession() {
 
-    const hour =
+    const london =
+        getZonedHourMinute(
+            "Europe/London"
+        );
 
-        Number(
 
-            new Intl.DateTimeFormat(
+    const newYork =
+        getZonedHourMinute(
+            "America/New_York"
+        );
 
-                "en-IN",
 
-                {
+    const londonMinutes =
+        minutesFromMidnight(
+            london
+        );
 
-                    timeZone:
-                        "Asia/Kolkata",
 
-                    hour:
-                        "2-digit",
-
-                    hour12:
-                        false
-
-                }
-
-            ).format(
-                new Date()
-            )
-
+    const nyMinutes =
+        minutesFromMidnight(
+            newYork
         );
 
 
     /*
-       London / New York overlap
-       and active London/New York period.
+       London session:
+       08:00 - 17:00 London
+    */
 
-       This is a dashboard gate, not a claim
-       that the FX market itself is closed.
+    const londonOpen =
+        8 * 60;
+
+
+    const londonClose =
+        17 * 60;
+
+
+    /*
+       London closing:
+       final 60 minutes
+    */
+
+    const londonClosingStart =
+        16 * 60;
+
+
+    /*
+       New York / US session:
+       08:00 - 17:00 New York
+    */
+
+    const usOpen =
+        8 * 60;
+
+
+    const usClose =
+        17 * 60;
+
+
+    /*
+       US closing:
+       final 60 minutes
+    */
+
+    const usClosingStart =
+        16 * 60;
+
+
+    const londonActive =
+
+        londonMinutes >= londonOpen &&
+
+        londonMinutes < londonClose;
+
+
+    const usActive =
+
+        nyMinutes >= usOpen &&
+
+        nyMinutes < usClose;
+
+
+    const londonClosing =
+
+        londonMinutes >= londonClosingStart &&
+
+        londonMinutes < londonClose;
+
+
+    const usClosing =
+
+        nyMinutes >= usClosingStart &&
+
+        nyMinutes < usClose;
+
+
+    /*
+       Overlap has priority.
     */
 
     if (
-
-        hour >= 12 &&
-
-        hour < 22
-
+        londonActive &&
+        usActive
     ) {
 
-        return "ACTIVE";
+        return "LONDON / US OVERLAP";
+
     }
 
 
-    return "OFF";
+    if (
+        londonClosing
+    ) {
+
+        return "LONDON CLOSING";
+
+    }
+
+
+    if (
+        usClosing
+    ) {
+
+        return "US CLOSING";
+
+    }
+
+
+    if (
+        londonActive
+    ) {
+
+        return "LONDON";
+
+    }
+
+
+    if (
+        usActive
+    ) {
+
+        return "US";
+
+    }
+
+
+    return "OFF SESSION";
+
+}
+
+
+/* =========================================================
+   SESSION PREFERENCE
+   ========================================================= */
+
+function getSessionQuality(
+    session
+) {
+
+    switch (session) {
+
+        case "LONDON / US OVERLAP":
+
+            return {
+
+                score: 3,
+
+                label:
+                    "PREFERRED"
+
+            };
+
+
+        case "LONDON":
+
+        case "US":
+
+            return {
+
+                score: 2,
+
+                label:
+                    "FAVOURABLE"
+
+            };
+
+
+        case "LONDON CLOSING":
+
+        case "US CLOSING":
+
+            return {
+
+                score: 1,
+
+                label:
+                    "CAUTION"
+
+            };
+
+
+        case "OFF SESSION":
+
+        default:
+
+            return {
+
+                score: 0,
+
+                label:
+                    "LOWER PREFERENCE"
+
+            };
+
+    }
+
 }
 
 
@@ -1247,12 +1605,14 @@ function getLatestCompletedCandle(
     ) {
 
         return null;
+
     }
 
 
     return candles[
         candles.length - 2
     ];
+
 }
 
 
@@ -1269,28 +1629,18 @@ function getMarketPrice(
     if (!candle) {
 
         return null;
+
     }
 
 
     return candle.close;
+
 }
 
 
 /* =========================================================
-   =========================================================
    NEWS SYSTEM
-   =========================================================
    ========================================================= */
-
-
-/*
-   Currency keyword detection.
-
-   Finance Calendar covers global releases,
-   so we identify EUR/USD events from
-   the event title/category.
-*/
-
 
 const EUR_NEWS_KEYWORDS = [
 
@@ -1437,6 +1787,7 @@ function normaliseNewsText(
         .join(" ")
 
         .toLowerCase();
+
 }
 
 
@@ -1451,6 +1802,7 @@ function containsKeyword(
                 keyword
             )
     );
+
 }
 
 
@@ -1475,6 +1827,7 @@ function detectNewsCurrency(
     ) {
 
         return "EUR";
+
     }
 
 
@@ -1483,6 +1836,7 @@ function detectNewsCurrency(
     ) {
 
         return "USD";
+
     }
 
 
@@ -1506,6 +1860,7 @@ function detectNewsCurrency(
     ) {
 
         return "EUR";
+
     }
 
 
@@ -1515,13 +1870,9 @@ function detectNewsCurrency(
     ) {
 
         return "USD";
+
     }
 
-
-    /*
-       If an event contains both,
-       it matters to EUR/USD.
-    */
 
     if (
         hasEUR &&
@@ -1529,15 +1880,17 @@ function detectNewsCurrency(
     ) {
 
         return "BOTH";
+
     }
 
 
     return null;
+
 }
 
 
 /* =========================================================
-   NEWS DATE HELPERS
+   NEWS DATE
    ========================================================= */
 
 function getEventDate(
@@ -1562,6 +1915,7 @@ function getEventDate(
     if (!raw) {
 
         return null;
+
     }
 
 
@@ -1576,10 +1930,12 @@ function getEventDate(
     ) {
 
         return null;
+
     }
 
 
     return date;
+
 }
 
 
@@ -1600,6 +1956,7 @@ function getEventName(
         "Economic event"
 
     );
+
 }
 
 
@@ -1631,6 +1988,7 @@ function isHighImpact(
     ) {
 
         return true;
+
     }
 
 
@@ -1639,10 +1997,12 @@ function isHighImpact(
     ) {
 
         return true;
+
     }
 
 
     return false;
+
 }
 
 
@@ -1657,6 +2017,7 @@ async function loadNews(
     if (newsLoading) {
 
         return;
+
     }
 
 
@@ -1679,6 +2040,7 @@ async function loadNews(
         );
 
         return;
+
     }
 
 
@@ -1717,13 +2079,6 @@ async function loadNews(
 
 
     try {
-
-        /*
-           Ask for high-impact events.
-
-           The API documentation supports
-           from/to and impact=high.
-        */
 
         const today =
             new Date();
@@ -1769,11 +2124,16 @@ async function loadNews(
 
         const response =
             await fetch(
+
                 url,
+
                 {
+
                     cache:
                         "no-store"
+
                 }
+
             );
 
 
@@ -1784,23 +2144,13 @@ async function loadNews(
             throw new Error(
                 `News API HTTP ${response.status}`
             );
+
         }
 
 
         const data =
             await response.json();
 
-
-        /*
-           Finance Calendar returns:
-
-           {
-              events: [...]
-           }
-
-           We also support a direct array
-           or data array for robustness.
-        */
 
         let events = [];
 
@@ -1813,6 +2163,7 @@ async function loadNews(
 
             events =
                 data.events;
+
         }
 
         else if (
@@ -1823,6 +2174,7 @@ async function loadNews(
 
             events =
                 data.data;
+
         }
 
         else if (
@@ -1831,14 +2183,9 @@ async function loadNews(
 
             events =
                 data;
+
         }
 
-
-        /*
-           Keep only valid upcoming/present
-           high-impact events relevant to
-           EUR/USD.
-        */
 
         newsData =
             events
@@ -1920,7 +2267,6 @@ async function loadNews(
             newsData
         );
 
-
     }
 
     catch (error) {
@@ -1978,7 +2324,9 @@ async function loadNews(
 
         newsLoading =
             false;
+
     }
+
 }
 
 
@@ -1994,16 +2342,6 @@ function processNews(
         new Date();
 
 
-    /*
-       Only consider events that are:
-
-       - upcoming
-       - or very recently released
-
-       We use 15 minutes after release
-       as a post-news protection window.
-    */
-
     const relevantEvents =
         events.filter(
             event => {
@@ -2011,6 +2349,7 @@ function processNews(
                 if (!event.date) {
 
                     return false;
+
                 }
 
 
@@ -2021,6 +2360,7 @@ function processNews(
 
                 return age <=
                     15 * 60 * 1000;
+
             }
         );
 
@@ -2052,10 +2392,6 @@ function processNews(
         );
 
 
-    /*
-       Next relevant event.
-    */
-
     const nextEvent =
         upcomingEvents.length > 0
 
@@ -2072,14 +2408,6 @@ function processNews(
         relevantEvents.length > 0;
 
 
-    /*
-       Pre-news blocking window.
-
-       30 minutes before
-       and 15 minutes after
-       a high-impact release.
-    */
-
     let blockingEvent =
         null;
 
@@ -2091,6 +2419,7 @@ function processNews(
         if (!event.date) {
 
             continue;
+
         }
 
 
@@ -2115,6 +2444,7 @@ function processNews(
                 event;
 
             break;
+
         }
 
 
@@ -2130,7 +2460,9 @@ function processNews(
                 event;
 
             break;
+
         }
+
     }
 
 
@@ -2147,6 +2479,7 @@ function processNews(
         newsState.currency =
             blockingEvent.currency;
 
+
         newsState.minutesToEvent =
             (
 
@@ -2162,14 +2495,12 @@ function processNews(
         newsState.currency =
             null;
 
+
         newsState.minutesToEvent =
             null;
+
     }
 
-
-    /*
-       EUR display.
-    */
 
     if (
         eurEvents.length > 0
@@ -2190,12 +2521,9 @@ function processNews(
             "eurNews",
             "CLEAR"
         );
+
     }
 
-
-    /*
-       USD display.
-    */
 
     if (
         usdEvents.length > 0
@@ -2216,12 +2544,9 @@ function processNews(
             "usdNews",
             "CLEAR"
         );
+
     }
 
-
-    /*
-       News filter.
-    */
 
     if (
         newsState.blocked
@@ -2251,12 +2576,9 @@ function processNews(
             "newsFilter",
             "CLEAR"
         );
+
     }
 
-
-    /*
-       Next event.
-    */
 
     if (
         nextEvent
@@ -2277,12 +2599,9 @@ function processNews(
             "nextEvent",
             "NO UPCOMING EVENT"
         );
+
     }
 
-
-    /*
-       Risk.
-    */
 
     if (
         newsState.blocked
@@ -2326,6 +2645,7 @@ function processNews(
                 "tradingRisk",
                 "NORMAL"
             );
+
         }
 
     }
@@ -2336,14 +2656,12 @@ function processNews(
             "tradingRisk",
             "NORMAL"
         );
+
     }
 
 
-    /*
-       Update checklist.
-    */
-
     setText(
+
         "checkNews",
 
         newsState.available
@@ -2359,12 +2677,14 @@ function processNews(
             )
 
             : "— EUR/USD high-impact news clear"
+
     );
+
 }
 
 
 /* =========================================================
-   NEWS DISPLAY FORMAT
+   NEWS DISPLAY
    ========================================================= */
 
 function formatNewsList(
@@ -2377,6 +2697,7 @@ function formatNewsList(
     ) {
 
         return "CLEAR";
+
     }
 
 
@@ -2426,6 +2747,7 @@ function formatNewsList(
         first.name
 
     );
+
 }
 
 
@@ -2443,6 +2765,7 @@ function formatNextEvent(
     ) {
 
         return "--";
+
     }
 
 
@@ -2482,6 +2805,7 @@ function formatNextEvent(
             eventName
 
         );
+
     }
 
 
@@ -2500,6 +2824,7 @@ function formatNextEvent(
         eventName
 
     );
+
 }
 
 
@@ -2516,6 +2841,7 @@ function formatMinutes(
     ) {
 
         return "NOW";
+
     }
 
 
@@ -2529,6 +2855,7 @@ function formatMinutes(
             ) +
             " min"
         );
+
     }
 
 
@@ -2552,6 +2879,7 @@ function formatMinutes(
             hours +
             "h"
         );
+
     }
 
 
@@ -2566,6 +2894,7 @@ function formatMinutes(
         "m"
 
     );
+
 }
 
 
@@ -2579,6 +2908,7 @@ function isNewsBlocked() {
         newsState.available &&
         newsState.blocked
     );
+
 }
 
 
@@ -2628,13 +2958,6 @@ function evaluateSniper(
         calculateRSI(m5);
 
 
-    /*
-       NEWS HAS PRIORITY.
-
-       If the news system says BLOCK,
-       do not produce an A+ setup.
-    */
-
     if (
         isNewsBlocked()
     ) {
@@ -2681,6 +3004,7 @@ function evaluateSniper(
                 0
 
         };
+
     }
 
 
@@ -2710,6 +3034,7 @@ function evaluateSniper(
 
         direction =
             "SELL";
+
     }
 
 
@@ -2735,6 +3060,7 @@ function evaluateSniper(
 
         direction =
             "BUY";
+
     }
 
 
@@ -2782,6 +3108,7 @@ function evaluateSniper(
                 0
 
         };
+
     }
 
 
@@ -2861,6 +3188,7 @@ function evaluateSniper(
             riskPips *
             4 *
             pipSize();
+
     }
 
 
@@ -2913,6 +3241,7 @@ function evaluateSniper(
         score
 
     };
+
 }
 
 
@@ -3028,6 +3357,7 @@ function displaySniper(
             : "--"
 
     );
+
 }
 
 
@@ -3046,10 +3376,6 @@ function evaluateScalp(
     m5
 
 ) {
-
-    /*
-       News block.
-    */
 
     if (
         isNewsBlocked()
@@ -3091,6 +3417,7 @@ function evaluateScalp(
                 "Wait for news window to clear"
 
         };
+
     }
 
 
@@ -3167,6 +3494,7 @@ function evaluateScalp(
                 "M5 bullish close"
 
         };
+
     }
 
 
@@ -3223,6 +3551,7 @@ function evaluateScalp(
                 "M5 bearish close"
 
         };
+
     }
 
 
@@ -3262,6 +3591,7 @@ function evaluateScalp(
             "Confirmation missing"
 
     };
+
 }
 
 
@@ -3345,11 +3675,32 @@ function displayScalp(
         "scalpInvalidation",
         setup.invalidation
     );
+
 }
 
 
 /* =========================================================
    ELITE TRADE GATE
+   =========================================================
+
+   THIS ENGINE IS INDEPENDENT.
+
+   Session is NOT a hard blocker.
+
+   OFF SESSION:
+       Allowed if technical setup is strong.
+
+   Closing sessions:
+       Allowed but treated with greater caution.
+
+   News:
+       Hard blocker.
+
+   Technical alignment:
+       Required.
+
+   Setup Time:
+       Created only when the Gate first becomes valid.
    ========================================================= */
 
 function evaluateTradeGate(
@@ -3370,13 +3721,32 @@ function evaluateTradeGate(
         getSession();
 
 
+    const sessionQuality =
+        getSessionQuality(
+            session
+        );
+
+
     /*
-       NEWS GATE FIRST.
+       Always display current session.
+    */
+
+    setText(
+        "gateSession",
+        session
+    );
+
+
+    /*
+       NEWS IS THE ONLY HARD EXTERNAL BLOCK.
     */
 
     if (
         isNewsBlocked()
     ) {
+
+        invalidateTradeGateSetup();
+
 
         setText(
             "eliteTradeGate",
@@ -3387,12 +3757,6 @@ function evaluateTradeGate(
         setText(
             "gateReason",
             "HIGH-IMPACT NEWS — trading blocked"
-        );
-
-
-        setText(
-            "gateSession",
-            session
         );
 
 
@@ -3439,8 +3803,13 @@ function evaluateTradeGate(
 
 
         return;
+
     }
 
+
+    /* =====================================================
+       TECHNICAL CONTEXT
+       ===================================================== */
 
     const h4Trend =
         getTrend(h4);
@@ -3470,6 +3839,14 @@ function evaluateTradeGate(
         calculateRSI(m5);
 
 
+    const sr =
+        calculateSR(h1);
+
+
+    /* =====================================================
+       DETERMINE DIRECTION
+       ===================================================== */
+
     let direction =
         "--";
 
@@ -3478,90 +3855,40 @@ function evaluateTradeGate(
 
         h4Trend === "BEARISH" &&
 
-        h1Trend === "BEARISH" &&
-
-        m15Structure === "BEARISH" &&
-
-        m5Structure === "BEARISH"
+        h1Trend === "BEARISH"
 
     ) {
 
         direction =
             "SELL";
+
     }
 
 
-    if (
+    else if (
 
         h4Trend === "BULLISH" &&
 
-        h1Trend === "BULLISH" &&
-
-        m15Structure === "BULLISH" &&
-
-        m5Structure === "BULLISH"
+        h1Trend === "BULLISH"
 
     ) {
 
         direction =
             "BUY";
+
     }
 
 
-    const allAligned =
-        direction !== "--";
+    /*
+       H4/H1 conflict.
+    */
 
+    if (
+        direction === "--"
+    ) {
 
-    const momentumOK =
+        invalidateTradeGateSetup();
 
-        direction === "SELL"
-
-            ? momentum === "BEARISH"
-
-            : direction === "BUY"
-
-                ? momentum === "BULLISH"
-
-                : false;
-
-
-    const rsiOK =
-
-        direction === "SELL"
-
-            ? rsi !== null &&
-              rsi < 50
-
-            : direction === "BUY"
-
-                ? rsi !== null &&
-                  rsi >= 50
-
-                : false;
-
-
-    const gateOK =
-
-        session === "ACTIVE" &&
-
-        allAligned &&
-
-        ema === (
-
-            direction === "SELL"
-
-                ? "BEARISH"
-
-                : "BULLISH"
-
-        ) &&
-
-        rsiOK &&
-
-        momentumOK;
-
-
-    if (!gateOK) {
 
         setText(
             "eliteTradeGate",
@@ -3571,13 +3898,83 @@ function evaluateTradeGate(
 
         setText(
             "gateReason",
-            "Required confirmation not complete"
+            "H4 / H1 directional conflict"
         );
 
 
         setText(
-            "gateSession",
-            session
+            "gateDirection",
+            "--"
+        );
+
+
+        setText(
+            "gateEntry",
+            "--"
+        );
+
+
+        setText(
+            "gateSL",
+            "--"
+        );
+
+
+        setText(
+            "gateTP1",
+            "--"
+        );
+
+
+        setText(
+            "gateTP2",
+            "--"
+        );
+
+
+        setText(
+            "gateRR",
+            "--"
+        );
+
+
+        setText(
+            "gateRisk",
+            "NOT APPROVED"
+        );
+
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       M15 STRUCTURE
+       ===================================================== */
+
+    if (
+        m15Structure !== direction
+    ) {
+
+        invalidateTradeGateSetup();
+
+
+        setText(
+            "eliteTradeGate",
+            "STAY AWAY"
+        );
+
+
+        setText(
+            "gateReason",
+
+            m15Structure === "RANGE"
+
+                ? "M15 RANGE — structure not confirmed"
+
+                : "M15 structure does not confirm direction"
+
         );
 
 
@@ -3619,29 +4016,705 @@ function evaluateTradeGate(
 
         setText(
             "gateRisk",
-            "--"
+            "NOT APPROVED"
         );
 
 
         return;
+
     }
+
+
+    /* =====================================================
+       M5 STRUCTURE
+       ===================================================== */
+
+    if (
+        m5Structure !== direction
+    ) {
+
+        invalidateTradeGateSetup();
+
+
+        setText(
+            "eliteTradeGate",
+            "STAY AWAY"
+        );
+
+
+        setText(
+            "gateReason",
+            "M5 structure confirmation missing"
+        );
+
+
+        setText(
+            "gateDirection",
+            direction
+        );
+
+
+        setText(
+            "gateEntry",
+            "--"
+        );
+
+
+        setText(
+            "gateSL",
+            "--"
+        );
+
+
+        setText(
+            "gateTP1",
+            "--"
+        );
+
+
+        setText(
+            "gateTP2",
+            "--"
+        );
+
+
+        setText(
+            "gateRR",
+            "--"
+        );
+
+
+        setText(
+            "gateRisk",
+            "NOT APPROVED"
+        );
+
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       EMA CONFIRMATION
+       ===================================================== */
+
+    const expectedEMA =
+        direction === "SELL"
+            ? "BEARISH"
+            : "BULLISH";
+
+
+    if (
+        ema !== expectedEMA
+    ) {
+
+        invalidateTradeGateSetup();
+
+
+        setText(
+            "eliteTradeGate",
+            "STAY AWAY"
+        );
+
+
+        setText(
+            "gateReason",
+            "M5 EMA20 / EMA50 alignment missing"
+        );
+
+
+        setText(
+            "gateDirection",
+            direction
+        );
+
+
+        setText(
+            "gateEntry",
+            "--"
+        );
+
+
+        setText(
+            "gateSL",
+            "--"
+        );
+
+
+        setText(
+            "gateTP1",
+            "--"
+        );
+
+
+        setText(
+            "gateTP2",
+            "--"
+        );
+
+
+        setText(
+            "gateRR",
+            "--"
+        );
+
+
+        setText(
+            "gateRisk",
+            "NOT APPROVED"
+        );
+
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       RSI CONFIRMATION
+       ===================================================== */
+
+    const rsiOK =
+
+        direction === "SELL"
+
+            ? rsi !== null &&
+              rsi < 50
+
+            : rsi !== null &&
+              rsi >= 50;
+
+
+    if (!rsiOK) {
+
+        invalidateTradeGateSetup();
+
+
+        setText(
+            "eliteTradeGate",
+            "STAY AWAY"
+        );
+
+
+        setText(
+            "gateReason",
+            "M5 RSI confirmation missing"
+        );
+
+
+        setText(
+            "gateDirection",
+            direction
+        );
+
+
+        setText(
+            "gateEntry",
+            "--"
+        );
+
+
+        setText(
+            "gateSL",
+            "--"
+        );
+
+
+        setText(
+            "gateTP1",
+            "--"
+        );
+
+
+        setText(
+            "gateTP2",
+            "--"
+        );
+
+
+        setText(
+            "gateRR",
+            "--"
+        );
+
+
+        setText(
+            "gateRisk",
+            "NOT APPROVED"
+        );
+
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       COMPLETED M5 MOMENTUM
+       ===================================================== */
+
+    const momentumOK =
+
+        direction === "SELL"
+
+            ? momentum === "BEARISH"
+
+            : momentum === "BULLISH";
+
+
+    if (!momentumOK) {
+
+        invalidateTradeGateSetup();
+
+
+        setText(
+            "eliteTradeGate",
+            "STAY AWAY"
+        );
+
+
+        setText(
+            "gateReason",
+            "Completed M5 momentum candle missing"
+        );
+
+
+        setText(
+            "gateDirection",
+            direction
+        );
+
+
+        setText(
+            "gateEntry",
+            "--"
+        );
+
+
+        setText(
+            "gateSL",
+            "--"
+        );
+
+
+        setText(
+            "gateTP1",
+            "--"
+        );
+
+
+        setText(
+            "gateTP2",
+            "--"
+        );
+
+
+        setText(
+            "gateRR",
+            "--"
+        );
+
+
+        setText(
+            "gateRisk",
+            "NOT APPROVED"
+        );
+
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       STRUCTURAL ENTRY / SL
+       =====================================================
+
+       For now we use the recent M5 structure to
+       establish the protective stop.
+
+       This is more logical than blindly using
+       the old fixed 10-pip Gate stop.
+    */
+
+    const recentM5 =
+        m5.slice(-6);
+
+
+    const recentHigh =
+        Math.max(
+            ...recentM5.map(
+                c => c.high
+            )
+        );
+
+
+    const recentLow =
+        Math.min(
+            ...recentM5.map(
+                c => c.low
+            )
+        );
+
+
+    const entry =
+        price;
+
+
+    let sl;
+
+
+    if (
+        direction === "SELL"
+    ) {
+
+        sl =
+            recentHigh +
+            0.0001;
+
+    }
+
+    else {
+
+        sl =
+            recentLow -
+            0.0001;
+
+    }
+
+
+    /* =====================================================
+       STRUCTURAL RISK
+       ===================================================== */
+
+    const riskDistance =
+        Math.abs(
+            entry - sl
+        );
+
+
+    const riskPips =
+        riskDistance /
+        pipSize();
+
+
+    /*
+       Minimum 3 pips.
+       Maximum 15 pips.
+    */
+
+    if (
+
+        riskPips < 3 ||
+
+        riskPips > 15
+
+    ) {
+
+        invalidateTradeGateSetup();
+
+
+        setText(
+            "eliteTradeGate",
+            "STAY AWAY"
+        );
+
+
+        setText(
+            "gateReason",
+
+            riskPips < 3
+
+                ? "Structural stop too tight"
+
+                : "Structural risk exceeds 15 pips"
+
+        );
+
+
+        setText(
+            "gateDirection",
+            direction
+        );
+
+
+        setText(
+            "gateEntry",
+            formatPrice(entry)
+        );
+
+
+        setText(
+            "gateSL",
+            formatPrice(sl)
+        );
+
+
+        setText(
+            "gateTP1",
+            "--"
+        );
+
+
+        setText(
+            "gateTP2",
+            "--"
+        );
+
+
+        setText(
+            "gateRR",
+            "--"
+        );
+
+
+        setText(
+            "gateRisk",
+            formatNumber(
+                riskPips,
+                1
+            ) + " pips"
+        );
+
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       TARGET CALCULATION
+       ===================================================== */
+
+    const tp1Distance =
+        riskDistance * 2;
+
+
+    const tp2Distance =
+        riskDistance * 3;
+
+
+    const tp1 =
+
+        direction === "SELL"
+
+            ? entry - tp1Distance
+
+            : entry + tp1Distance;
+
+
+    const tp2 =
+
+        direction === "SELL"
+
+            ? entry - tp2Distance
+
+            : entry + tp2Distance;
+
+
+    /* =====================================================
+       S/R CLEARANCE
+       =====================================================
+
+       For SELL:
+
+       TP2 should remain above important support.
+
+       For BUY:
+
+       TP2 should remain below important resistance.
+    */
+
+    let srBlocked =
+        false;
+
+
+    if (
+        direction === "SELL"
+    ) {
+
+        if (
+
+            sr.s1 !== null &&
+
+            tp2 <= sr.s1
+
+        ) {
+
+            srBlocked =
+                true;
+
+        }
+
+    }
+
+    else {
+
+        if (
+
+            sr.r1 !== null &&
+
+            tp2 >= sr.r1
+
+        ) {
+
+            srBlocked =
+                true;
+
+        }
+
+    }
+
+
+    if (srBlocked) {
+
+        invalidateTradeGateSetup();
+
+
+        setText(
+            "eliteTradeGate",
+            "STAY AWAY"
+        );
+
+
+        setText(
+            "gateReason",
+            "Higher-timeframe S/R blocks TP2"
+        );
+
+
+        setText(
+            "gateDirection",
+            direction
+        );
+
+
+        setText(
+            "gateEntry",
+            formatPrice(entry)
+        );
+
+
+        setText(
+            "gateSL",
+            formatPrice(sl)
+        );
+
+
+        setText(
+            "gateTP1",
+            formatPrice(tp1)
+        );
+
+
+        setText(
+            "gateTP2",
+            formatPrice(tp2)
+        );
+
+
+        setText(
+            "gateRR",
+            "1:2 / 1:3 blocked"
+        );
+
+
+        setText(
+            "gateRisk",
+            formatNumber(
+                riskPips,
+                1
+            ) + " pips"
+        );
+
+
+        return;
+
+    }
+
+
+    /* =====================================================
+       SESSION PREFERENCE
+       =====================================================
+
+       IMPORTANT:
+
+       Session does NOT block.
+
+       OFF SESSION is allowed.
+
+       Closing sessions are allowed but marked
+       as caution.
+    */
+
+    let gateStatus =
+        "A+ TRADE READY";
+
+
+    let gateReason =
+        "All primary confirmations aligned";
+
+
+    if (
+        sessionQuality.score === 3
+    ) {
+
+        gateReason =
+            "Full confirmation — preferred overlap session";
+
+    }
+
+    else if (
+        sessionQuality.score === 2
+    ) {
+
+        gateReason =
+            "Full confirmation — favourable session";
+
+    }
+
+    else if (
+        sessionQuality.score === 1
+    ) {
+
+        gateStatus =
+            "TRADE READY — CAUTION";
+
+
+        gateReason =
+            "Technical confirmation complete — session closing";
+
+    }
+
+    else {
+
+        gateStatus =
+            "TRADE READY — OFF SESSION";
+
+
+        gateReason =
+            "Technical confirmation complete — lower session preference";
+
+    }
+
+
+    /* =====================================================
+       TRADE GATE APPROVED
+       ===================================================== */
+
+    startTradeGateSetup();
 
 
     setText(
         "eliteTradeGate",
-        "A+ TRADE READY"
+        gateStatus
     );
 
 
     setText(
         "gateReason",
-        "All primary confirmations aligned"
-    );
-
-
-    setText(
-        "gateSession",
-        session
+        gateReason
     );
 
 
@@ -3653,35 +4726,8 @@ function evaluateTradeGate(
 
     setText(
         "gateEntry",
-        formatPrice(price)
+        formatPrice(entry)
     );
-
-
-    const sl =
-
-        direction === "SELL"
-
-            ? price + 0.001
-
-            : price - 0.001;
-
-
-    const tp1 =
-
-        direction === "SELL"
-
-            ? price - 0.002
-
-            : price + 0.002;
-
-
-    const tp2 =
-
-        direction === "SELL"
-
-            ? price - 0.003
-
-            : price + 0.003;
 
 
     setText(
@@ -3710,8 +4756,24 @@ function evaluateTradeGate(
 
     setText(
         "gateRisk",
-        "10 pips"
+
+        formatNumber(
+            riskPips,
+            1
+        ) +
+
+        " pips — APPROVED"
+
     );
+
+
+    setText(
+        "gateSetupTime",
+
+        tradeGateSetupTime
+
+    );
+
 }
 
 
@@ -3782,11 +4844,11 @@ function displayChecklist(
 
         "checkSession",
 
-        getSession() === "ACTIVE"
+        getSession() !== "OFF SESSION"
 
-            ? "✓ Active London / New York session"
+            ? "✓ " + getSession()
 
-            : "— Active London / New York session"
+            : "✓ OFF SESSION — candle quality required"
 
     );
 
@@ -3918,6 +4980,7 @@ function displayChecklist(
         "— Higher-timeframe S/R does not block TP2"
 
     );
+
 }
 
 
@@ -4101,6 +5164,7 @@ function displayTechnicalData(
             m5RSI
         )
     );
+
 }
 
 
@@ -4122,6 +5186,9 @@ function displayDataError(
         "dataStatus",
         "● DATA LOAD FAILED"
     );
+
+
+    invalidateTradeGateSetup();
 
 
     setText(
@@ -4185,6 +5252,7 @@ function displayDataError(
 
 
     invalidateSniperSetup();
+
 }
 
 
@@ -4199,6 +5267,7 @@ async function loadMarketData() {
     ) {
 
         return;
+
     }
 
 
@@ -4213,10 +5282,6 @@ async function loadMarketData() {
 
 
     try {
-
-        /*
-           H4
-        */
 
         const h4 =
             await getCachedCandles(
@@ -4233,10 +5298,6 @@ async function loadMarketData() {
         await delay(500);
 
 
-        /*
-           H1
-        */
-
         const h1 =
             await getCachedCandles(
 
@@ -4252,10 +5313,6 @@ async function loadMarketData() {
         await delay(500);
 
 
-        /*
-           M15
-        */
-
         const m15 =
             await getCachedCandles(
 
@@ -4270,10 +5327,6 @@ async function loadMarketData() {
 
         await delay(500);
 
-
-        /*
-           M5
-        */
 
         const m5 =
             await getCachedCandles(
@@ -4302,6 +5355,7 @@ async function loadMarketData() {
             throw new Error(
                 "Incomplete market data"
             );
+
         }
 
 
@@ -4316,12 +5370,9 @@ async function loadMarketData() {
             throw new Error(
                 "Unable to determine EUR/USD market price"
             );
+
         }
 
-
-        /*
-           Technical display.
-        */
 
         displayTechnicalData(
 
@@ -4338,19 +5389,8 @@ async function loadMarketData() {
         );
 
 
-        /*
-           News.
-
-           Load before evaluating
-           the trade gate.
-        */
-
         await loadNews();
 
-
-        /*
-           Sniper.
-        */
 
         const sniper =
             evaluateSniper(
@@ -4373,10 +5413,6 @@ async function loadMarketData() {
         );
 
 
-        /*
-           Scalp.
-        */
-
         const scalp =
             evaluateScalp(
 
@@ -4397,7 +5433,9 @@ async function loadMarketData() {
 
 
         /*
-           Elite Trade Gate.
+           IMPORTANT:
+
+           Trade Gate is evaluated separately.
         */
 
         evaluateTradeGate(
@@ -4415,10 +5453,6 @@ async function loadMarketData() {
         );
 
 
-        /*
-           Checklist.
-        */
-
         displayChecklist(
 
             h4,
@@ -4431,10 +5465,6 @@ async function loadMarketData() {
 
         );
 
-
-        /*
-           Pro Verdict.
-        */
 
         setText(
 
@@ -4449,10 +5479,6 @@ async function loadMarketData() {
 
         );
 
-
-        /*
-           Final status.
-        */
 
         setText(
             "dataStatus",
@@ -4473,7 +5499,9 @@ async function loadMarketData() {
 
         marketDataLoading =
             false;
+
     }
+
 }
 
 
@@ -4488,21 +5516,16 @@ function manualRefresh() {
     ) {
 
         return;
+
     }
 
-
-    /*
-       Force news refresh.
-
-       Market-data cache remains
-       protected from unnecessary calls.
-    */
 
     newsUpdated =
         0;
 
 
     loadMarketData();
+
 }
 
 
@@ -4514,18 +5537,11 @@ setInterval(
 
     () => {
 
-        /*
-           News is refreshed separately
-           so the countdown and block status
-           stay current.
-        */
-
         newsUpdated =
             0;
 
 
         loadNews();
-
 
     },
 
@@ -4560,6 +5576,17 @@ document.addEventListener(
     "DOMContentLoaded",
 
     () => {
+
+        /*
+           Make sure the new Trade Gate
+           setup time starts blank.
+        */
+
+        setText(
+            "gateSetupTime",
+            "--"
+        );
+
 
         /*
            Initial market load.
