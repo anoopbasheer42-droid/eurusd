@@ -1,986 +1,2156 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  >
 
   <title>EUR/USD Sniper Dashboard</title>
 
   <style>
+    :root {
+      --bg: #070a0f;
+      --panel: #0f141b;
+      --panel2: #131a23;
+      --panel3: #0b1016;
+
+      --border: #222b36;
+      --border2: #303b49;
+
+      --text: #f4f7fb;
+      --muted: #8c98a7;
+      --dim: #5e6977;
+
+      --green: #19d69b;
+      --red: #ff5365;
+      --yellow: #f4c451;
+      --blue: #4da1ff;
+      --purple: #9a7cff;
+
+      --green-bg: rgba(25,214,155,.10);
+      --red-bg: rgba(255,83,101,.10);
+      --blue-bg: rgba(77,161,255,.10);
+      --yellow-bg: rgba(244,196,81,.10);
+
+      --radius: 16px;
+      --small-radius: 10px;
+    }
 
     * {
       box-sizing: border-box;
     }
 
+    html,
     body {
       margin: 0;
-      padding: 12px;
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: white;
+      padding: 0;
+      min-height: 100%;
+      background: var(--bg);
     }
 
-    h1 {
-      text-align: center;
-      margin: 5px 0 15px;
-      font-size: 24px;
+    body {
+      color: var(--text);
+      font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+
+      background:
+        radial-gradient(
+          circle at 100% 0%,
+          rgba(77,161,255,.07),
+          transparent 30%
+        ),
+        radial-gradient(
+          circle at 0% 0%,
+          rgba(154,124,255,.05),
+          transparent 28%
+        ),
+        var(--bg);
     }
 
-    h2 {
-      margin: 0 0 10px;
-      font-size: 18px;
+    button {
+      font-family: inherit;
     }
 
-    .price-box {
-      text-align: center;
-      background: #1b1b1b;
-      padding: 15px;
+    /* =====================================================
+       APP
+       ===================================================== */
+
+    .app {
+      width: 100%;
+      max-width: 1500px;
+      margin: auto;
+      padding: 18px;
+    }
+
+    /* =====================================================
+       HEADER
+       ===================================================== */
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      padding: 17px 20px;
+      margin-bottom: 15px;
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(255,255,255,.035),
+          rgba(255,255,255,.008)
+        ),
+        var(--panel);
+
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+
+      box-shadow: 0 12px 35px rgba(0,0,0,.25);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .logo {
+      width: 44px;
+      height: 44px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
       border-radius: 12px;
-      margin-bottom: 12px;
+
+      background:
+        linear-gradient(
+          135deg,
+          #1b2736,
+          #0b1017
+        );
+
+      border: 1px solid var(--border2);
+
+      color: var(--blue);
+      font-size: 21px;
+      font-weight: 900;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: .2px;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 1.3px;
+      text-transform: uppercase;
+    }
+
+    .live {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+
+      padding: 8px 12px;
+
+      border-radius: 999px;
+
+      background: var(--green-bg);
+      border: 1px solid rgba(25,214,155,.25);
+
+      color: var(--green);
+
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .8px;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+
+      background: var(--green);
+
+      box-shadow:
+        0 0 10px rgba(25,214,155,.8);
+    }
+
+    /* =====================================================
+       HERO
+       ===================================================== */
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .price-card {
+      position: relative;
+      overflow: hidden;
+
+      min-height: 160px;
+
+      padding: 25px;
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(77,161,255,.075),
+          rgba(255,255,255,.01)
+        ),
+        var(--panel);
+
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+
+      box-shadow: 0 12px 35px rgba(0,0,0,.22);
+    }
+
+    .price-card::after {
+      content: "";
+
+      position: absolute;
+
+      width: 230px;
+      height: 230px;
+
+      right: -80px;
+      bottom: -110px;
+
+      border: 1px solid rgba(77,161,255,.08);
+      border-radius: 50%;
+
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .pair {
+      margin-top: 6px;
+      font-size: 18px;
+      font-weight: 800;
     }
 
     #price {
-      font-size: 32px;
-      font-weight: bold;
+      margin-top: 9px;
+
+      font-size: clamp(38px, 6vw, 60px);
+      line-height: 1;
+
+      font-weight: 900;
+      letter-spacing: -1.5px;
+
+      font-variant-numeric: tabular-nums;
     }
 
     #priceStatus {
-      font-size: 13px;
-      margin-top: 5px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 11px;
     }
 
-    .card {
-      background: #1b1b1b;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 12px;
-      border: 1px solid #333;
-    }
+    /* =====================================================
+       QUICK STATUS
+       ===================================================== */
 
-    .grid {
+    .quick-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: 1fr 1fr;
       gap: 10px;
     }
 
-    .item {
-      background: #252525;
-      padding: 10px;
-      border-radius: 8px;
-    }
-
-    .label {
-      color: #aaa;
-      font-size: 12px;
-      margin-bottom: 5px;
-    }
-
-    .value {
-      font-size: 16px;
-      font-weight: bold;
-    }
-
-    .chart-buttons {
+    .quick-card {
       display: flex;
-      gap: 6px;
-      margin-bottom: 10px;
+      flex-direction: column;
+      justify-content: center;
+
+      padding: 15px;
+
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    .quick-label {
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .quick-value {
+      margin-top: 7px;
+
+      font-size: 16px;
+      font-weight: 900;
+
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* =====================================================
+       SECTION HEADERS
+       ===================================================== */
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      margin: 22px 2px 9px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+
+      color: #d7dee7;
+
+      font-size: 12px;
+      font-weight: 800;
+
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+    }
+
+    .section-head span {
+      color: var(--dim);
+      font-size: 9px;
+    }
+
+    /* =====================================================
+       GENERIC CARD
+       ===================================================== */
+
+    .card {
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(255,255,255,.025),
+          rgba(255,255,255,.008)
+        ),
+        var(--panel);
+
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+
+      box-shadow:
+        0 8px 28px rgba(0,0,0,.18);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+
+      padding: 13px 16px;
+
+      border-bottom: 1px solid var(--border);
+
+      background: rgba(255,255,255,.012);
+    }
+
+    .card-head strong {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+    }
+
+    .card-head small {
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .card-body {
+      padding: 15px;
+    }
+
+    /* =====================================================
+       CHART
+       ===================================================== */
+
+    .timeframes {
+      display: flex;
+      gap: 5px;
       flex-wrap: wrap;
     }
 
-    .chart-buttons button,
-    .refresh-btn {
-      background: #333;
-      color: white;
-      border: 1px solid #555;
-      padding: 8px 14px;
-      border-radius: 7px;
+    .tf {
+      padding: 7px 11px;
+
+      border: 1px solid var(--border);
+      border-radius: 8px;
+
+      background: #0c1117;
+      color: var(--muted);
+
+      font-size: 9px;
+      font-weight: 800;
+
       cursor: pointer;
+      transition: .2s ease;
     }
 
-    .chart-buttons button.active {
-      background: #1976d2;
+    .tf:hover {
+      color: white;
+      border-color: var(--border2);
     }
 
-    .refresh-btn {
+    .tf.active {
+      color: var(--blue);
+
+      background: var(--blue-bg);
+      border-color: rgba(77,161,255,.35);
+    }
+
+    .chart {
       width: 100%;
-      margin-top: 10px;
-      background: #1976d2;
-      font-weight: bold;
+      height: 510px;
+      background: #080b10;
     }
 
-    iframe {
+    #tradingChart {
+      display: block;
+
       width: 100%;
-      height: 450px;
+      height: 100%;
+
       border: 0;
-      border-radius: 10px;
     }
 
-    .section-note {
-      color: #aaa;
+    /* =====================================================
+       MARKET STRUCTURE
+       ===================================================== */
+
+    .structure-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .metric {
+      padding: 14px;
+
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: var(--small-radius);
+    }
+
+    .metric-label {
+      color: var(--muted);
+
+      font-size: 9px;
+      font-weight: 700;
+
+      text-transform: uppercase;
+      letter-spacing: .9px;
+    }
+
+    .metric-value {
+      margin-top: 8px;
+
+      font-size: 14px;
+      font-weight: 900;
+    }
+
+    /* =====================================================
+       SUPPORT / RESISTANCE
+       ===================================================== */
+
+    .sr-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .sr {
+      padding: 16px;
+
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .sr.resistance {
+      border-color: rgba(255,83,101,.23);
+
+      background:
+        linear-gradient(
+          135deg,
+          var(--red-bg),
+          transparent
+        ),
+        var(--panel3);
+    }
+
+    .sr.support {
+      border-color: rgba(25,214,155,.23);
+
+      background:
+        linear-gradient(
+          135deg,
+          var(--green-bg),
+          transparent
+        ),
+        var(--panel3);
+    }
+
+    .sr-title {
+      color: var(--muted);
+
+      font-size: 9px;
+      font-weight: 800;
+
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .level {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      padding: 10px 0;
+
+      border-bottom: 1px solid var(--border);
+
       font-size: 13px;
-      line-height: 1.5;
+      font-weight: 800;
+
+      font-variant-numeric: tabular-nums;
     }
 
-    .big-status {
-      font-size: 22px;
-      font-weight: bold;
-      margin: 8px 0;
+    .level:last-child {
+      border-bottom: 0;
     }
 
-    .trade-box {
-      background: #252525;
-      border-radius: 10px;
-      padding: 12px;
-      margin-top: 10px;
+    .resistance .level span:last-child {
+      color: var(--red);
+    }
+
+    .support .level span:last-child {
+      color: var(--green);
+    }
+
+    /* =====================================================
+       INDICATORS
+       ===================================================== */
+
+    .indicator-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .indicator {
+      padding: 13px;
+
+      text-align: center;
+
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: var(--small-radius);
+    }
+
+    .indicator-label {
+      color: var(--muted);
+
+      font-size: 9px;
+      font-weight: 700;
+
+      text-transform: uppercase;
+      letter-spacing: .7px;
+    }
+
+    .indicator-value {
+      margin-top: 7px;
+
+      font-size: 17px;
+      font-weight: 900;
+
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* =====================================================
+       SIGNAL ENGINE
+       ===================================================== */
+
+    .signal-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr;
+      gap: 15px;
+    }
+
+    .signal-card {
+      min-height: 350px;
+    }
+
+    .signal-card.sniper {
+      border-color: rgba(77,161,255,.28);
+    }
+
+    .signal-card.scalp {
+      border-color: rgba(154,124,255,.23);
+    }
+
+    .signal-card.pro {
+      border-color: rgba(244,196,81,.23);
+    }
+
+    .badge {
+      padding: 6px 8px;
+
+      border-radius: 7px;
+
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border);
+
+      color: var(--muted);
+
+      font-size: 8px;
+      font-weight: 800;
+      letter-spacing: .8px;
+    }
+
+    .signal-content {
+      padding: 17px;
+    }
+
+    #sniperStatus,
+    #scalpVerdict,
+    #proVerdict {
+      margin-bottom: 16px;
+
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1.15;
+    }
+
+    /* =====================================================
+       TRADE LEVELS
+       ===================================================== */
+
+    .trade-list {
+      display: grid;
+      gap: 6px;
     }
 
     .trade-row {
       display: flex;
       justify-content: space-between;
-      gap: 10px;
-      padding: 7px 0;
-      border-bottom: 1px solid #333;
+      align-items: center;
+
+      min-height: 38px;
+      padding: 8px 10px;
+
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
     }
 
-    .trade-row:last-child {
-      border-bottom: none;
+    .trade-row span:first-child {
+      color: var(--muted);
+
+      font-size: 9px;
+      font-weight: 700;
+
+      text-transform: uppercase;
+      letter-spacing: .7px;
     }
 
-    .green {
-      color: #00e676;
+    .trade-row span:last-child {
+      color: #e8edf3;
+
+      font-size: 12px;
+      font-weight: 900;
+
+      font-variant-numeric: tabular-nums;
     }
 
-    .red {
-      color: #ff5252;
+    /* =====================================================
+       SCORE
+       ===================================================== */
+
+    .score {
+      margin-top: 13px;
+      padding: 13px;
+
+      border-radius: 10px;
+
+      background:
+        linear-gradient(
+          90deg,
+          rgba(25,214,155,.07),
+          rgba(77,161,255,.035)
+        );
+
+      border: 1px solid var(--border);
     }
 
-    .yellow {
-      color: #ffd740;
+    .score-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .blue {
-      color: #40c4ff;
+    .score-top span:first-child {
+      color: var(--muted);
+
+      font-size: 9px;
+      font-weight: 700;
+
+      text-transform: uppercase;
+      letter-spacing: .8px;
     }
 
-    @media (max-width: 600px) {
+    .score-top span:last-child {
+      font-size: 14px;
+      font-weight: 900;
+    }
 
-      iframe {
-        height: 360px;
+    /* =====================================================
+       DETAILS
+       ===================================================== */
+
+    .detail {
+      margin-top: 12px;
+      padding-top: 11px;
+
+      border-top: 1px solid var(--border);
+    }
+
+    .detail-label {
+      margin-bottom: 5px;
+
+      color: var(--muted);
+
+      font-size: 8px;
+      font-weight: 800;
+
+      text-transform: uppercase;
+      letter-spacing: .9px;
+    }
+
+    .detail-value {
+      color: #d2dae4;
+
+      font-size: 10px;
+      line-height: 1.55;
+    }
+
+    /* =====================================================
+       NEWS
+       ===================================================== */
+
+    .news-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .news-box {
+      padding: 15px;
+
+      background: var(--panel3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .news-label {
+      color: var(--muted);
+
+      font-size: 8px;
+      font-weight: 800;
+
+      text-transform: uppercase;
+      letter-spacing: .9px;
+    }
+
+    .news-value {
+      margin-top: 7px;
+
+      color: #dce4ed;
+
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.45;
+    }
+
+    .news-bottom {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr 1fr;
+      gap: 12px;
+
+      margin-top: 12px;
+    }
+
+    /* =====================================================
+       REFRESH
+       ===================================================== */
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 22px;
+    }
+
+    #refreshBtn {
+      padding: 11px 20px;
+
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(77,161,255,.13),
+          rgba(255,255,255,.02)
+        );
+
+      color: #dce6f2;
+
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .7px;
+
+      cursor: pointer;
+
+      transition: .2s ease;
+    }
+
+    #refreshBtn:hover {
+      transform: translateY(-1px);
+      background: rgba(77,161,255,.16);
+    }
+
+    #refreshBtn:active {
+      transform: translateY(0);
+    }
+
+    .footer {
+      margin: 11px 0 5px;
+
+      text-align: center;
+
+      color: var(--dim);
+
+      font-size: 8px;
+      letter-spacing: .7px;
+    }
+
+    /* =====================================================
+       TABLET
+       ===================================================== */
+
+    @media (max-width: 1100px) {
+
+      .signal-grid {
+        grid-template-columns: 1fr 1fr;
       }
 
-      .grid {
+      .signal-card.sniper {
+        grid-column: span 2;
+      }
+
+      .indicator-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+    }
+
+    /* =====================================================
+       MOBILE
+       ===================================================== */
+
+    @media (max-width: 700px) {
+
+      .app {
+        padding: 10px;
+      }
+
+      .topbar {
+        padding: 13px;
+      }
+
+      .brand h1 {
+        font-size: 16px;
+      }
+
+      .brand p {
+        font-size: 8px;
+      }
+
+      .live {
+        display: none;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .price-card {
+        min-height: 145px;
+        padding: 20px;
+      }
+
+      .structure-grid {
         grid-template-columns: 1fr 1fr;
+      }
+
+      .indicator-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .signal-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .signal-card.sniper {
+        grid-column: auto;
+      }
+
+      .sr-grid,
+      .news-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .news-bottom {
+        grid-template-columns: 1fr;
+      }
+
+      .chart {
+        height: 430px;
+      }
+
+    }
+
+    /* =====================================================
+       SMALL PHONE
+       ===================================================== */
+
+    @media (max-width: 430px) {
+
+      #price {
+        font-size: 39px;
+      }
+
+      .chart {
+        height: 370px;
+      }
+
+      .quick-value {
+        font-size: 14px;
       }
 
     }
 
   </style>
-
 </head>
 
 
 <body>
 
+<div class="app">
 
-  <h1>EUR/USD Sniper Dashboard</h1>
+
+  <!-- =====================================================
+       HEADER
+       ===================================================== -->
+
+  <header class="topbar">
+
+    <div class="brand">
+
+      <div class="logo">
+        €
+      </div>
+
+      <div>
+
+        <h1>
+          EUR/USD Sniper Dashboard
+        </h1>
+
+        <p>
+          Institutional Price Action Terminal
+        </p>
+
+      </div>
+
+    </div>
 
 
-  <!-- ======================================================
+    <div class="live">
+
+      <span class="live-dot"></span>
+
+      LIVE MARKET
+
+    </div>
+
+  </header>
+
+
+  <!-- =====================================================
        LIVE PRICE
-       ====================================================== -->
+       ===================================================== -->
 
-  <div class="price-box">
-
-    <div id="price">
-      Loading...
-    </div>
-
-    <div id="priceStatus">
-      Connecting to market...
-    </div>
-
-  </div>
+  <section class="hero">
 
 
-  <!-- ======================================================
-       LIVE CHART
-       ====================================================== -->
+    <div class="price-card">
 
-  <div class="card">
-
-    <h2>📊 EUR/USD Live Chart</h2>
-
-    <div class="chart-buttons">
-
-      <button
-        onclick="changeChart('5min')"
-        id="btnM5">
-        M5
-      </button>
-
-      <button
-        onclick="changeChart('15min')"
-        id="btnM15"
-        class="active">
-        M15
-      </button>
-
-      <button
-        onclick="changeChart('1h')"
-        id="btnH1">
-        H1
-      </button>
-
-      <button
-        onclick="changeChart('4h')"
-        id="btnH4">
-        H4
-      </button>
-
-    </div>
-
-
-    <iframe
-      id="tradingChart"
-      src="https://www.tradingview.com/widgetembed/?frameElementId=tradingviewChart&symbol=FX:EURUSD&interval=15&hidesidetoolbar=1&symboledit=1&saveimage=0&toolbarbg=f1f3f6&studies=[]&hideideas=1&theme=dark&style=1&timezone=Asia%2FKolkata"
-      allowtransparency="true"
-      scrolling="no">
-    </iframe>
-
-  </div>
-
-
-  <!-- ======================================================
-       MARKET STRUCTURE
-       ====================================================== -->
-
-  <div class="card">
-
-    <h2>🏦 Market Structure</h2>
-
-    <div class="grid">
-
-      <div class="item">
-
-        <div class="label">
-          H4 Trend
-        </div>
-
-        <div
-          class="value"
-          id="h4Trend">
-          Calculating...
-        </div>
-
+      <div class="eyebrow">
+        Live Market Price
       </div>
 
-
-      <div class="item">
-
-        <div class="label">
-          H1 Trend
-        </div>
-
-        <div
-          class="value"
-          id="h1Trend">
-          Calculating...
-        </div>
-
+      <div class="pair">
+        EUR / USD
       </div>
 
-
-      <div class="item">
-
-        <div class="label">
-          M15 Structure
-        </div>
-
-        <div
-          class="value"
-          id="m15Structure">
-          Calculating...
-        </div>
-
+      <div id="price">
+        Loading...
       </div>
 
-
-      <div class="item">
-
-        <div class="label">
-          M5 Structure
-        </div>
-
-        <div
-          class="value"
-          id="m5Structure">
-          Calculating...
-        </div>
-
+      <div id="priceStatus">
+        Connecting to market data...
       </div>
 
     </div>
 
-  </div>
+
+    <div class="quick-grid">
 
 
-  <!-- ======================================================
-       SUPPORT / RESISTANCE
-       ====================================================== -->
+      <div class="quick-card">
 
-  <div class="card">
-
-    <h2>📍 Support / Resistance</h2>
-
-    <div class="grid">
-
-      <div class="item">
-
-        <div class="label">
-          Resistance 1
+        <div class="quick-label">
+          H4 Bias
         </div>
 
         <div
-          class="value"
-          id="resistance1">
+          class="quick-value"
+          id="h4Trend"
+        >
           Calculating...
         </div>
 
       </div>
 
 
-      <div class="item">
+      <div class="quick-card">
 
-        <div class="label">
-          Resistance 2
+        <div class="quick-label">
+          H1 Bias
         </div>
 
         <div
-          class="value"
-          id="resistance2">
+          class="quick-value"
+          id="h1Trend"
+        >
           Calculating...
         </div>
 
       </div>
 
 
-      <div class="item">
+      <div class="quick-card">
 
-        <div class="label">
-          Support 1
-        </div>
-
-        <div
-          class="value"
-          id="support1">
-          Calculating...
-        </div>
-
-      </div>
-
-
-      <div class="item">
-
-        <div class="label">
-          Support 2
-        </div>
-
-        <div
-          class="value"
-          id="support2">
-          Calculating...
-        </div>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <!-- ======================================================
-       TECHNICAL INDICATORS
-       ====================================================== -->
-
-  <div class="card">
-
-    <h2>📈 Technical Indicators</h2>
-
-    <div class="grid">
-
-
-      <div class="item">
-
-        <div class="label">
-          H4 RSI
-        </div>
-
-        <div
-          class="value"
-          id="h4Rsi">
-          Calculating...
-        </div>
-
-      </div>
-
-
-      <div class="item">
-
-        <div class="label">
-          H1 RSI
-        </div>
-
-        <div
-          class="value"
-          id="h1Rsi">
-          Calculating...
-        </div>
-
-      </div>
-
-
-      <div class="item">
-
-        <div class="label">
-          M15 RSI
-        </div>
-
-        <div
-          class="value"
-          id="m15Rsi">
-          Calculating...
-        </div>
-
-      </div>
-
-
-      <div class="item">
-
-        <div class="label">
-          M5 RSI
-        </div>
-
-        <div
-          class="value"
-          id="m5Rsi">
-          Calculating...
-        </div>
-
-      </div>
-
-
-      <div
-        class="item"
-        style="grid-column:1/-1;">
-
-        <div class="label">
+        <div class="quick-label">
           EMA Structure
         </div>
 
         <div
-          class="value"
-          id="emaStructure">
+          class="quick-value"
+          id="emaStructure"
+        >
           Calculating...
         </div>
 
       </div>
 
-    </div>
 
-  </div>
+      <div class="quick-card">
 
-
-  <!-- ======================================================
-       A+ SNIPER
-       ====================================================== -->
-
-  <div class="card">
-
-    <h2>🎯 A+ Sniper Setup</h2>
-
-    <div
-      id="sniperStatus"
-      class="big-status">
-      Calculating...
-    </div>
-
-
-    <div class="trade-box">
-
-
-      <div class="trade-row">
-
-        <span>
-          Direction
-        </span>
-
-        <strong id="direction">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Entry
-        </span>
-
-        <strong id="entry">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Stop Loss
-        </span>
-
-        <strong id="stopLoss">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          TP1
-        </span>
-
-        <strong id="tp1">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          TP2
-        </span>
-
-        <strong id="tp2">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          TP3
-        </span>
-
-        <strong id="tp3">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Risk / Reward
-        </span>
-
-        <strong id="riskReward">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Validity
-        </span>
-
-        <strong id="validity">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Trigger
-        </span>
-
-        <strong id="trigger">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Invalidation
-        </span>
-
-        <strong id="invalidation">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
+        <div class="quick-label">
           Setup Score
-        </span>
+        </div>
 
-        <strong id="setupScore">
-          —
-        </strong>
+        <div
+          class="quick-value"
+          id="setupScore"
+        >
+          --
+        </div>
 
       </div>
 
 
     </div>
 
-  </div>
+  </section>
 
 
-  <!-- ======================================================
-       ELITE SCALPING
-       ====================================================== -->
+  <!-- =====================================================
+       CHART
+       ===================================================== -->
 
-  <div class="card">
+  <div class="section-head">
 
     <h2>
-      ⚡ Elite Scalping Window — Next 2 Hours
+      Market Chart
     </h2>
 
-
-    <p class="section-note">
-
-      Elite scalping engine uses
-      H1 → M15 → M5 alignment,
-      M5 EMA20/EMA50 momentum,
-      RSI confirmation,
-      completed-candle price action,
-      3–15 pip risk control,
-      minimum 1:2 Risk/Reward,
-      nearby higher-timeframe
-      Support/Resistance protection,
-      and high-impact news filtering.
-
-      <br><br>
-
-      H4 alignment is NOT mandatory
-      for scalping.
-
-      <br><br>
-
-      Only the next 2 hours are considered.
-
-    </p>
-
-
-    <div
-      id="scalpVerdict"
-      class="big-status">
-      Calculating...
-    </div>
-
-
-    <div class="trade-box">
-
-
-      <div class="trade-row">
-
-        <span>
-          Direction
-        </span>
-
-        <strong id="scalpDirection">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Entry
-        </span>
-
-        <strong id="scalpEntry">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Stop Loss
-        </span>
-
-        <strong id="scalpSL">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          TP1
-        </span>
-
-        <strong id="scalpTP1">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          TP2
-        </span>
-
-        <strong id="scalpTP2">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Risk / Reward
-        </span>
-
-        <strong id="scalpRR">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Score
-        </span>
-
-        <strong id="scalpScore">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Validity
-        </span>
-
-        <strong id="scalpValidity">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Trigger
-        </span>
-
-        <strong id="scalpTrigger">
-          —
-        </strong>
-
-      </div>
-
-
-      <div class="trade-row">
-
-        <span>
-          Invalidation
-        </span>
-
-        <strong id="scalpInvalidation">
-          —
-        </strong>
-
-      </div>
-
-
-    </div>
+    <span>
+      EUR/USD • IST
+    </span>
 
   </div>
 
 
-  <!-- ======================================================
-       PRO ANALYSIS
-       ====================================================== -->
+  <section class="card">
 
-  <div class="card">
+
+    <div class="card-head">
+
+      <strong>
+        Price Action
+      </strong>
+
+
+      <div class="timeframes">
+
+        <button
+          class="tf"
+          id="btnM5"
+          onclick="changeChart('5min')"
+        >
+          M5
+        </button>
+
+
+        <button
+          class="tf active"
+          id="btnM15"
+          onclick="changeChart('15min')"
+        >
+          M15
+        </button>
+
+
+        <button
+          class="tf"
+          id="btnH1"
+          onclick="changeChart('1h')"
+        >
+          H1
+        </button>
+
+
+        <button
+          class="tf"
+          id="btnH4"
+          onclick="changeChart('4h')"
+        >
+          H4
+        </button>
+
+      </div>
+
+    </div>
+
+
+    <div class="chart">
+
+      <iframe
+        id="tradingChart"
+        src="https://www.tradingview.com/widgetembed/?frameElementId=tradingviewChart&symbol=FX:EURUSD&interval=15&hidesidetoolbar=1&symboledit=1&saveimage=0&toolbarbg=f1f3f6&studies=[]&hideideas=1&theme=dark&style=1&timezone=Asia%2FKolkata"
+        allowtransparency="true"
+        scrolling="no">
+      </iframe>
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       MARKET STRUCTURE
+       ===================================================== -->
+
+  <div class="section-head">
 
     <h2>
-      🧠 PRO Analysis
+      Market Structure
     </h2>
 
-
-    <div
-      id="proVerdict"
-      class="big-status">
-      Calculating...
-    </div>
-
-
-    <div
-      id="proExplanation"
-      class="section-note">
-      Waiting for market data...
-    </div>
+    <span>
+      Multi-timeframe analysis
+    </span>
 
   </div>
 
 
-  <!-- ======================================================
+  <section class="card">
+
+    <div class="card-head">
+
+      <strong>
+        Structure Matrix
+      </strong>
+
+      <small>
+        H4 → H1 → M15 → M5
+      </small>
+
+    </div>
+
+
+    <div class="card-body">
+
+      <div class="structure-grid">
+
+
+        <div class="metric">
+
+          <div class="metric-label">
+            H4 Trend
+          </div>
+
+          <div class="metric-value">
+
+            <span
+              id="h4TrendStructure"
+              data-source="h4Trend"
+            >
+              —
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="metric">
+
+          <div class="metric-label">
+            H1 Trend
+          </div>
+
+          <div class="metric-value">
+
+            <span
+              id="h1TrendStructure"
+              data-source="h1Trend"
+            >
+              —
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="metric">
+
+          <div class="metric-label">
+            M15 Structure
+          </div>
+
+          <div
+            class="metric-value"
+            id="m15Structure"
+          >
+            Calculating...
+          </div>
+
+        </div>
+
+
+        <div class="metric">
+
+          <div class="metric-label">
+            M5 Structure
+          </div>
+
+          <div
+            class="metric-value"
+            id="m5Structure"
+          >
+            Calculating...
+          </div>
+
+        </div>
+
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       SUPPORT / RESISTANCE
+       ===================================================== -->
+
+  <div class="section-head">
+
+    <h2>
+      Key Levels
+    </h2>
+
+    <span>
+      Structural zones
+    </span>
+
+  </div>
+
+
+  <section class="sr-grid">
+
+
+    <div class="sr resistance">
+
+      <div class="sr-title">
+        Resistance
+      </div>
+
+
+      <div class="level">
+
+        <span>
+          R1
+        </span>
+
+        <span id="resistance1">
+          --
+        </span>
+
+      </div>
+
+
+      <div class="level">
+
+        <span>
+          R2
+        </span>
+
+        <span id="resistance2">
+          --
+        </span>
+
+      </div>
+
+    </div>
+
+
+    <div class="sr support">
+
+      <div class="sr-title">
+        Support
+      </div>
+
+
+      <div class="level">
+
+        <span>
+          S1
+        </span>
+
+        <span id="support1">
+          --
+        </span>
+
+      </div>
+
+
+      <div class="level">
+
+        <span>
+          S2
+        </span>
+
+        <span id="support2">
+          --
+        </span>
+
+      </div>
+
+    </div>
+
+
+  </section>
+
+
+  <!-- =====================================================
+       INDICATORS
+       ===================================================== -->
+
+  <div class="section-head">
+
+    <h2>
+      Momentum & Indicators
+    </h2>
+
+    <span>
+      RSI / EMA
+    </span>
+
+  </div>
+
+
+  <section class="card">
+
+    <div class="card-body">
+
+      <div class="indicator-grid">
+
+
+        <div class="indicator">
+
+          <div class="indicator-label">
+            H4 RSI
+          </div>
+
+          <div
+            class="indicator-value"
+            id="h4Rsi"
+          >
+            --
+          </div>
+
+        </div>
+
+
+        <div class="indicator">
+
+          <div class="indicator-label">
+            H1 RSI
+          </div>
+
+          <div
+            class="indicator-value"
+            id="h1Rsi"
+          >
+            --
+          </div>
+
+        </div>
+
+
+        <div class="indicator">
+
+          <div class="indicator-label">
+            M15 RSI
+          </div>
+
+          <div
+            class="indicator-value"
+            id="m15Rsi"
+          >
+            --
+          </div>
+
+        </div>
+
+
+        <div class="indicator">
+
+          <div class="indicator-label">
+            M5 RSI
+          </div>
+
+          <div
+            class="indicator-value"
+            id="m5Rsi"
+          >
+            --
+          </div>
+
+        </div>
+
+
+        <div class="indicator">
+
+          <div class="indicator-label">
+            EMA Structure
+          </div>
+
+          <div
+            class="indicator-value"
+            data-source="emaStructure"
+          >
+            —
+          </div>
+
+        </div>
+
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       SIGNAL ENGINE
+       ===================================================== -->
+
+  <div class="section-head">
+
+    <h2>
+      Signal Engine
+    </h2>
+
+    <span>
+      A+ setup framework
+    </span>
+
+  </div>
+
+
+  <section class="signal-grid">
+
+
+    <!-- ===================================================
+         SNIPER
+         =================================================== -->
+
+    <div class="card signal-card sniper">
+
+      <div class="card-head">
+
+        <strong>
+          A+ Sniper
+        </strong>
+
+        <span class="badge">
+          STRUCTURAL
+        </span>
+
+      </div>
+
+
+      <div class="signal-content">
+
+
+        <div id="sniperStatus">
+          Calculating...
+        </div>
+
+
+        <div class="trade-list">
+
+
+          <div class="trade-row">
+
+            <span>
+              Direction
+            </span>
+
+            <span id="direction">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              Entry
+            </span>
+
+            <span id="entry">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              Stop Loss
+            </span>
+
+            <span id="stopLoss">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              TP1
+            </span>
+
+            <span id="tp1">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              TP2
+            </span>
+
+            <span id="tp2">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              TP3
+            </span>
+
+            <span id="tp3">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              Risk / Reward
+            </span>
+
+            <span id="riskReward">
+              --
+            </span>
+
+          </div>
+
+
+        </div>
+
+
+        <div class="score">
+
+          <div class="score-top">
+
+            <span>
+              Setup Score
+            </span>
+
+            <span>
+              See above
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="detail">
+
+          <div class="detail-label">
+            Validity
+          </div>
+
+          <div
+            class="detail-value"
+            id="validity"
+          >
+            --
+          </div>
+
+        </div>
+
+
+        <div class="detail">
+
+          <div class="detail-label">
+            Trigger
+          </div>
+
+          <div
+            class="detail-value"
+            id="trigger"
+          >
+            --
+          </div>
+
+        </div>
+
+
+        <div class="detail">
+
+          <div class="detail-label">
+            Invalidation
+          </div>
+
+          <div
+            class="detail-value"
+            id="invalidation"
+          >
+            --
+          </div>
+
+        </div>
+
+
+      </div>
+
+    </div>
+
+
+    <!-- ===================================================
+         ELITE SCALPING
+         =================================================== -->
+
+    <div class="card signal-card scalp">
+
+      <div class="card-head">
+
+        <strong>
+          Elite Scalping
+        </strong>
+
+        <span class="badge">
+          M5 EXECUTION
+        </span>
+
+      </div>
+
+
+      <div class="signal-content">
+
+
+        <div id="scalpVerdict">
+          Calculating...
+        </div>
+
+
+        <div class="trade-list">
+
+
+          <div class="trade-row">
+
+            <span>
+              Direction
+            </span>
+
+            <span id="scalpDirection">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              Entry
+            </span>
+
+            <span id="scalpEntry">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              Stop Loss
+            </span>
+
+            <span id="scalpSL">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              TP1
+            </span>
+
+            <span id="scalpTP1">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              TP2
+            </span>
+
+            <span id="scalpTP2">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              Risk / Reward
+            </span>
+
+            <span id="scalpRR">
+              --
+            </span>
+
+          </div>
+
+
+          <div class="trade-row">
+
+            <span>
+              Score
+            </span>
+
+            <span id="scalpScore">
+              --
+            </span>
+
+          </div>
+
+
+        </div>
+
+
+        <div class="detail">
+
+          <div class="detail-label">
+            Validity
+          </div>
+
+          <div
+            class="detail-value"
+            id="scalpValidity"
+          >
+            --
+          </div>
+
+        </div>
+
+
+        <div class="detail">
+
+          <div class="detail-label">
+            Trigger
+          </div>
+
+          <div
+            class="detail-value"
+            id="scalpTrigger"
+          >
+            --
+          </div>
+
+        </div>
+
+
+        <div class="detail">
+
+          <div class="detail-label">
+            Invalidation
+          </div>
+
+          <div
+            class="detail-value"
+            id="scalpInvalidation"
+          >
+            --
+          </div>
+
+        </div>
+
+
+      </div>
+
+    </div>
+
+
+    <!-- ===================================================
+         PRO
+         =================================================== -->
+
+    <div class="card signal-card pro">
+
+      <div class="card-head">
+
+        <strong>
+          PRO Analysis
+        </strong>
+
+        <span class="badge">
+          MTF FILTER
+        </span>
+
+      </div>
+
+
+      <div class="signal-content">
+
+
+        <div id="proVerdict">
+          Calculating...
+        </div>
+
+
+        <div class="detail">
+
+          <div class="detail-label">
+            Institutional Read
+          </div>
+
+          <div
+            class="detail-value"
+            id="proExplanation"
+          >
+            Waiting for market data...
+          </div>
+
+        </div>
+
+
+        <div class="detail">
+
+          <div class="detail-label">
+            Framework
+          </div>
+
+          <div class="detail-value">
+            H4 structure → H1 structure → M15 confirmation → M5 execution
+          </div>
+
+        </div>
+
+
+        <div class="detail">
+
+          <div class="detail-label">
+            Execution Principle
+          </div>
+
+          <div class="detail-value">
+            Wait for alignment and confirmation. Avoid chasing extended price.
+          </div>
+
+        </div>
+
+
+      </div>
+
+    </div>
+
+
+  </section>
+
+
+  <!-- =====================================================
        NEWS
-       ====================================================== -->
+       ===================================================== -->
 
-  <div class="card">
+  <div class="section-head">
 
     <h2>
-      📰 High Impact News
+      Macro & News Filter
     </h2>
 
-
-    <div class="grid">
-
-
-      <div class="item">
-
-        <div class="label">
-          EUR News
-        </div>
-
-        <div
-          class="value"
-          id="eurNews">
-          Checking...
-        </div>
-
-      </div>
-
-
-      <div class="item">
-
-        <div class="label">
-          USD News
-        </div>
-
-        <div
-          class="value"
-          id="usdNews">
-          Checking...
-        </div>
-
-      </div>
-
-
-      <div class="item">
-
-        <div class="label">
-          News Filter
-        </div>
-
-        <div
-          class="value"
-          id="newsFilter">
-          Checking...
-        </div>
-
-      </div>
-
-
-      <div class="item">
-
-        <div class="label">
-          Next Event
-        </div>
-
-        <div
-          class="value"
-          id="nextEvent">
-          Checking...
-        </div>
-
-      </div>
-
-
-      <div
-        class="item"
-        style="grid-column:1/-1;">
-
-        <div class="label">
-          Trading Risk
-        </div>
-
-        <div
-          class="value"
-          id="tradingRisk">
-          Checking...
-        </div>
-
-      </div>
-
-
-    </div>
+    <span>
+      High-impact events
+    </span>
 
   </div>
 
 
-  <!-- ======================================================
+  <section class="card">
+
+
+    <div class="card-head">
+
+      <strong>
+        EUR / USD Economic Calendar
+      </strong>
+
+      <small>
+        Forward risk window
+      </small>
+
+    </div>
+
+
+    <div class="card-body">
+
+
+      <div class="news-grid">
+
+
+        <div class="news-box">
+
+          <div class="news-label">
+            EUR News
+          </div>
+
+          <div
+            class="news-value"
+            id="eurNews"
+          >
+            Checking...
+          </div>
+
+        </div>
+
+
+        <div class="news-box">
+
+          <div class="news-label">
+            USD News
+          </div>
+
+          <div
+            class="news-value"
+            id="usdNews"
+          >
+            Checking...
+          </div>
+
+        </div>
+
+
+      </div>
+
+
+      <div class="news-bottom">
+
+
+        <div class="news-box">
+
+          <div class="news-label">
+            News Filter
+          </div>
+
+          <div
+            class="news-value"
+            id="newsFilter"
+          >
+            Checking...
+          </div>
+
+        </div>
+
+
+        <div class="news-box">
+
+          <div class="news-label">
+            Next Event
+          </div>
+
+          <div
+            class="news-value"
+            id="nextEvent"
+          >
+            --
+          </div>
+
+        </div>
+
+
+        <div class="news-box">
+
+          <div class="news-label">
+            Trading Risk
+          </div>
+
+          <div
+            class="news-value"
+            id="tradingRisk"
+          >
+            --
+          </div>
+
+        </div>
+
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
        REFRESH
-       ====================================================== -->
+       ===================================================== -->
 
-  <button
-    class="refresh-btn"
-    onclick="loadMarketData()">
+  <div class="actions">
 
-    🔄 Refresh Market Data
+    <button
+      id="refreshBtn"
+      onclick="loadMarketData()"
+    >
+      ↻ &nbsp; REFRESH MARKET DATA
+    </button>
 
-  </button>
+  </div>
 
 
-  <!-- ======================================================
-       SCRIPT
-       ====================================================== -->
+  <div class="footer">
+    EUR/USD SNIPER TERMINAL • PRICE ACTION • MULTI-TIMEFRAME ANALYSIS
+  </div>
 
-  <script src="script.js?v=20261003"></script>
 
+</div>
+
+
+<!-- =====================================================
+     EXISTING TRADING SCRIPT
+     ===================================================== -->
+
+<script src="script.js?v=20261003"></script>
 
 </body>
-
 </html>
