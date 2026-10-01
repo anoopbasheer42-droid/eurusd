@@ -1,6 +1,7 @@
 /* =========================================================
    EUR/USD SNIPER DASHBOARD
-   FULL ELITE VERSION + LIVE M5 PRICE CHART
+   FULL ELITE VERSION
+   + LIVE M5 / M15 / H1 / H4 PRICE CHART
 
    ENGINE 1 = A+ SNIPER
    ENGINE 2 = ELITE SCALP
@@ -9,7 +10,7 @@
    NEWS = INFORMATION ONLY
    NEWS DOES NOT BLOCK ANY ENGINE
 
-   CHART = LIVE M5 PRICE CHART
+   CHART = LIVE M5 / M15 / H1 / H4 PRICE CHART
    ========================================================= */
 
 
@@ -17,7 +18,8 @@
    API CONFIGURATION
    ========================================================= */
 
-const API_KEY = "4ba3968e609544bf8990192fdf3ed970";
+const API_KEY =
+    ""4ba3968e609544bf8990192fdf3ed970";
 
 const SYMBOL = "EUR/USD";
 
@@ -331,19 +333,23 @@ function delay(ms) {
 
 /* =========================================================
    =========================================================
-   LIVE EUR/USD M5 PRICE CHART
+   LIVE EUR/USD MULTI-TIMEFRAME PRICE CHART
    =========================================================
    ========================================================= */
 
+
 /*
-   This function creates the chart container
-   automatically.
+   Current selected chart timeframe.
 
-   It is inserted immediately AFTER the
-   Live Market Price element.
-
-   No HTML chart div is required.
+   Default = M5
 */
+
+let selectedChartTimeframe = "m5";
+
+
+/* =========================================================
+   CREATE PRICE CHART CONTAINER
+   ========================================================= */
 
 function createPriceChartContainer() {
 
@@ -402,11 +408,6 @@ function createPriceChartContainer() {
         "hidden";
 
 
-    /*
-       Insert chart directly after
-       Live Market Price.
-    */
-
     const parent =
         livePriceElement.parentNode;
 
@@ -429,10 +430,310 @@ function createPriceChartContainer() {
 
 
 /* =========================================================
+   CHART TIMEFRAME BUTTONS
+   ========================================================= */
+
+function renderChartButtons() {
+
+    const chartContainer =
+        document.getElementById("priceChart");
+
+    if (!chartContainer) {
+
+        return;
+    }
+
+
+    let buttons =
+        document.getElementById(
+            "chartTimeframeButtons"
+        );
+
+
+    if (buttons) {
+
+        return;
+    }
+
+
+    buttons =
+        document.createElement("div");
+
+    buttons.id =
+        "chartTimeframeButtons";
+
+
+    buttons.style.display =
+        "flex";
+
+    buttons.style.gap =
+        "8px";
+
+    buttons.style.flexWrap =
+        "wrap";
+
+    buttons.style.marginBottom =
+        "12px";
+
+
+    const timeframes = [
+
+        {
+            key: "m5",
+            label: "M5"
+        },
+
+        {
+            key: "m15",
+            label: "M15"
+        },
+
+        {
+            key: "h1",
+            label: "H1"
+        },
+
+        {
+            key: "h4",
+            label: "H4"
+        }
+
+    ];
+
+
+    timeframes.forEach(
+
+        timeframe => {
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+
+            button.type =
+                "button";
+
+
+            button.textContent =
+                timeframe.label;
+
+
+            button.dataset.timeframe =
+                timeframe.key;
+
+
+            button.style.padding =
+                "7px 15px";
+
+            button.style.borderRadius =
+                "7px";
+
+            button.style.border =
+                "1px solid #444";
+
+            button.style.background =
+                "#222";
+
+            button.style.color =
+                "#aaa";
+
+            button.style.cursor =
+                "pointer";
+
+            button.style.fontWeight =
+                "bold";
+
+
+            button.onclick =
+                function() {
+
+                    selectedChartTimeframe =
+                        timeframe.key;
+
+
+                    updateChartButtonStyles();
+
+
+                    renderSelectedPriceChart();
+
+                };
+
+
+            buttons.appendChild(
+                button
+            );
+
+        }
+
+    );
+
+
+    chartContainer.appendChild(
+        buttons
+    );
+
+
+    updateChartButtonStyles();
+}
+
+
+/* =========================================================
+   UPDATE CHART BUTTON STYLES
+   ========================================================= */
+
+function updateChartButtonStyles() {
+
+    const buttons =
+        document.querySelectorAll(
+            "#chartTimeframeButtons button"
+        );
+
+
+    buttons.forEach(
+
+        button => {
+
+            const active =
+                button.dataset.timeframe ===
+                selectedChartTimeframe;
+
+
+            if (active) {
+
+                button.style.background =
+                    "#20c997";
+
+                button.style.color =
+                    "#000";
+
+                button.style.borderColor =
+                    "#20c997";
+
+            }
+
+            else {
+
+                button.style.background =
+                    "#222";
+
+                button.style.color =
+                    "#aaa";
+
+                button.style.borderColor =
+                    "#444";
+            }
+
+        }
+
+    );
+}
+
+
+/* =========================================================
+   CHART TITLE
+   ========================================================= */
+
+function getChartTitle(
+    timeframe
+) {
+
+    const titles = {
+
+        m5:
+            "EUR/USD — M5 PRICE CHART",
+
+        m15:
+            "EUR/USD — M15 PRICE CHART",
+
+        h1:
+            "EUR/USD — H1 PRICE CHART",
+
+        h4:
+            "EUR/USD — H4 PRICE CHART"
+
+    };
+
+
+    return (
+        titles[timeframe] ||
+        "EUR/USD PRICE CHART"
+    );
+}
+
+
+/* =========================================================
+   CHART CANDLE COUNT
+   ========================================================= */
+
+function getChartCandleCount(
+    timeframe
+) {
+
+    const counts = {
+
+        m5: 80,
+
+        m15: 80,
+
+        h1: 80,
+
+        h4: 80
+
+    };
+
+
+    return (
+        counts[timeframe] ||
+        80
+    );
+}
+
+
+/* =========================================================
+   RENDER SELECTED PRICE CHART
+   ========================================================= */
+
+function renderSelectedPriceChart() {
+
+    const data =
+        marketData[
+            selectedChartTimeframe
+        ];
+
+
+    if (!data) {
+
+        renderPriceChart(
+            [],
+            selectedChartTimeframe
+        );
+
+        return;
+    }
+
+
+    renderPriceChart(
+
+        data,
+
+        selectedChartTimeframe
+
+    );
+}
+
+
+/* =========================================================
    CREATE SVG PRICE CHART
    ========================================================= */
 
-function renderPriceChart(candles) {
+function renderPriceChart(
+
+    candles,
+
+    timeframe = "m5"
+
+) {
 
     const chartContainer =
         createPriceChartContainer();
@@ -444,6 +745,14 @@ function renderPriceChart(candles) {
     }
 
 
+    /*
+       Make sure timeframe buttons
+       exist.
+    */
+
+    renderChartButtons();
+
+
     if (
 
         !candles ||
@@ -452,27 +761,84 @@ function renderPriceChart(candles) {
 
     ) {
 
-        chartContainer.innerHTML = `
-            <div style="
-                color:#aaa;
-                text-align:center;
-                padding:20px;
-                font-family:Arial,sans-serif;
-            ">
-                Waiting for EUR/USD chart data...
-            </div>
-        `;
+        /*
+           Keep the buttons visible
+           while waiting for data.
+        */
+
+        const oldContent =
+            document.getElementById(
+                "chartSVGArea"
+            );
+
+
+        if (oldContent) {
+
+            oldContent.innerHTML = `
+
+                <div style="
+                    color:#aaa;
+                    text-align:center;
+                    padding:20px;
+                    font-family:Arial,sans-serif;
+                ">
+                    Waiting for ${timeframe.toUpperCase()} chart data...
+                </div>
+
+            `;
+
+        }
+
+        else {
+
+            const area =
+                document.createElement("div");
+
+            area.id =
+                "chartSVGArea";
+
+
+            area.innerHTML = `
+
+                <div style="
+                    color:#aaa;
+                    text-align:center;
+                    padding:20px;
+                    font-family:Arial,sans-serif;
+                ">
+                    Waiting for ${timeframe.toUpperCase()} chart data...
+                </div>
+
+            `;
+
+
+            chartContainer.appendChild(
+                area
+            );
+        }
+
 
         return;
     }
 
 
     /*
-       Use latest 60 M5 candles.
+       Use latest candles.
+
+       Different timeframe = same
+       number of visible candles.
     */
 
+    const candleCount =
+        getChartCandleCount(
+            timeframe
+        );
+
+
     const recent =
-        candles.slice(-60);
+        candles.slice(
+            -candleCount
+        );
 
 
     const width =
@@ -483,7 +849,7 @@ function renderPriceChart(candles) {
 
 
     const paddingLeft =
-        55;
+        60;
 
     const paddingRight =
         15;
@@ -663,13 +1029,19 @@ function renderPriceChart(candles) {
 
     const candleSpacing =
         chartWidth /
-        recent.length;
+        Math.max(
+            recent.length,
+            1
+        );
 
 
     const candleWidth =
         Math.max(
             3,
-            candleSpacing * 0.55
+            Math.min(
+                10,
+                candleSpacing * 0.55
+            )
         );
 
 
@@ -829,7 +1201,7 @@ function renderPriceChart(candles) {
             font-family="Arial"
             font-weight="bold"
         >
-            EUR/USD — M5 PRICE CHART
+            ${getChartTitle(timeframe)}
         </text>
 
         <text
@@ -875,9 +1247,27 @@ function renderPriceChart(candles) {
     ];
 
 
+    const usedIndexes = [];
+
+
     labelIndexes.forEach(
 
         index => {
+
+            if (
+                usedIndexes.includes(
+                    index
+                )
+            ) {
+
+                return;
+            }
+
+
+            usedIndexes.push(
+                index
+            );
+
 
             const candle =
                 recent[index];
@@ -937,7 +1327,32 @@ function renderPriceChart(candles) {
     );
 
 
-    chartContainer.innerHTML = `
+    /*
+       Chart area.
+    */
+
+    let chartSVGArea =
+        document.getElementById(
+            "chartSVGArea"
+        );
+
+
+    if (!chartSVGArea) {
+
+        chartSVGArea =
+            document.createElement("div");
+
+        chartSVGArea.id =
+            "chartSVGArea";
+
+
+        chartContainer.appendChild(
+            chartSVGArea
+        );
+    }
+
+
+    chartSVGArea.innerHTML = `
 
         <div style="
             width:100%;
@@ -5011,12 +5426,14 @@ function displayTechnicalData(
 
     /*
        =====================================================
-       NEW:
-       RENDER CHART DIRECTLY BELOW LIVE MARKET PRICE
+       MULTI-TIMEFRAME CHART
+       M5 / M15 / H1 / H4
        =====================================================
     */
 
-    renderPriceChart(m5);
+    renderChartButtons();
+
+    renderSelectedPriceChart();
 
 
     setText(
@@ -5370,7 +5787,7 @@ async function loadMarketData() {
 
 
         /*
-           Technical display + CHART
+           Technical display + MULTI-TIMEFRAME CHART
         */
 
         displayTechnicalData(
