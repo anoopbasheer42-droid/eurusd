@@ -1,15 +1,8 @@
 /* =========================================================
    EUR/USD SNIPER DASHBOARD
-   FIXED VERSION
    H4 → H1 → M15 → M5
 
-   PRICE ACTION
-   MARKET STRUCTURE
-   SUPPORT / RESISTANCE
-   EMA
-   RSI
-   BUY / SELL SNIPER ENGINE
-   NEWS SAFETY GATE
+   VERSION: CONNECTION + ANALYSIS FIX
    ========================================================= */
 
 
@@ -23,12 +16,8 @@ const SYMBOL = "EUR/USD";
 
 const REFRESH_MS = 900000; // 15 minutes
 
-/*
-   IMPORTANT
-
-   News filter remains CLOSED until we add
-   a real economic-calendar data source.
-*/
+// NEWS GATE
+// Keep false until a real economic calendar is connected.
 const NEWS_CLEAR = false;
 
 const MIN_SETUP_SCORE = 8;
@@ -43,18 +32,13 @@ const SL_BUFFER = 0.00015;
    ========================================================= */
 
 let marketData = {
-
     h4: [],
     h1: [],
     m15: [],
     m5: [],
-
     price: null,
-
     lastUpdate: null,
-
     apiError: null
-
 };
 
 window.__dashboardLoading = false;
@@ -72,14 +56,10 @@ function setTextAny(ids, value) {
 
     for (const id of ids) {
 
-        const el =
-            document.getElementById(id);
+        const el = document.getElementById(id);
 
         if (el) {
-
-            el.innerText =
-                value;
-
+            el.innerText = value;
             return true;
         }
     }
@@ -96,9 +76,7 @@ function num(value) {
 
     const n = Number(value);
 
-    return Number.isFinite(n)
-        ? n
-        : null;
+    return Number.isFinite(n) ? n : null;
 }
 
 
@@ -109,7 +87,6 @@ function roundPrice(value) {
         value === undefined ||
         !Number.isFinite(Number(value))
     ) {
-
         return "—";
     }
 
@@ -124,7 +101,6 @@ function roundRSI(value) {
         value === undefined ||
         !Number.isFinite(Number(value))
     ) {
-
         return "—";
     }
 
@@ -136,55 +112,68 @@ function roundRSI(value) {
    FETCH CANDLES
    ========================================================= */
 
-async function getCandles(
-    interval,
-    outputsize = 100
-) {
+async function getCandles(interval, outputsize = 100) {
+
+    const params = new URLSearchParams({
+        symbol: SYMBOL,
+        interval: interval,
+        outputsize: String(outputsize),
+        timezone: "Asia/Kolkata",
+        apikey: API_KEY
+    });
 
     const url =
-        "https://api.twelvedata.com/time_series" +
-        "?symbol=" +
-        encodeURIComponent(SYMBOL) +
-        "&interval=" +
-        encodeURIComponent(interval) +
-        "&outputsize=" +
-        outputsize +
-        "&timezone=Asia/Kolkata" +
-        "&apikey=" +
-        encodeURIComponent(API_KEY);
+        "https://api.twelvedata.com/time_series?" +
+        params.toString();
+
+    console.log("REQUEST:", interval, url.replace(API_KEY, "HIDDEN"));
 
 
-    console.log(
-        "Requesting:",
-        interval
-    );
+    let response;
 
+    try {
 
-    const response =
-        await fetch(url);
+        response = await fetch(url, {
+            method: "GET",
+            cache: "no-store"
+        });
 
-
-    if (!response.ok) {
+    } catch (networkError) {
 
         throw new Error(
-            `${interval}: HTTP ${response.status}`
+            `${interval}: Network/CORS error. ${networkError.message}`
         );
     }
 
 
-    const data =
-        await response.json();
+    let data;
+
+    try {
+
+        data = await response.json();
+
+    } catch (jsonError) {
+
+        throw new Error(
+            `${interval}: Invalid response from Twelve Data.`
+        );
+    }
 
 
     console.log(
-        interval,
-        "API response:",
+        `${interval} RESPONSE:`,
         data
     );
 
 
+    /*
+       Twelve Data can return an API error
+       inside a normal HTTP 200 response.
+    */
+
     if (
-        data.status === "error"
+        data.status === "error" ||
+        data.code
     ) {
 
         throw new Error(
@@ -197,59 +186,55 @@ async function getCandles(
 
 
     if (
-        !data.values ||
-        !Array.isArray(data.values)
+        !Array.isArray(data.values) ||
+        data.values.length === 0
     ) {
 
         throw new Error(
-            `No ${interval} candle data received`
+            `${interval}: No candle data returned.`
         );
     }
 
 
-    const candles =
-        data.values
+    const candles = data.values
 
-            .map(c => ({
+        .map(c => ({
 
-                datetime:
-                    c.datetime,
+            datetime: c.datetime,
 
-                open:
-                    num(c.open),
+            open: num(c.open),
 
-                high:
-                    num(c.high),
+            high: num(c.high),
 
-                low:
-                    num(c.low),
+            low: num(c.low),
 
-                close:
-                    num(c.close),
+            close: num(c.close),
 
-                volume:
-                    num(c.volume) || 0
+            volume: num(c.volume) || 0
 
-            }))
+        }))
 
-            .filter(c =>
+        .filter(c =>
+            c.open !== null &&
+            c.high !== null &&
+            c.low !== null &&
+            c.close !== null
+        )
 
-                c.open !== null &&
-                c.high !== null &&
-                c.low !== null &&
-                c.close !== null
-
-            )
-
-            .reverse();
+        .reverse();
 
 
     if (!candles.length) {
 
         throw new Error(
-            `No valid ${interval} candles`
+            `${interval}: Candle data was invalid.`
         );
     }
+
+
+    console.log(
+        `${interval}: ${candles.length} candles loaded`
+    );
 
 
     return candles;
@@ -260,16 +245,12 @@ async function getCandles(
    EMA
    ========================================================= */
 
-function calculateEMA(
-    candles,
-    period
-) {
+function calculateEMA(candles, period) {
 
     if (
         !candles ||
         candles.length < period
     ) {
-
         return null;
     }
 
@@ -282,8 +263,8 @@ function calculateEMA(
         candles
             .slice(0, period)
             .reduce(
-                (sum, c) =>
-                    sum + c.close,
+                (sum, candle) =>
+                    sum + candle.close,
                 0
             ) / period;
 
@@ -310,21 +291,18 @@ function calculateEMA(
    RSI
    ========================================================= */
 
-function calculateRSI(
-    candles,
-    period = 14
-) {
+function calculateRSI(candles, period = 14) {
 
     if (
         !candles ||
         candles.length < period + 1
     ) {
-
         return null;
     }
 
 
     let gains = 0;
+
     let losses = 0;
 
 
@@ -340,11 +318,8 @@ function calculateRSI(
 
 
         if (change >= 0) {
-
             gains += change;
-
         } else {
-
             losses += Math.abs(change);
         }
     }
@@ -379,25 +354,20 @@ function calculateRSI(
 
         averageGain =
             (
-                averageGain *
-                (period - 1) +
+                averageGain * (period - 1) +
                 gain
             ) / period;
 
 
         averageLoss =
             (
-                averageLoss *
-                (period - 1) +
+                averageLoss * (period - 1) +
                 loss
             ) / period;
     }
 
 
-    if (
-        averageLoss === 0
-    ) {
-
+    if (averageLoss === 0) {
         return 100;
     }
 
@@ -408,10 +378,7 @@ function calculateRSI(
 
 
     return 100 -
-        (
-            100 /
-            (1 + rs)
-        );
+        (100 / (1 + rs));
 }
 
 
@@ -426,20 +393,12 @@ function candleDirection(candle) {
     }
 
 
-    if (
-        candle.close >
-        candle.open
-    ) {
-
+    if (candle.close > candle.open) {
         return "BULLISH";
     }
 
 
-    if (
-        candle.close <
-        candle.open
-    ) {
-
+    if (candle.close < candle.open) {
         return "BEARISH";
     }
 
@@ -454,7 +413,6 @@ function candleBody(candle) {
         return 0;
     }
 
-
     return Math.abs(
         candle.close -
         candle.open
@@ -468,11 +426,7 @@ function candleRange(candle) {
         return 0;
     }
 
-
-    return (
-        candle.high -
-        candle.low
-    );
+    return candle.high - candle.low;
 }
 
 
@@ -487,93 +441,59 @@ function candleStrength(candle) {
     }
 
 
-    return (
-        candleBody(candle) /
-        range
-    );
+    return candleBody(candle) / range;
 }
 
 
 /* =========================================================
-   SWINGS
+   SWING HIGH / LOW
    ========================================================= */
 
-function isSwingHigh(
-    candles,
-    index
-) {
+function isSwingHigh(candles, index) {
 
     if (
         index < 2 ||
         index > candles.length - 3
     ) {
-
         return false;
     }
 
 
-    const c =
-        candles[index];
+    const c = candles[index];
 
 
     return (
-
-        c.high >
-        candles[index - 1].high &&
-
-        c.high >
-        candles[index - 2].high &&
-
-        c.high >
-        candles[index + 1].high &&
-
-        c.high >
-        candles[index + 2].high
-
+        c.high > candles[index - 1].high &&
+        c.high > candles[index - 2].high &&
+        c.high > candles[index + 1].high &&
+        c.high > candles[index + 2].high
     );
 }
 
 
-function isSwingLow(
-    candles,
-    index
-) {
+function isSwingLow(candles, index) {
 
     if (
         index < 2 ||
         index > candles.length - 3
     ) {
-
         return false;
     }
 
 
-    const c =
-        candles[index];
+    const c = candles[index];
 
 
     return (
-
-        c.low <
-        candles[index - 1].low &&
-
-        c.low <
-        candles[index - 2].low &&
-
-        c.low <
-        candles[index + 1].low &&
-
-        c.low <
-        candles[index + 2].low
-
+        c.low < candles[index - 1].low &&
+        c.low < candles[index - 2].low &&
+        c.low < candles[index + 1].low &&
+        c.low < candles[index + 2].low
     );
 }
 
 
-function getSwingLevels(
-    candles,
-    lookback = 80
-) {
+function getSwingLevels(candles, lookback = 80) {
 
     if (
         !candles ||
@@ -581,10 +501,8 @@ function getSwingLevels(
     ) {
 
         return {
-
             swingHighs: [],
             swingLows: []
-
         };
     }
 
@@ -594,6 +512,7 @@ function getSwingLevels(
 
 
     const swingHighs = [];
+
     const swingLows = [];
 
 
@@ -603,38 +522,20 @@ function getSwingLevels(
         i++
     ) {
 
-        if (
-            isSwingHigh(
-                data,
-                i
-            )
-        ) {
-
-            swingHighs.push(
-                data[i].high
-            );
+        if (isSwingHigh(data, i)) {
+            swingHighs.push(data[i].high);
         }
 
 
-        if (
-            isSwingLow(
-                data,
-                i
-            )
-        ) {
-
-            swingLows.push(
-                data[i].low
-            );
+        if (isSwingLow(data, i)) {
+            swingLows.push(data[i].low);
         }
     }
 
 
     return {
-
         swingHighs,
         swingLows
-
     };
 }
 
@@ -652,7 +553,6 @@ function clusterLevels(
         !levels ||
         !levels.length
     ) {
-
         return [];
     }
 
@@ -666,27 +566,20 @@ function clusterLevels(
     const clusters = [];
 
 
-    for (
-        const level of sorted
-    ) {
+    for (const level of sorted) {
 
         let found = null;
 
 
-        for (
-            const cluster of clusters
-        ) {
+        for (const cluster of clusters) {
 
             if (
                 Math.abs(
-                    level -
-                    cluster.mean
+                    level - cluster.mean
                 ) <= tolerance
             ) {
 
-                cluster.values.push(
-                    level
-                );
+                cluster.values.push(level);
 
 
                 cluster.mean =
@@ -697,8 +590,7 @@ function clusterLevels(
                     cluster.values.length;
 
 
-                found =
-                    cluster;
+                found = cluster;
 
                 break;
             }
@@ -708,11 +600,8 @@ function clusterLevels(
         if (!found) {
 
             clusters.push({
-
                 mean: level,
-
                 values: [level]
-
             });
         }
     }
@@ -726,9 +615,7 @@ function clusterLevels(
                 a.values.length
         )
 
-        .map(
-            c => c.mean
-        );
+        .map(c => c.mean);
 }
 
 
@@ -736,9 +623,7 @@ function clusterLevels(
    SUPPORT / RESISTANCE
    ========================================================= */
 
-function calculateSupportResistance(
-    candles
-) {
+function calculateSupportResistance(candles) {
 
     if (
         !candles ||
@@ -746,28 +631,20 @@ function calculateSupportResistance(
     ) {
 
         return {
-
             resistance1: null,
             resistance2: null,
-
             support1: null,
             support2: null
-
         };
     }
 
 
     const current =
-        candles[
-            candles.length - 1
-        ].close;
+        candles[candles.length - 1].close;
 
 
     const swings =
-        getSwingLevels(
-            candles,
-            80
-        );
+        getSwingLevels(candles, 80);
 
 
     const resistanceLevels =
@@ -785,29 +662,17 @@ function calculateSupportResistance(
     const resistances =
         resistanceLevels
 
-            .filter(
-                level =>
-                    level > current
-            )
+            .filter(level => level > current)
 
-            .sort(
-                (a, b) =>
-                    a - b
-            );
+            .sort((a, b) => a - b);
 
 
     const supports =
         supportLevels
 
-            .filter(
-                level =>
-                    level < current
-            )
+            .filter(level => level < current)
 
-            .sort(
-                (a, b) =>
-                    b - a
-            );
+            .sort((a, b) => b - a);
 
 
     return {
@@ -823,7 +688,6 @@ function calculateSupportResistance(
 
         support2:
             supports[1] ?? null
-
     };
 }
 
@@ -832,24 +696,18 @@ function calculateSupportResistance(
    MARKET STRUCTURE
    ========================================================= */
 
-function calculateStructure(
-    candles
-) {
+function calculateStructure(candles) {
 
     if (
         !candles ||
         candles.length < 30
     ) {
-
         return "INSUFFICIENT DATA";
     }
 
 
     const swings =
-        getSwingLevels(
-            candles,
-            60
-        );
+        getSwingLevels(candles, 60);
 
 
     const highs =
@@ -864,40 +722,30 @@ function calculateStructure(
         highs.length < 2 ||
         lows.length < 2
     ) {
-
         return "RANGE";
     }
 
 
     const lastHigh =
-        highs[
-            highs.length - 1
-        ];
+        highs[highs.length - 1];
 
 
     const previousHigh =
-        highs[
-            highs.length - 2
-        ];
+        highs[highs.length - 2];
 
 
     const lastLow =
-        lows[
-            lows.length - 1
-        ];
+        lows[lows.length - 1];
 
 
     const previousLow =
-        lows[
-            lows.length - 2
-        ];
+        lows[lows.length - 2];
 
 
     if (
         lastHigh > previousHigh &&
         lastLow > previousLow
     ) {
-
         return "BULLISH";
     }
 
@@ -906,7 +754,6 @@ function calculateStructure(
         lastHigh < previousHigh &&
         lastLow < previousLow
     ) {
-
         return "BEARISH";
     }
 
@@ -919,29 +766,18 @@ function calculateStructure(
    EMA ANALYSIS
    ========================================================= */
 
-function getEMAAnalysis(
-    candles
-) {
+function getEMAAnalysis(candles) {
 
     const ema20 =
-        calculateEMA(
-            candles,
-            20
-        );
+        calculateEMA(candles, 20);
 
 
     const ema50 =
-        calculateEMA(
-            candles,
-            50
-        );
+        calculateEMA(candles, 50);
 
 
     const ema200 =
-        calculateEMA(
-            candles,
-            200
-        );
+        calculateEMA(candles, 200);
 
 
     if (
@@ -950,20 +786,15 @@ function getEMAAnalysis(
     ) {
 
         return {
-
-            text:
-                "CALCULATING",
-
+            text: "CALCULATING",
             ema20,
             ema50,
             ema200
-
         };
     }
 
 
-    let text =
-        "MIXED";
+    let text = "MIXED";
 
 
     if (
@@ -973,9 +804,7 @@ function getEMAAnalysis(
             ema50 > ema200
         )
     ) {
-
-        text =
-            "BULLISH";
+        text = "BULLISH";
     }
 
 
@@ -986,22 +815,15 @@ function getEMAAnalysis(
             ema50 < ema200
         )
     ) {
-
-        text =
-            "BEARISH";
+        text = "BEARISH";
     }
 
 
     return {
-
         text,
-
         ema20,
-
         ema50,
-
         ema200
-
     };
 }
 
@@ -1010,9 +832,7 @@ function getEMAAnalysis(
    TIMEFRAME ANALYSIS
    ========================================================= */
 
-function analyzeTimeframe(
-    candles
-) {
+function analyzeTimeframe(candles) {
 
     if (
         !candles ||
@@ -1020,83 +840,49 @@ function analyzeTimeframe(
     ) {
 
         return {
-
             price: null,
-
-            structure:
-                "INSUFFICIENT DATA",
-
-            candle:
-                "NEUTRAL",
-
-            candleStrength:
-                0,
-
-            rsi:
-                null,
-
+            structure: "INSUFFICIENT DATA",
+            candle: "NEUTRAL",
+            candleStrength: 0,
+            rsi: null,
             ema: {
-
-                text:
-                    "CALCULATING"
-
+                text: "CALCULATING"
             },
-
             sr: {
-
                 resistance1: null,
                 resistance2: null,
-
                 support1: null,
                 support2: null
-
             }
-
         };
     }
 
 
     const last =
-        candles[
-            candles.length - 1
-        ];
+        candles[candles.length - 1];
 
 
     return {
 
-        price:
-            last.close,
+        price: last.close,
 
         structure:
-            calculateStructure(
-                candles
-            ),
+            calculateStructure(candles),
 
         candle:
-            candleDirection(
-                last
-            ),
+            candleDirection(last),
 
         candleStrength:
-            candleStrength(
-                last
-            ),
+            candleStrength(last),
 
         rsi:
-            calculateRSI(
-                candles
-            ),
+            calculateRSI(candles),
 
         ema:
-            getEMAAnalysis(
-                candles
-            ),
+            getEMAAnalysis(candles),
 
         sr:
-            calculateSupportResistance(
-                candles
-            )
-
+            calculateSupportResistance(candles)
     };
 }
 
@@ -1128,7 +914,6 @@ function buildAnalysis() {
             analyzeTimeframe(
                 marketData.m5
             )
-
     };
 }
 
@@ -1137,82 +922,54 @@ function buildAnalysis() {
    CANDLE CONFIRMATION
    ========================================================= */
 
-function bullishCandleConfirmation(
-    candles
-) {
+function bullishCandleConfirmation(candles) {
 
     if (
         !candles ||
         candles.length < 3
     ) {
-
         return false;
     }
 
 
     const last =
-        candles[
-            candles.length - 1
-        ];
+        candles[candles.length - 1];
 
 
     const previous =
-        candles[
-            candles.length - 2
-        ];
+        candles[candles.length - 2];
 
 
     return (
-
-        last.close >
-        last.open &&
-
-        last.close >
-        previous.high &&
-
-        candleStrength(last) >=
-        0.45
-
+        last.close > last.open &&
+        last.close > previous.high &&
+        candleStrength(last) >= 0.45
     );
 }
 
 
-function bearishCandleConfirmation(
-    candles
-) {
+function bearishCandleConfirmation(candles) {
 
     if (
         !candles ||
         candles.length < 3
     ) {
-
         return false;
     }
 
 
     const last =
-        candles[
-            candles.length - 1
-        ];
+        candles[candles.length - 1];
 
 
     const previous =
-        candles[
-            candles.length - 2
-        ];
+        candles[candles.length - 2];
 
 
     return (
-
-        last.close <
-        last.open &&
-
-        last.close <
-        previous.low &&
-
-        candleStrength(last) >=
-        0.45
-
+        last.close < last.open &&
+        last.close < previous.low &&
+        candleStrength(last) >= 0.45
     );
 }
 
@@ -1226,48 +983,49 @@ function calculateBuyScore(a) {
     let score = 0;
 
 
-    if (
-        a.H4.structure ===
-        "BULLISH"
-    ) score += 2;
+    if (a.H4.structure === "BULLISH") {
+        score += 2;
+    }
 
 
-    if (
-        a.H1.structure ===
-        "BULLISH"
-    ) score += 2;
+    if (a.H1.structure === "BULLISH") {
+        score += 2;
+    }
 
 
-    if (
-        a.M15.structure ===
-        "BULLISH"
-    ) score += 2;
+    if (a.M15.structure === "BULLISH") {
+        score += 2;
+    }
 
 
-    if (
-        a.M5.structure ===
-        "BULLISH"
-    ) score += 1;
+    if (a.M5.structure === "BULLISH") {
+        score += 1;
+    }
 
 
     if (
         bullishCandleConfirmation(
             marketData.m5
         )
-    ) score += 2;
+    ) {
+        score += 2;
+    }
 
 
     if (
         a.M5.rsi !== null &&
         a.M5.rsi >= 45 &&
         a.M5.rsi <= 70
-    ) score += 1;
+    ) {
+        score += 1;
+    }
 
 
     if (
-        a.M15.ema.text ===
-        "BULLISH"
-    ) score += 1;
+        a.M15.ema.text === "BULLISH"
+    ) {
+        score += 1;
+    }
 
 
     return score;
@@ -1283,48 +1041,49 @@ function calculateSellScore(a) {
     let score = 0;
 
 
-    if (
-        a.H4.structure ===
-        "BEARISH"
-    ) score += 2;
+    if (a.H4.structure === "BEARISH") {
+        score += 2;
+    }
 
 
-    if (
-        a.H1.structure ===
-        "BEARISH"
-    ) score += 2;
+    if (a.H1.structure === "BEARISH") {
+        score += 2;
+    }
 
 
-    if (
-        a.M15.structure ===
-        "BEARISH"
-    ) score += 2;
+    if (a.M15.structure === "BEARISH") {
+        score += 2;
+    }
 
 
-    if (
-        a.M5.structure ===
-        "BEARISH"
-    ) score += 1;
+    if (a.M5.structure === "BEARISH") {
+        score += 1;
+    }
 
 
     if (
         bearishCandleConfirmation(
             marketData.m5
         )
-    ) score += 2;
+    ) {
+        score += 2;
+    }
 
 
     if (
         a.M5.rsi !== null &&
         a.M5.rsi >= 30 &&
         a.M5.rsi <= 55
-    ) score += 1;
+    ) {
+        score += 1;
+    }
 
 
     if (
-        a.M15.ema.text ===
-        "BEARISH"
-    ) score += 1;
+        a.M15.ema.text === "BEARISH"
+    ) {
+        score += 1;
+    }
 
 
     return score;
@@ -1335,18 +1094,15 @@ function calculateSellScore(a) {
    BUY SETUP
    ========================================================= */
 
-function calculateBuySetup(
-    a,
-    price
-) {
+function calculateBuySetup(a, price) {
 
     const score =
         calculateBuyScore(a);
 
 
-    if (
-        score < MIN_SETUP_SCORE
-    ) return null;
+    if (score < MIN_SETUP_SCORE) {
+        return null;
+    }
 
 
     if (
@@ -1354,21 +1110,27 @@ function calculateBuySetup(
         a.H1.structure !== "BULLISH" ||
         a.M15.structure !== "BULLISH" ||
         a.M5.structure !== "BULLISH"
-    ) return null;
+    ) {
+        return null;
+    }
 
 
     if (
         !bullishCandleConfirmation(
             marketData.m5
         )
-    ) return null;
+    ) {
+        return null;
+    }
 
 
     if (
         a.M5.rsi === null ||
         a.M5.rsi < 45 ||
         a.M5.rsi > 70
-    ) return null;
+    ) {
+        return null;
+    }
 
 
     const entry = price;
@@ -1398,8 +1160,7 @@ function calculateBuySetup(
 
 
     const sl =
-        structuralSL -
-        SL_BUFFER;
+        structuralSL - SL_BUFFER;
 
 
     const risk =
@@ -1409,13 +1170,14 @@ function calculateBuySetup(
     if (
         risk <= 0 ||
         risk > MAX_RISK
-    ) return null;
+    ) {
+        return null;
+    }
 
 
     return {
 
-        direction:
-            "BUY",
+        direction: "BUY",
 
         entry,
 
@@ -1432,8 +1194,7 @@ function calculateBuySetup(
 
         score,
 
-        rr:
-            "1:3",
+        rr: "1:3",
 
         validity:
             "Valid while H4/H1 bullish structure remains intact",
@@ -1446,7 +1207,6 @@ function calculateBuySetup(
 
         verdict:
             "BUY — A+ PRICE ACTION ALIGNMENT"
-
     };
 }
 
@@ -1455,18 +1215,15 @@ function calculateBuySetup(
    SELL SETUP
    ========================================================= */
 
-function calculateSellSetup(
-    a,
-    price
-) {
+function calculateSellSetup(a, price) {
 
     const score =
         calculateSellScore(a);
 
 
-    if (
-        score < MIN_SETUP_SCORE
-    ) return null;
+    if (score < MIN_SETUP_SCORE) {
+        return null;
+    }
 
 
     if (
@@ -1474,21 +1231,27 @@ function calculateSellSetup(
         a.H1.structure !== "BEARISH" ||
         a.M15.structure !== "BEARISH" ||
         a.M5.structure !== "BEARISH"
-    ) return null;
+    ) {
+        return null;
+    }
 
 
     if (
         !bearishCandleConfirmation(
             marketData.m5
         )
-    ) return null;
+    ) {
+        return null;
+    }
 
 
     if (
         a.M5.rsi === null ||
         a.M5.rsi < 30 ||
         a.M5.rsi > 55
-    ) return null;
+    ) {
+        return null;
+    }
 
 
     const entry = price;
@@ -1518,8 +1281,7 @@ function calculateSellSetup(
 
 
     const sl =
-        structuralSL +
-        SL_BUFFER;
+        structuralSL + SL_BUFFER;
 
 
     const risk =
@@ -1529,13 +1291,14 @@ function calculateSellSetup(
     if (
         risk <= 0 ||
         risk > MAX_RISK
-    ) return null;
+    ) {
+        return null;
+    }
 
 
     return {
 
-        direction:
-            "SELL",
+        direction: "SELL",
 
         entry,
 
@@ -1552,8 +1315,7 @@ function calculateSellSetup(
 
         score,
 
-        rr:
-            "1:3",
+        rr: "1:3",
 
         validity:
             "Valid while H4/H1 bearish structure remains intact",
@@ -1566,7 +1328,6 @@ function calculateSellSetup(
 
         verdict:
             "SELL — A+ PRICE ACTION ALIGNMENT"
-
     };
 }
 
@@ -1580,38 +1341,53 @@ function calculateSniperSetup(
     price
 ) {
 
+    const buyScore =
+        calculateBuyScore(analysis);
+
+
+    const sellScore =
+        calculateSellScore(analysis);
+
+
+    /*
+       NEWS SAFETY GATE
+    */
+
     if (!NEWS_CLEAR) {
 
         return {
 
-            direction:
-                "WAIT",
+            direction: "WAIT",
 
             entry: null,
+
             sl: null,
+
             tp1: null,
+
             tp2: null,
+
             tp3: null,
 
             rr: null,
 
-            score: Math.max(
-                calculateBuyScore(analysis),
-                calculateSellScore(analysis)
-            ),
+            score:
+                Math.max(
+                    buyScore,
+                    sellScore
+                ),
 
             validity:
-                "Trading blocked until news is checked",
+                "Trading blocked until real economic news is checked",
 
             trigger:
-                "Check EUR/USD economic calendar before enabling trade",
+                "Technical setup may develop, but no trade is allowed while news status is unknown",
 
             invalidation:
-                "No trade while news status is unknown",
+                "No trade while NEWS FILTER is CLOSED",
 
             verdict:
                 "WAIT — NEWS FILTER NOT CONFIRMED"
-
         };
     }
 
@@ -1630,10 +1406,7 @@ function calculateSniperSetup(
         );
 
 
-    if (
-        buy &&
-        sell
-    ) {
+    if (buy && sell) {
 
         return buy.score >= sell.score
             ? buy
@@ -1641,28 +1414,36 @@ function calculateSniperSetup(
     }
 
 
-    if (buy) return buy;
+    if (buy) {
+        return buy;
+    }
 
-    if (sell) return sell;
+
+    if (sell) {
+        return sell;
+    }
 
 
     return {
 
-        direction:
-            "WAIT",
+        direction: "WAIT",
 
         entry: null,
+
         sl: null,
+
         tp1: null,
+
         tp2: null,
+
         tp3: null,
 
         rr: null,
 
         score:
             Math.max(
-                calculateBuyScore(analysis),
-                calculateSellScore(analysis)
+                buyScore,
+                sellScore
             ),
 
         validity:
@@ -1671,18 +1452,16 @@ function calculateSniperSetup(
         trigger:
             "Wait for H4/H1 direction → M15 confirmation → M5 trigger",
 
-        invalidation:
-            "—",
+        invalidation: "—",
 
         verdict:
             "WAIT — NO A+ MULTI-TIMEFRAME ALIGNMENT"
-
     };
 }
 
 
 /* =========================================================
-   UPDATE PRICE
+   PRICE UI
    ========================================================= */
 
 function updatePriceUI(price) {
@@ -1698,12 +1477,6 @@ function updatePriceUI(price) {
     );
 
 
-    /*
-       IMPORTANT:
-       Your HTML uses id="trend"
-       for the status line.
-    */
-
     setTextAny(
         [
             "trend",
@@ -1717,14 +1490,10 @@ function updatePriceUI(price) {
 
 
 /* =========================================================
-   UPDATE STRUCTURE
+   STRUCTURE UI
    ========================================================= */
 
 function updateStructureUI(a) {
-
-    /*
-       These IDs match the corrected HTML.
-    */
 
     setTextAny(
         "h4Trend",
@@ -1752,106 +1521,119 @@ function updateStructureUI(a) {
 
 
 /* =========================================================
-   UPDATE SUPPORT / RESISTANCE
+   SUPPORT / RESISTANCE UI
    ========================================================= */
 
 function updateSRUI(a) {
 
-    const sr =
-        a.H1.sr;
+    /*
+       H1 is used for the main dashboard
+       support/resistance map.
+    */
+
+    const sr = a.H1.sr;
 
 
     setTextAny(
         "resistance1",
-        roundPrice(
-            sr.resistance1
-        )
+        roundPrice(sr.resistance1)
     );
 
 
     setTextAny(
         "resistance2",
-        roundPrice(
-            sr.resistance2
-        )
+        roundPrice(sr.resistance2)
     );
 
 
     setTextAny(
         "support1",
-        roundPrice(
-            sr.support1
-        )
+        roundPrice(sr.support1)
     );
 
 
     setTextAny(
         "support2",
-        roundPrice(
-            sr.support2
-        )
+        roundPrice(sr.support2)
     );
 }
 
 
 /* =========================================================
-   UPDATE INDICATORS
+   INDICATORS UI
    ========================================================= */
 
 function updateIndicatorsUI(a) {
 
     setTextAny(
         "h4Rsi",
-        roundRSI(
-            a.H4.rsi
-        )
+        roundRSI(a.H4.rsi)
     );
 
 
     setTextAny(
         "h1Rsi",
-        roundRSI(
-            a.H1.rsi
-        )
+        roundRSI(a.H1.rsi)
     );
 
 
     setTextAny(
         "m15Rsi",
-        roundRSI(
-            a.M15.rsi
-        )
+        roundRSI(a.M15.rsi)
     );
 
 
     setTextAny(
         "m5Rsi",
-        roundRSI(
-            a.M5.rsi
-        )
+        roundRSI(a.M5.rsi)
     );
+
+
+    /*
+       Use combined EMA structure.
+    */
+
+    const emaStates = [
+        a.H4.ema.text,
+        a.H1.ema.text,
+        a.M15.ema.text,
+        a.M5.ema.text
+    ];
+
+
+    let emaStructure = "MIXED";
+
+
+    if (
+        emaStates.every(
+            x => x === "BULLISH"
+        )
+    ) {
+        emaStructure = "BULLISH";
+    }
+
+
+    else if (
+        emaStates.every(
+            x => x === "BEARISH"
+        )
+    ) {
+        emaStructure = "BEARISH";
+    }
 
 
     setTextAny(
         "emaStructure",
-        a.H1.ema.text
+        emaStructure
     );
 }
 
 
 /* =========================================================
-   UPDATE NEWS
+   NEWS UI
    ========================================================= */
 
 function updateNewsUI() {
-
-    /*
-       We deliberately DO NOT pretend
-       we have a real economic calendar.
-
-       Until a news API is connected,
-       the trade gate stays closed.
-    */
 
     setTextAny(
         "eurNews",
@@ -1879,7 +1661,7 @@ function updateNewsUI() {
 
 
 /* =========================================================
-   UPDATE SNIPER
+   SNIPER UI
    ========================================================= */
 
 function updateSniperUI(setup) {
@@ -1898,41 +1680,31 @@ function updateSniperUI(setup) {
 
     setTextAny(
         "entry",
-        roundPrice(
-            setup.entry
-        )
+        roundPrice(setup.entry)
     );
 
 
     setTextAny(
         "stopLoss",
-        roundPrice(
-            setup.sl
-        )
+        roundPrice(setup.sl)
     );
 
 
     setTextAny(
         "tp1",
-        roundPrice(
-            setup.tp1
-        )
+        roundPrice(setup.tp1)
     );
 
 
     setTextAny(
         "tp2",
-        roundPrice(
-            setup.tp2
-        )
+        roundPrice(setup.tp2)
     );
 
 
     setTextAny(
         "tp3",
-        roundPrice(
-            setup.tp3
-        )
+        roundPrice(setup.tp3)
     );
 
 
@@ -1958,11 +1730,17 @@ function updateSniperUI(setup) {
         "invalidation",
         setup.invalidation
     );
+
+
+    setTextAny(
+        "setupScore",
+        setup.score ?? "—"
+    );
 }
 
 
 /* =========================================================
-   UPDATE PRO VERDICT
+   PRO VERDICT
    ========================================================= */
 
 function updateProVerdictUI(setup) {
@@ -1973,10 +1751,7 @@ function updateProVerdictUI(setup) {
     );
 
 
-    if (
-        setup.direction ===
-        "BUY"
-    ) {
+    if (setup.direction === "BUY") {
 
         setTextAny(
             "proExplanation",
@@ -1986,10 +1761,7 @@ function updateProVerdictUI(setup) {
     }
 
 
-    else if (
-        setup.direction ===
-        "SELL"
-    ) {
+    else if (setup.direction === "SELL") {
 
         setTextAny(
             "proExplanation",
@@ -1999,9 +1771,7 @@ function updateProVerdictUI(setup) {
     }
 
 
-    else if (
-        !NEWS_CLEAR
-    ) {
+    else if (!NEWS_CLEAR) {
 
         setTextAny(
             "proExplanation",
@@ -2022,42 +1792,33 @@ function updateProVerdictUI(setup) {
 
 
 /* =========================================================
-   UPDATE TIMESTAMP
+   TIMESTAMP
    ========================================================= */
 
 function updateTimestamp() {
 
-    const now =
-        new Date();
+    const now = new Date();
 
 
     const text =
         now.toLocaleString(
             "en-IN",
             {
-                timeZone:
-                    "Asia/Kolkata",
+                timeZone: "Asia/Kolkata",
 
-                day:
-                    "2-digit",
+                day: "2-digit",
 
-                month:
-                    "2-digit",
+                month: "2-digit",
 
-                year:
-                    "numeric",
+                year: "numeric",
 
-                hour:
-                    "2-digit",
+                hour: "2-digit",
 
-                minute:
-                    "2-digit",
+                minute: "2-digit",
 
-                second:
-                    "2-digit",
+                second: "2-digit",
 
-                hour12:
-                    false
+                hour12: false
             }
         );
 
@@ -2085,11 +1846,16 @@ function showDashboardError(error) {
 
 
     const message =
-        error &&
-        error.message
+        error && error.message
             ? error.message
             : String(error);
 
+
+    /*
+       IMPORTANT:
+       Show the actual API/network error
+       instead of leaving "Calculating..."
+    */
 
     setTextAny(
         [
@@ -2099,6 +1865,17 @@ function showDashboardError(error) {
             "marketStatus"
         ],
         `ERROR: ${message}`
+    );
+
+
+    setTextAny(
+        [
+            "livePrice",
+            "price",
+            "currentPrice",
+            "live-price"
+        ],
+        "ERROR"
     );
 
 
@@ -2127,16 +1904,12 @@ function showDashboardError(error) {
 
 async function loadMarketData() {
 
-    if (
-        window.__dashboardLoading
-    ) {
-
+    if (window.__dashboardLoading) {
         return;
     }
 
 
-    window.__dashboardLoading =
-        true;
+    window.__dashboardLoading = true;
 
 
     setTextAny(
@@ -2153,9 +1926,27 @@ async function loadMarketData() {
     try {
 
         console.log(
+            "================================="
+        );
+
+        console.log(
             "EUR/USD DASHBOARD UPDATE START"
         );
 
+        console.log(
+            "================================="
+        );
+
+
+        /*
+           Load all four timeframes.
+
+           Twelve Data supports:
+           4h
+           1h
+           15min
+           5min
+        */
 
         const h4 =
             await getCandles(
@@ -2185,30 +1976,22 @@ async function loadMarketData() {
             );
 
 
-        marketData.h4 =
-            h4;
+        marketData.h4 = h4;
 
+        marketData.h1 = h1;
 
-        marketData.h1 =
-            h1;
+        marketData.m15 = m15;
 
-
-        marketData.m15 =
-            m15;
-
-
-        marketData.m5 =
-            m5;
+        marketData.m5 = m5;
 
 
         /*
-           Latest M5 candle close.
+           Use the latest M5 close
+           as dashboard price.
         */
 
         marketData.price =
-            m5[
-                m5.length - 1
-            ].close;
+            m5[m5.length - 1].close;
 
 
         marketData.lastUpdate =
@@ -2216,10 +1999,14 @@ async function loadMarketData() {
 
 
         console.log(
-            "PRICE:",
+            "CURRENT EUR/USD:",
             marketData.price
         );
 
+
+        /*
+           Build technical analysis.
+        */
 
         const analysis =
             buildAnalysis();
@@ -2231,6 +2018,10 @@ async function loadMarketData() {
         );
 
 
+        /*
+           Build sniper setup.
+        */
+
         const setup =
             calculateSniperSetup(
                 analysis,
@@ -2239,10 +2030,14 @@ async function loadMarketData() {
 
 
         console.log(
-            "SETUP:",
+            "SNIPER SETUP:",
             setup
         );
 
+
+        /*
+           Update dashboard.
+        */
 
         updatePriceUI(
             marketData.price
@@ -2303,10 +2098,7 @@ async function loadMarketData() {
         marketData.apiError =
             error;
 
-
-        showDashboardError(
-            error
-        );
+        showDashboardError(error);
 
     }
 
@@ -2330,8 +2122,16 @@ function startDashboard() {
     );
 
 
+    /*
+       Run immediately.
+    */
+
     loadMarketData();
 
+
+    /*
+       Refresh every 15 minutes.
+    */
 
     setInterval(
         loadMarketData,
@@ -2345,8 +2145,7 @@ function startDashboard() {
    ========================================================= */
 
 if (
-    document.readyState ===
-    "loading"
+    document.readyState === "loading"
 ) {
 
     document.addEventListener(
