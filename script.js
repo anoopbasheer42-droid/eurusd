@@ -3,7 +3,7 @@
    LOW-REQUEST VERSION
    ========================================================= */
 
-const API_KEY = "8908432b6c784bc49aad6ccf64845991";
+const API_KEY = "4ba3968e609544bf8990192fdf3ed970";
 
 const SYMBOL = "EUR/USD";
 const TIME_SERIES_URL = "https://api.twelvedata.com/time_series";
