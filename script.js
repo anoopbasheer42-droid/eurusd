@@ -1,25 +1,3 @@
-/* =========================================================
-   EUR/USD SNIPER DASHBOARD
-   FULL ELITE VERSION
-   + LIVE MULTI-TIMEFRAME PRICE CHART
-
-   ENGINE 1 = A+ SNIPER
-   ENGINE 2 = ELITE SCALP
-   ENGINE 3 = ELITE TRADE GATE
-
-   NEWS = INFORMATION ONLY
-   NEWS DOES NOT BLOCK ANY ENGINE
-
-   CHART = 5M / 15M / 1H / 4H
-   ========================================================= */
-
-
-/* =========================================================
-   API CONFIGURATION
-   =========================================================
-   >>> ENTER YOUR TWELVE DATA API KEY HERE <<<
-   ========================================================= */
-
 const API_KEY = "4ba3968e609544bf8990192fdf3ed970";
 
 const SYMBOL = "EUR/USD";
@@ -709,11 +687,6 @@ function createPriceChartContainer() {
     `;
 
 
-    /*
-       Insert chart directly after
-       Live Market Price.
-    */
-
     const parent =
         livePriceElement.parentNode;
 
@@ -788,10 +761,6 @@ function renderPriceChart(candles) {
         return;
     }
 
-
-    /*
-       Use latest 60 candles.
-    */
 
     const recent =
         candles.slice(-60);
@@ -923,10 +892,6 @@ function renderPriceChart(candles) {
     }
 
 
-    /*
-       Grid lines.
-    */
-
     let grid =
         "";
 
@@ -985,10 +950,6 @@ function renderPriceChart(candles) {
         `;
     }
 
-
-    /*
-       Candles.
-    */
 
     let candleSVG =
         "";
@@ -1092,10 +1053,6 @@ function renderPriceChart(candles) {
     );
 
 
-    /*
-       Current/latest price line.
-    */
-
     const latest =
         recent[
             recent.length - 1
@@ -1148,10 +1105,6 @@ function renderPriceChart(candles) {
     `;
 
 
-    /*
-       Title.
-    */
-
     const timeframe =
         getChartTimeframeLabel();
 
@@ -1182,10 +1135,6 @@ function renderPriceChart(candles) {
 
     `;
 
-
-    /*
-       Time labels.
-    */
 
     let timeLabels =
         "";
@@ -1788,19 +1737,56 @@ function calculateRSI(
 
 
 /* =========================================================
-   TREND
+   COMPLETED-CANDLE SERIES
+   ========================================================= */
+
+function getCompletedCandles(
+    candles
+) {
+
+    if (
+        !candles ||
+        candles.length < 2
+    ) {
+
+        return [];
+    }
+
+
+    return candles.slice(
+        0,
+        -1
+    );
+}
+
+
+/* =========================================================
+   TREND — H4 / H1
+   =========================================================
+   
+   Trend is now determined using:
+
+   1. Completed candles only
+   2. EMA20 vs EMA50
+   3. Completed price vs EMA20
+   4. Market structure
+
+   This avoids calling a temporary bullish candle
+   a full bullish higher-timeframe trend.
    ========================================================= */
 
 function getTrend(
     candles
 ) {
 
+    const completed =
+        getCompletedCandles(
+            candles
+        );
+
+
     if (
-
-        !candles ||
-
-        candles.length < 50
-
+        completed.length < 55
     ) {
 
         return "--";
@@ -1809,23 +1795,31 @@ function getTrend(
 
     const ema20 =
         calculateEMA(
-            candles,
+            completed,
             20
         );
 
 
     const ema50 =
         calculateEMA(
-            candles,
+            completed,
             50
         );
+
+
+    const last =
+        completed[
+            completed.length - 1
+        ];
 
 
     if (
 
         ema20 === null ||
 
-        ema50 === null
+        ema50 === null ||
+
+        !last
 
     ) {
 
@@ -1833,23 +1827,55 @@ function getTrend(
     }
 
 
+    const structure =
+        getStructure(
+            completed
+        );
+
+
+    const price =
+        Number(
+            last.close
+        );
+
+
     if (
-        ema20 > ema50
+        !Number.isFinite(price)
     ) {
+
+        return "--";
+    }
+
+
+    const bullish =
+        ema20 > ema50 &&
+
+        price > ema20 &&
+
+        structure === "BULLISH";
+
+
+    const bearish =
+        ema20 < ema50 &&
+
+        price < ema20 &&
+
+        structure === "BEARISH";
+
+
+    if (bullish) {
 
         return "BULLISH";
     }
 
 
-    if (
-        ema20 < ema50
-    ) {
+    if (bearish) {
 
         return "BEARISH";
     }
 
 
-    return "NEUTRAL";
+    return "RANGE";
 }
 
 
@@ -1861,12 +1887,14 @@ function getStructure(
     candles
 ) {
 
+    const completed =
+        getCompletedCandles(
+            candles
+        );
+
+
     if (
-
-        !candles ||
-
-        candles.length < 10
-
+        completed.length < 10
     ) {
 
         return "--";
@@ -1874,7 +1902,7 @@ function getStructure(
 
 
     const recent =
-        candles.slice(-10);
+        completed.slice(-10);
 
 
     const highs =
@@ -1943,18 +1971,32 @@ function getStructure(
 
 /* =========================================================
    SUPPORT / RESISTANCE
+   =========================================================
+   
+   IMPORTANT:
+
+   R1 = nearest meaningful resistance ABOVE price
+   R2 = next resistance above R1
+
+   S1 = nearest meaningful support BELOW price
+   S2 = next support below S1
+
+   This fixes the previous S1/S2 inversion.
    ========================================================= */
 
 function calculateSR(
-    candles
+    candles,
+    currentPrice = null
 ) {
 
+    const completed =
+        getCompletedCandles(
+            candles
+        );
+
+
     if (
-
-        !candles ||
-
-        candles.length < 20
-
+        completed.length < 20
     ) {
 
         return {
@@ -1972,48 +2014,302 @@ function calculateSR(
 
 
     const recent =
-        candles.slice(-20);
+        completed.slice(-60);
 
 
-    const highs =
-        recent.map(
-            c => c.high
+    let swingHighs = [];
+
+    let swingLows = [];
+
+
+    /*
+       Detect local swing points using
+       two candles on each side.
+    */
+
+    for (
+        let i = 2;
+
+        i < recent.length - 2;
+
+        i++
+
+    ) {
+
+        const current =
+            recent[i];
+
+
+        const left1 =
+            recent[i - 1];
+
+
+        const left2 =
+            recent[i - 2];
+
+
+        const right1 =
+            recent[i + 1];
+
+
+        const right2 =
+            recent[i + 2];
+
+
+        const isSwingHigh =
+
+            current.high >= left1.high &&
+
+            current.high >= left2.high &&
+
+            current.high >= right1.high &&
+
+            current.high >= right2.high;
+
+
+        const isSwingLow =
+
+            current.low <= left1.low &&
+
+            current.low <= left2.low &&
+
+            current.low <= right1.low &&
+
+            current.low <= right2.low;
+
+
+        if (isSwingHigh) {
+
+            swingHighs.push(
+                current.high
+            );
+        }
+
+
+        if (isSwingLow) {
+
+            swingLows.push(
+                current.low
+            );
+        }
+    }
+
+
+    /*
+       Fallback if not enough local swings.
+    */
+
+    if (
+        swingHighs.length === 0
+    ) {
+
+        swingHighs.push(
+            Math.max(
+                ...recent.map(
+                    c => c.high
+                )
+            )
+        );
+    }
+
+
+    if (
+        swingLows.length === 0
+    ) {
+
+        swingLows.push(
+            Math.min(
+                ...recent.map(
+                    c => c.low
+                )
+            )
+        );
+    }
+
+
+    let price =
+        num(currentPrice);
+
+
+    if (price === null) {
+
+        const last =
+            completed[
+                completed.length - 1
+            ];
+
+        price =
+            last
+                ? last.close
+                : null;
+    }
+
+
+    if (price === null) {
+
+        return {
+
+            r2: null,
+
+            r1: null,
+
+            s1: null,
+
+            s2: null
+
+        };
+    }
+
+
+    /*
+       Remove duplicate / near-identical
+       levels.
+    */
+
+    function uniqueLevels(
+        levels
+    ) {
+
+        const sorted =
+            [...levels].sort(
+                (a, b) => a - b
+            );
+
+
+        const result = [];
+
+
+        for (
+            const level of sorted
+        ) {
+
+            if (
+                !result.length ||
+                Math.abs(
+                    level -
+                    result[result.length - 1]
+                ) >= 0.00015
+            ) {
+
+                result.push(level);
+            }
+        }
+
+
+        return result;
+    }
+
+
+    const uniqueHighs =
+        uniqueLevels(
+            swingHighs
         );
 
 
-    const lows =
-        recent.map(
-            c => c.low
+    const uniqueLows =
+        uniqueLevels(
+            swingLows
         );
 
 
-    const sortedHighs =
-        [...highs].sort(
-            (a, b) => b - a
-        );
+    /*
+       Resistance must be ABOVE current price.
+    */
+
+    const resistances =
+        uniqueHighs
+            .filter(
+                level =>
+                    level > price
+            )
+            .sort(
+                (a, b) => a - b
+            );
 
 
-    const sortedLows =
-        [...lows].sort(
-            (a, b) => a - b
-        );
+    /*
+       Support must be BELOW current price.
+    */
+
+    const supports =
+        uniqueLows
+            .filter(
+                level =>
+                    level < price
+            )
+            .sort(
+                (a, b) => b - a
+            );
+
+
+    /*
+       If no swing is above/below current price,
+       use historical extremes as fallback.
+    */
+
+    if (
+        resistances.length === 0
+    ) {
+
+        const fallbackResistance =
+            Math.max(
+                ...recent.map(
+                    c => c.high
+                )
+            );
+
+
+        if (
+            fallbackResistance > price
+        ) {
+
+            resistances.push(
+                fallbackResistance
+            );
+        }
+    }
+
+
+    if (
+        supports.length === 0
+    ) {
+
+        const fallbackSupport =
+            Math.min(
+                ...recent.map(
+                    c => c.low
+                )
+            );
+
+
+        if (
+            fallbackSupport < price
+        ) {
+
+            supports.push(
+                fallbackSupport
+            );
+        }
+    }
 
 
     return {
 
-        r2:
-            sortedHighs[1] ||
-            sortedHighs[0],
-
         r1:
-            sortedHighs[0],
+            resistances[0] ??
+            null,
+
+        r2:
+            resistances[1] ??
+            null,
 
         s1:
-            sortedLows[0],
+            supports[0] ??
+            null,
 
         s2:
-            sortedLows[1] ||
-            sortedLows[0]
+            supports[1] ??
+            null
 
     };
 }
@@ -2180,11 +2476,17 @@ function getEMADirection(
     candles
 ) {
 
+    const completed =
+        getCompletedCandles(
+            candles
+        );
+
+
     if (
 
-        !candles ||
+        !completed ||
 
-        candles.length < 50
+        completed.length < 50
 
     ) {
 
@@ -2194,14 +2496,14 @@ function getEMADirection(
 
     const ema20 =
         calculateEMA(
-            candles,
+            completed,
             20
         );
 
 
     const ema50 =
         calculateEMA(
-            candles,
+            completed,
             50
         );
 
@@ -2247,11 +2549,17 @@ function isEMAOverExtended(
     direction
 ) {
 
+    const completed =
+        getCompletedCandles(
+            candles
+        );
+
+
     if (
 
-        !candles ||
+        !completed ||
 
-        candles.length < 50
+        completed.length < 50
 
     ) {
 
@@ -2260,9 +2568,9 @@ function isEMAOverExtended(
 
 
     const last =
-        getLatestCompletedCandle(
-            candles
-        );
+        completed[
+            completed.length - 1
+        ];
 
 
     if (!last) {
@@ -2273,14 +2581,14 @@ function isEMAOverExtended(
 
     const ema20 =
         calculateEMA(
-            candles,
+            completed,
             20
         );
 
 
     const ema50 =
         calculateEMA(
-            candles,
+            completed,
             50
         );
 
@@ -2309,6 +2617,24 @@ function isEMAOverExtended(
             ema20 -
             ema50
         );
+
+
+    /*
+       Absolute emergency extension protection.
+
+       More than 20 pips from EMA20
+       is considered excessive.
+
+       The relative EMA gap rule remains
+       active as an additional filter.
+    */
+
+    if (
+        distance > 0.0020
+    ) {
+
+        return true;
+    }
 
 
     if (
@@ -2404,6 +2730,169 @@ function getCandleQuality(
 
 
 /* =========================================================
+   REAL RR CALCULATION
+   ========================================================= */
+
+function calculateRR(
+    entry,
+    sl,
+    tp
+) {
+
+    if (
+
+        !Number.isFinite(entry) ||
+
+        !Number.isFinite(sl) ||
+
+        !Number.isFinite(tp)
+
+    ) {
+
+        return null;
+    }
+
+
+    const risk =
+        Math.abs(
+            entry -
+            sl
+        );
+
+
+    const reward =
+        Math.abs(
+            tp -
+            entry
+        );
+
+
+    if (
+        risk <= 0
+    ) {
+
+        return null;
+    }
+
+
+    return reward / risk;
+}
+
+
+function formatRR(
+    rr
+) {
+
+    if (
+        !Number.isFinite(rr)
+    ) {
+
+        return "--";
+    }
+
+
+    return "1:" +
+        rr.toFixed(2);
+}
+
+
+/* =========================================================
+   STRUCTURAL RISK
+   ========================================================= */
+
+function calculateStructuralRisk(
+    entry,
+    direction,
+    sr
+) {
+
+    if (
+
+        !Number.isFinite(entry) ||
+
+        !sr
+
+    ) {
+
+        return null;
+    }
+
+
+    let sl = null;
+
+
+    if (
+        direction === "SELL"
+    ) {
+
+        /*
+           For SELL, resistance above entry
+           is the structural invalidation area.
+
+           Prefer R1 if it is reasonably close.
+        */
+
+        if (
+            Number.isFinite(sr.r1) &&
+            sr.r1 > entry
+        ) {
+
+            sl =
+                sr.r1 +
+                0.0002;
+
+        }
+
+    }
+
+    else if (
+        direction === "BUY"
+    ) {
+
+        /*
+           For BUY, support below entry
+           is the structural invalidation area.
+        */
+
+        if (
+            Number.isFinite(sr.s1) &&
+            sr.s1 < entry
+        ) {
+
+            sl =
+                sr.s1 -
+                0.0002;
+        }
+    }
+
+
+    if (
+        !Number.isFinite(sl)
+    ) {
+
+        return null;
+    }
+
+
+    const riskPips =
+        Math.abs(
+            entry -
+            sl
+        ) /
+        pipSize();
+
+
+    return {
+
+        sl,
+
+        riskPips
+
+    };
+}
+
+
+/* =========================================================
    SESSION ENGINE
    ========================================================= */
 
@@ -2478,6 +2967,10 @@ function getSessionInfo() {
         minute;
 
 
+    /*
+       US closing / rollover.
+    */
+
     if (
 
         totalMinutes >= 60 &&
@@ -2501,11 +2994,15 @@ function getSessionInfo() {
     }
 
 
+    /*
+       London / US overlap.
+    */
+
     if (
 
         totalMinutes >= 1050 &&
 
-        totalMinutes < 1230
+        totalMinutes < 1200
 
     ) {
 
@@ -2524,11 +3021,15 @@ function getSessionInfo() {
     }
 
 
+    /*
+       London closing.
+    */
+
     if (
 
         totalMinutes >= 1200 &&
 
-        totalMinutes < 1290
+        totalMinutes < 1230
 
     ) {
 
@@ -2546,6 +3047,10 @@ function getSessionInfo() {
         };
     }
 
+
+    /*
+       US session.
+    */
 
     if (
 
@@ -2569,6 +3074,10 @@ function getSessionInfo() {
         };
     }
 
+
+    /*
+       London session.
+    */
 
     if (
 
@@ -3279,13 +3788,13 @@ async function loadNews(
 
         setText(
             "tradingRisk",
-            "CAUTION"
+            "INFORMATION UNAVAILABLE"
         );
 
 
         setText(
             "checkNews",
-            "— EUR/USD high-impact news clear"
+            "— News unavailable — engines remain independent"
         );
 
     }
@@ -3376,7 +3885,15 @@ function processNews(
         relevantEvents.length > 0;
 
 
-    let blockingEvent =
+    /*
+       NEWS IS INFORMATIONAL ONLY.
+
+       We still calculate and display the
+       news window, but NO ENGINE uses this
+       value as a trade blocker.
+    */
+
+    let informationEvent =
         null;
 
 
@@ -3408,7 +3925,7 @@ function processNews(
 
         ) {
 
-            blockingEvent =
+            informationEvent =
                 event;
 
             break;
@@ -3423,7 +3940,7 @@ function processNews(
 
         ) {
 
-            blockingEvent =
+            informationEvent =
                 event;
 
             break;
@@ -3432,23 +3949,23 @@ function processNews(
 
 
     newsState.blocked =
-        blockingEvent !== null;
+        informationEvent !== null;
 
 
     newsState.event =
-        blockingEvent;
+        informationEvent;
 
 
-    if (blockingEvent) {
+    if (informationEvent) {
 
         newsState.currency =
-            blockingEvent.currency;
+            informationEvent.currency;
 
         newsState.minutesToEvent =
 
             (
 
-                blockingEvent.date -
+                informationEvent.date -
                 now
 
             ) / 60000;
@@ -3515,7 +4032,7 @@ function processNews(
 
         setText(
             "newsFilter",
-            "HIGH IMPACT WINDOW"
+            "HIGH IMPACT WINDOW — INFORMATION"
         );
 
     }
@@ -3526,7 +4043,7 @@ function processNews(
 
         setText(
             "newsFilter",
-            "HIGH IMPACT"
+            "HIGH IMPACT — INFORMATION"
         );
 
     }
@@ -3535,7 +4052,7 @@ function processNews(
 
         setText(
             "newsFilter",
-            "CLEAR"
+            "CLEAR — INFORMATION ONLY"
         );
     }
 
@@ -3568,7 +4085,7 @@ function processNews(
 
         setText(
             "tradingRisk",
-            "HIGH — NEWS WINDOW"
+            "HIGH — NEWS WINDOW — INFORMATION ONLY"
         );
 
     }
@@ -3593,7 +4110,7 @@ function processNews(
 
             setText(
                 "tradingRisk",
-                "ELEVATED — NEWS SOON"
+                "ELEVATED — NEWS SOON — INFORMATION ONLY"
             );
 
         }
@@ -3602,7 +4119,7 @@ function processNews(
 
             setText(
                 "tradingRisk",
-                "NORMAL"
+                "NORMAL — NEWS INFORMATION ONLY"
             );
         }
 
@@ -3612,7 +4129,7 @@ function processNews(
 
         setText(
             "tradingRisk",
-            "NORMAL"
+            "NORMAL — NEWS INFORMATION ONLY"
         );
     }
 
@@ -3621,9 +4138,9 @@ function processNews(
         "checkNews",
         newsState.available
 
-            ? "✓ News monitored — informational only"
+            ? "✓ News monitored — INFORMATION ONLY — does not block engines"
 
-            : "— News data unavailable"
+            : "— News unavailable — engines remain independent"
     );
 }
 
@@ -3834,6 +4351,12 @@ function formatMinutes(
 
 /* =========================================================
    NEWS BLOCK FUNCTION
+   =========================================================
+   
+   INTENTIONALLY FALSE.
+
+   News is informational only.
+   It never blocks Engine 1, 2 or 3.
    ========================================================= */
 
 function isNewsBlocked() {
@@ -3886,7 +4409,9 @@ function evaluateSniper(
 
 
     const rsi =
-        calculateRSI(m5);
+        calculateRSI(
+            getCompletedCandles(m5)
+        );
 
 
     const directionCandidate =
@@ -3955,6 +4480,28 @@ function evaluateSniper(
     }
 
 
+    /*
+       RSI protection.
+
+       BUY:
+       50 to below 70
+
+       SELL:
+       above 30 to below 50
+    */
+
+    const rsiSafeForBuy =
+        rsi !== null &&
+        rsi >= 50 &&
+        rsi < 70;
+
+
+    const rsiSafeForSell =
+        rsi !== null &&
+        rsi > 30 &&
+        rsi < 50;
+
+
     const bearishConditions =
 
         directionCandidate === "SELL" &&
@@ -3967,9 +4514,7 @@ function evaluateSniper(
 
         momentum === "BEARISH" &&
 
-        rsi !== null &&
-
-        rsi < 50 &&
+        rsiSafeForSell &&
 
         getCandleQuality(
             m5,
@@ -3994,9 +4539,7 @@ function evaluateSniper(
 
         momentum === "BULLISH" &&
 
-        rsi !== null &&
-
-        rsi >= 50 &&
+        rsiSafeForBuy &&
 
         getCandleQuality(
             m5,
@@ -4017,6 +4560,40 @@ function evaluateSniper(
     if (!valid) {
 
         invalidateSniperSetup();
+
+
+        let trigger =
+            momentum;
+
+
+        if (
+            rsi === null
+        ) {
+
+            trigger =
+                "RSI unavailable";
+
+        }
+
+        else if (
+            directionCandidate === "BUY" &&
+            rsi >= 70
+        ) {
+
+            trigger =
+                "BUY blocked — RSI overbought";
+
+        }
+
+        else if (
+            directionCandidate === "SELL" &&
+            rsi <= 30
+        ) {
+
+            trigger =
+                "SELL blocked — RSI oversold";
+
+        }
 
 
         return {
@@ -4048,11 +4625,10 @@ function evaluateSniper(
             validity:
                 "NO A+ SETUP",
 
-            trigger:
-                momentum,
+            trigger,
 
             invalidation:
-                "Alignment or momentum missing",
+                "Alignment, RSI, momentum or extension protection missing",
 
             score:
                 0
@@ -4068,6 +4644,12 @@ function evaluateSniper(
     const entry =
         price;
 
+
+    /*
+       Engine 1 execution risk.
+
+       10 pip structural baseline.
+    */
 
     const riskPips =
         10;
@@ -4144,6 +4726,80 @@ function evaluateSniper(
     }
 
 
+    const rr1 =
+        calculateRR(
+            entry,
+            sl,
+            tp1
+        );
+
+
+    const rr2 =
+        calculateRR(
+            entry,
+            sl,
+            tp2
+        );
+
+
+    const rr3 =
+        calculateRR(
+            entry,
+            sl,
+            tp3
+        );
+
+
+    if (
+        rr1 === null ||
+        rr1 < 2
+    ) {
+
+        invalidateSniperSetup();
+
+
+        return {
+
+            status:
+                "WAIT",
+
+            direction:
+                "--",
+
+            entry:
+                "--",
+
+            sl:
+                "--",
+
+            tp1:
+                "--",
+
+            tp2:
+                "--",
+
+            tp3:
+                "--",
+
+            rr:
+                "--",
+
+            validity:
+                "RR FAILED",
+
+            trigger:
+                "Minimum real 1:2 RR unavailable",
+
+            invalidation:
+                "Trade requires real RR >= 1:2",
+
+            score:
+                0
+
+        };
+    }
+
+
     const score =
         90;
 
@@ -4169,7 +4825,16 @@ function evaluateSniper(
         tp3,
 
         rr:
-            "1:2 / 1:3 / 1:4",
+
+            formatRR(rr1) +
+
+            " / " +
+
+            formatRR(rr2) +
+
+            " / " +
+
+            formatRR(rr3),
 
         validity:
             "VALID",
@@ -4349,8 +5014,26 @@ function evaluateScalp(
 
 
     const rsi =
-        calculateRSI(m5);
+        calculateRSI(
+            getCompletedCandles(m5)
+        );
 
+
+    const buyRSISafe =
+        rsi !== null &&
+        rsi >= 50 &&
+        rsi < 70;
+
+
+    const sellRSISafe =
+        rsi !== null &&
+        rsi > 30 &&
+        rsi < 50;
+
+
+    /*
+       SELL SCALP
+    */
 
     if (
 
@@ -4364,11 +5047,14 @@ function evaluateScalp(
 
         momentum === "BEARISH" &&
 
-        rsi !== null &&
-
-        rsi < 50 &&
+        sellRSISafe &&
 
         getCandleQuality(
+            m5,
+            "SELL"
+        ) &&
+
+        !isEMAOverExtended(
             m5,
             "SELL"
         )
@@ -4379,43 +5065,95 @@ function evaluateScalp(
             price;
 
 
-        return {
+        const riskPips =
+            7;
 
-            verdict:
-                "A+ SCALP",
 
-            direction:
-                "SELL",
+        const sl =
+            entry +
+            riskPips *
+            pipSize();
 
-            entry,
 
-            sl:
-                entry + 0.0007,
+        const tp1 =
+            entry -
+            riskPips *
+            2 *
+            pipSize();
 
-            tp1:
-                entry - 0.0014,
 
-            tp2:
-                entry - 0.0021,
+        const tp2 =
+            entry -
+            riskPips *
+            3 *
+            pipSize();
 
-            rr:
-                "1:2 / 1:3",
 
-            score:
-                90,
+        const rr1 =
+            calculateRR(
+                entry,
+                sl,
+                tp1
+            );
 
-            validity:
-                "VALID",
 
-            trigger:
-                "H1 + M15 + M5 bearish alignment",
+        const rr2 =
+            calculateRR(
+                entry,
+                sl,
+                tp2
+            );
 
-            invalidation:
-                "M5 bullish close / EMA alignment breaks"
 
-        };
+        if (
+            rr1 !== null &&
+            rr1 >= 2
+        ) {
+
+            return {
+
+                verdict:
+                    "A+ SCALP",
+
+                direction:
+                    "SELL",
+
+                entry,
+
+                sl,
+
+                tp1,
+
+                tp2,
+
+                rr:
+
+                    formatRR(rr1) +
+
+                    " / " +
+
+                    formatRR(rr2),
+
+                score:
+                    90,
+
+                validity:
+                    "VALID",
+
+                trigger:
+                    "H1 + M15 + M5 bearish alignment",
+
+                invalidation:
+                    "M5 bullish close / EMA alignment breaks"
+
+            };
+        }
     }
 
+
+    /*
+       BUY SCALP
+    */
 
     if (
 
@@ -4429,11 +5167,14 @@ function evaluateScalp(
 
         momentum === "BULLISH" &&
 
-        rsi !== null &&
-
-        rsi >= 50 &&
+        buyRSISafe &&
 
         getCandleQuality(
+            m5,
+            "BUY"
+        ) &&
+
+        !isEMAOverExtended(
             m5,
             "BUY"
         )
@@ -4444,41 +5185,120 @@ function evaluateScalp(
             price;
 
 
-        return {
+        const riskPips =
+            7;
 
-            verdict:
-                "A+ SCALP",
 
-            direction:
-                "BUY",
+        const sl =
+            entry -
+            riskPips *
+            pipSize();
 
-            entry,
 
-            sl:
-                entry - 0.0007,
+        const tp1 =
+            entry +
+            riskPips *
+            2 *
+            pipSize();
 
-            tp1:
-                entry + 0.0014,
 
-            tp2:
-                entry + 0.0021,
+        const tp2 =
+            entry +
+            riskPips *
+            3 *
+            pipSize();
 
-            rr:
-                "1:2 / 1:3",
 
-            score:
-                90,
+        const rr1 =
+            calculateRR(
+                entry,
+                sl,
+                tp1
+            );
 
-            validity:
-                "VALID",
 
-            trigger:
-                "H1 + M15 + M5 bullish alignment",
+        const rr2 =
+            calculateRR(
+                entry,
+                sl,
+                tp2
+            );
 
-            invalidation:
-                "M5 bearish close / EMA alignment breaks"
 
-        };
+        if (
+            rr1 !== null &&
+            rr1 >= 2
+        ) {
+
+            return {
+
+                verdict:
+                    "A+ SCALP",
+
+                direction:
+                    "BUY",
+
+                entry,
+
+                sl,
+
+                tp1,
+
+                tp2,
+
+                rr:
+
+                    formatRR(rr1) +
+
+                    " / " +
+
+                    formatRR(rr2),
+
+                score:
+                    90,
+
+                validity:
+                    "VALID",
+
+                trigger:
+                    "H1 + M15 + M5 bullish alignment",
+
+                invalidation:
+                    "M5 bearish close / EMA alignment breaks"
+
+            };
+        }
+    }
+
+
+    let trigger =
+        "Confirmation missing";
+
+
+    if (
+        rsi !== null &&
+        rsi >= 70
+    ) {
+
+        trigger =
+            "BUY protection — RSI overbought";
+
+    }
+
+    else if (
+        rsi !== null &&
+        rsi <= 30
+    ) {
+
+        trigger =
+            "SELL protection — RSI oversold";
+
+    }
+
+    else {
+
+        trigger =
+            momentum;
     }
 
 
@@ -4511,11 +5331,10 @@ function evaluateScalp(
         validity:
             "NO SETUP",
 
-        trigger:
-            momentum,
+        trigger,
 
         invalidation:
-            "Confirmation missing"
+            "Confirmation, RSI or extension protection missing"
 
     };
 }
@@ -4603,7 +5422,8 @@ function displayScalp(
     );
 }
 
- /* =========================================================
+
+/* =========================================================
    ENGINE 3
    ELITE TRADE GATE
    ========================================================= */
@@ -4613,7 +5433,10 @@ function displayScalp(
    ELITE RSI PROTECTION
    ========================================================= */
 
-function getEliteRSIProtection(rsi, direction) {
+function getEliteRSIProtection(
+    rsi,
+    direction
+) {
 
     if (
         rsi === null ||
@@ -4624,24 +5447,24 @@ function getEliteRSIProtection(rsi, direction) {
 
             valid: false,
 
-            status: "RSI DATA UNAVAILABLE",
+            status:
+                "RSI DATA UNAVAILABLE",
 
-            reason: "RSI data unavailable"
+            reason:
+                "RSI data unavailable"
 
         };
     }
 
 
     /*
-       HARD 30 / 70 PROTECTION
+       CONTINUATION PROTECTION
 
-       BUY continuation:
-       RSI >= 70 = overbought
-       Do not chase BUY.
+       BUY:
+       50 <= RSI < 70
 
-       SELL continuation:
-       RSI <= 30 = oversold
-       Do not chase SELL.
+       SELL:
+       30 < RSI < 50
     */
 
     if (
@@ -4653,7 +5476,8 @@ function getEliteRSIProtection(rsi, direction) {
 
             valid: false,
 
-            status: "RSI OVERBOUGHT",
+            status:
+                "RSI OVERBOUGHT",
 
             reason:
                 "BUY blocked — RSI is 70+ (overbought)"
@@ -4671,7 +5495,8 @@ function getEliteRSIProtection(rsi, direction) {
 
             valid: false,
 
-            status: "RSI OVERSOLD",
+            status:
+                "RSI OVERSOLD",
 
             reason:
                 "SELL blocked — RSI is 30 or below (oversold)"
@@ -4684,7 +5509,8 @@ function getEliteRSIProtection(rsi, direction) {
 
         valid: true,
 
-        status: "RSI PROTECTED",
+        status:
+            "RSI PROTECTED",
 
         reason:
             "RSI is inside safe continuation zone"
@@ -4697,7 +5523,9 @@ function getEliteRSIProtection(rsi, direction) {
    RSI EXTREME DETECTION
    ========================================================= */
 
-function getRSIExtremeType(rsi) {
+function getRSIExtremeType(
+    rsi
+) {
 
     if (
         rsi === null ||
@@ -4708,13 +5536,17 @@ function getRSIExtremeType(rsi) {
     }
 
 
-    if (rsi >= 70) {
+    if (
+        rsi >= 70
+    ) {
 
         return "OVERBOUGHT";
     }
 
 
-    if (rsi <= 30) {
+    if (
+        rsi <= 30
+    ) {
 
         return "OVERSOLD";
     }
@@ -4733,9 +5565,14 @@ function calculateEliteEMA(
     period
 ) {
 
+    const completed =
+        getCompletedCandles(
+            candles
+        );
+
+
     if (
-        !candles ||
-        candles.length < period
+        completed.length < period
     ) {
 
         return null;
@@ -4743,9 +5580,16 @@ function calculateEliteEMA(
 
 
     const closes =
-        candles
-            .map(c => Number(c.close))
-            .filter(Number.isFinite);
+        completed
+            .map(
+                c =>
+                    Number(
+                        c.close
+                    )
+            )
+            .filter(
+                Number.isFinite
+            );
 
 
     if (
@@ -4801,9 +5645,15 @@ function getEliteEMAExtension(
     direction
 ) {
 
+    const completed =
+        getCompletedCandles(
+            candles
+        );
+
+
     if (
-        !candles ||
-        candles.length < 50
+        !completed ||
+        completed.length < 50
     ) {
 
         return {
@@ -4812,7 +5662,8 @@ function getEliteEMAExtension(
 
             distancePips: null,
 
-            status: "EMA DATA UNAVAILABLE",
+            status:
+                "EMA DATA UNAVAILABLE",
 
             reason:
                 "Insufficient candle data"
@@ -4822,13 +5673,15 @@ function getEliteEMAExtension(
 
 
     const last =
-        candles[
-            candles.length - 1
+        completed[
+            completed.length - 1
         ];
 
 
     const price =
-        Number(last.close);
+        Number(
+            last.close
+        );
 
 
     const ema20 =
@@ -4857,7 +5710,8 @@ function getEliteEMAExtension(
 
             distancePips: null,
 
-            status: "EMA DATA UNAVAILABLE",
+            status:
+                "EMA DATA UNAVAILABLE",
 
             reason:
                 "Unable to calculate EMA extension"
@@ -4866,31 +5720,16 @@ function getEliteEMAExtension(
     }
 
 
-    /*
-       Use EMA20 as the execution reference.
-
-       EUR/USD:
-       1 pip = 0.0001
-    */
-
     const distance =
         Math.abs(
-            price - ema20
+            price -
+            ema20
         );
 
 
     const distancePips =
         distance * 10000;
 
-
-    /*
-       Elite Gate extension threshold.
-
-       > 12 pips = excessive extension.
-
-       This prevents chasing a move that has
-       already travelled too far from EMA20.
-    */
 
     const extended =
         distancePips > 12;
@@ -4945,19 +5784,16 @@ function getEliteReversalCandle(
     direction
 ) {
 
-    if (
-        !candles ||
-        candles.length < 2
-    ) {
+    const candle =
+        getLatestCompletedCandle(
+            candles
+        );
+
+
+    if (!candle) {
 
         return false;
     }
-
-
-    const candle =
-        candles[
-            candles.length - 1
-        ];
 
 
     const open =
@@ -5001,7 +5837,8 @@ function getEliteReversalCandle(
 
     const body =
         Math.abs(
-            close - open
+            close -
+            open
         );
 
 
@@ -5025,13 +5862,6 @@ function getEliteReversalCandle(
         body / range;
 
 
-    /*
-       BUY reversal:
-       - bullish candle
-       - meaningful body
-       - lower rejection wick
-    */
-
     if (
         direction === "BUY"
     ) {
@@ -5048,13 +5878,6 @@ function getEliteReversalCandle(
         );
     }
 
-
-    /*
-       SELL reversal:
-       - bearish candle
-       - meaningful body
-       - upper rejection wick
-    */
 
     if (
         direction === "SELL"
@@ -5086,9 +5909,15 @@ function getEliteReversalStructure(
     direction
 ) {
 
+    const completed =
+        getCompletedCandles(
+            candles
+        );
+
+
     if (
-        !candles ||
-        candles.length < 4
+        !completed ||
+        completed.length < 4
     ) {
 
         return false;
@@ -5096,14 +5925,14 @@ function getEliteReversalStructure(
 
 
     const c1 =
-        candles[
-            candles.length - 2
+        completed[
+            completed.length - 2
         ];
 
 
     const c2 =
-        candles[
-            candles.length - 1
+        completed[
+            completed.length - 1
         ];
 
 
@@ -5129,15 +5958,6 @@ function getEliteReversalStructure(
     }
 
 
-    /*
-       BUY reversal:
-       Current candle closes above
-       previous candle high.
-
-       This gives us a basic
-       short-term structure shift.
-    */
-
     if (
         direction === "BUY"
     ) {
@@ -5148,12 +5968,6 @@ function getEliteReversalStructure(
         );
     }
 
-
-    /*
-       SELL reversal:
-       Current candle closes below
-       previous candle low.
-    */
 
     if (
         direction === "SELL"
@@ -5198,7 +6012,9 @@ function evaluateEliteReversal(
 
 
     const m5RSI =
-        calculateRSI(m5);
+        calculateRSI(
+            getCompletedCandles(m5)
+        );
 
 
     const rsiExtreme =
@@ -5208,26 +6024,23 @@ function evaluateEliteReversal(
 
 
     /*
-       =====================================================
        BUY REVERSAL
-       =====================================================
-
-       We want:
 
        HTF bearish
        +
        RSI oversold
        +
-       M15 begins bullish
+       M15 bullish
        +
-       M5 bullish structure
+       M5 bullish
        +
        bullish reversal candle
        +
-       bullish structure break
+       bullish structure shift
     */
 
     const buyReversal =
+
         h4Trend === "BEARISH" &&
 
         h1Trend === "BEARISH" &&
@@ -5250,24 +6063,23 @@ function evaluateEliteReversal(
 
 
     /*
-       =====================================================
        SELL REVERSAL
-       =====================================================
 
        HTF bullish
        +
        RSI overbought
        +
-       M15 begins bearish
+       M15 bearish
        +
-       M5 bearish structure
+       M5 bearish
        +
        bearish reversal candle
        +
-       bearish structure break
+       bearish structure shift
     */
 
     const sellReversal =
+
         h4Trend === "BULLISH" &&
 
         h1Trend === "BULLISH" &&
@@ -5293,11 +6105,14 @@ function evaluateEliteReversal(
 
         return {
 
-            valid: true,
+            valid:
+                true,
 
-            direction: "BUY",
+            direction:
+                "BUY",
 
-            type: "A+ REVERSAL",
+            type:
+                "A+ REVERSAL",
 
             reason:
                 "Oversold RSI + M15/M5 bullish reversal + structure shift"
@@ -5310,11 +6125,14 @@ function evaluateEliteReversal(
 
         return {
 
-            valid: true,
+            valid:
+                true,
 
-            direction: "SELL",
+            direction:
+                "SELL",
 
-            type: "A+ REVERSAL",
+            type:
+                "A+ REVERSAL",
 
             reason:
                 "Overbought RSI + M15/M5 bearish reversal + structure shift"
@@ -5325,11 +6143,14 @@ function evaluateEliteReversal(
 
     return {
 
-        valid: false,
+        valid:
+            false,
 
-        direction: "--",
+        direction:
+            "--",
 
-        type: "NONE",
+        type:
+            "NONE",
 
         reason:
             "A+ reversal confirmation incomplete"
@@ -5352,7 +6173,8 @@ function getEliteSessionProtection(
 
         return {
 
-            valid: false,
+            valid:
+                false,
 
             reason:
                 "Session information unavailable"
@@ -5368,14 +6190,6 @@ function getEliteSessionProtection(
         ).toUpperCase();
 
 
-    /*
-       Do not allow trades during
-       OFF SESSION.
-
-       We still display the session
-       information on the dashboard.
-    */
-
     if (
         sessionName.includes(
             "OFF"
@@ -5384,7 +6198,8 @@ function getEliteSessionProtection(
 
         return {
 
-            valid: false,
+            valid:
+                false,
 
             reason:
                 "OFF SESSION — trade execution blocked"
@@ -5395,7 +6210,8 @@ function getEliteSessionProtection(
 
     return {
 
-        valid: true,
+        valid:
+            true,
 
         reason:
             "Active trading session"
@@ -5462,17 +6278,19 @@ function evaluateTradeGate(
 
 
     const rsi =
-        calculateRSI(m5);
+        calculateRSI(
+            getCompletedCandles(m5)
+        );
 
 
     const rsiExtreme =
-        getRSIExtremeType(rsi);
+        getRSIExtremeType(
+            rsi
+        );
 
 
     /*
-       =====================================================
        HTF DIRECTION
-       =====================================================
     */
 
     const continuationDirection =
@@ -5501,9 +6319,7 @@ function evaluateTradeGate(
 
 
     /*
-       =====================================================
        SESSION PROTECTION
-       =====================================================
     */
 
     const sessionProtection =
@@ -5513,9 +6329,7 @@ function evaluateTradeGate(
 
 
     /*
-       =====================================================
-       A+ REVERSAL CHECK
-       =====================================================
+       REVERSAL CHECK
     */
 
     const reversal =
@@ -5534,7 +6348,7 @@ function evaluateTradeGate(
 
     /*
        =====================================================
-       IF NO HTF ALIGNMENT
+       NO HTF CONTINUATION ALIGNMENT
        =====================================================
     */
 
@@ -5542,47 +6356,91 @@ function evaluateTradeGate(
         continuationDirection === "--"
     ) {
 
-        /*
-           Reversal can still be displayed
-           only if the dedicated reversal
-           engine confirms it.
-        */
-
         if (
             reversal.valid &&
             sessionProtection.valid
         ) {
 
-            startGateSetup();
-
-
-            setText(
-                "gateDirection",
-                reversal.direction
-            );
-
-
-            setText(
-                "eliteTradeGate",
-                "A+ REVERSAL READY"
-            );
-
-
-            setText(
-                "gateReason",
-                reversal.reason
-            );
-
-
             const entry =
                 price;
 
 
-            const riskPips =
-                10;
+            const sr =
+                calculateSR(
+                    h1,
+                    entry
+                );
+
+
+            const structural =
+                calculateStructuralRisk(
+
+                    entry,
+
+                    reversal.direction,
+
+                    sr
+
+                );
 
 
             let sl;
+
+            let riskPips;
+
+
+            /*
+               For reversal trades, if structural
+               S/R is usable and within 3–15 pips,
+               use it.
+
+               Otherwise use 10-pip emergency
+               baseline.
+            */
+
+            if (
+
+                structural &&
+
+                structural.riskPips >= 3 &&
+
+                structural.riskPips <= 15
+
+            ) {
+
+                sl =
+                    structural.sl;
+
+                riskPips =
+                    structural.riskPips;
+
+            }
+
+            else {
+
+                riskPips =
+                    10;
+
+
+                if (
+                    reversal.direction ===
+                    "BUY"
+                ) {
+
+                    sl =
+                        entry -
+                        0.0010;
+
+                }
+
+                else {
+
+                    sl =
+                        entry +
+                        0.0010;
+                }
+            }
+
 
             let tp1;
 
@@ -5594,84 +6452,145 @@ function evaluateTradeGate(
                 "BUY"
             ) {
 
-                sl =
-                    entry -
-                    0.0010;
-
-
                 tp1 =
                     entry +
-                    0.0020;
+                    riskPips *
+                    2 *
+                    pipSize();
 
 
                 tp2 =
                     entry +
-                    0.0030;
+                    riskPips *
+                    3 *
+                    pipSize();
 
             }
 
             else {
 
-                sl =
-                    entry +
-                    0.0010;
-
-
                 tp1 =
                     entry -
-                    0.0020;
+                    riskPips *
+                    2 *
+                    pipSize();
 
 
                 tp2 =
                     entry -
-                    0.0030;
+                    riskPips *
+                    3 *
+                    pipSize();
             }
 
 
-            setText(
-                "gateEntry",
-                formatPrice(entry)
-            );
+            /*
+               Validate real RR.
+            */
+
+            const rr1 =
+                calculateRR(
+                    entry,
+                    sl,
+                    tp1
+                );
 
 
-            setText(
-                "gateSL",
-                formatPrice(sl)
-            );
+            const rr2 =
+                calculateRR(
+                    entry,
+                    sl,
+                    tp2
+                );
 
 
-            setText(
-                "gateTP1",
-                formatPrice(tp1)
-            );
+            if (
+
+                rr1 !== null &&
+
+                rr1 >= 2 &&
+
+                rr2 !== null &&
+
+                rr2 >= 2
+
+            ) {
+
+                startGateSetup();
 
 
-            setText(
-                "gateTP2",
-                formatPrice(tp2)
-            );
+                setText(
+                    "gateDirection",
+                    reversal.direction
+                );
 
 
-            setText(
-                "gateRR",
-                "1:2 / 1:3"
-            );
+                setText(
+                    "eliteTradeGate",
+                    "A+ REVERSAL READY"
+                );
 
 
-            setText(
-                "gateRisk",
-                riskPips +
-                " pips"
-            );
+                setText(
+                    "gateReason",
+                    reversal.reason +
+                    " — NEWS INFORMATION ONLY"
+                );
 
 
-            setText(
-                "gateSetupTime",
-                gateSetupTime
-            );
+                setText(
+                    "gateEntry",
+                    formatPrice(entry)
+                );
 
 
-            return;
+                setText(
+                    "gateSL",
+                    formatPrice(sl)
+                );
+
+
+                setText(
+                    "gateTP1",
+                    formatPrice(tp1)
+                );
+
+
+                setText(
+                    "gateTP2",
+                    formatPrice(tp2)
+                );
+
+
+                setText(
+                    "gateRR",
+
+                    formatRR(rr1) +
+
+                    " / " +
+
+                    formatRR(rr2)
+
+                );
+
+
+                setText(
+                    "gateRisk",
+                    Number(
+                        riskPips.toFixed(1)
+                    ) +
+                    " pips"
+                );
+
+
+                setText(
+                    "gateSetupTime",
+                    gateSetupTime
+                );
+
+
+                return;
+            }
         }
 
 
@@ -5731,8 +6650,7 @@ function evaluateTradeGate(
 
 
     /*
-       Existing RSI 50 confirmation
-       PLUS new 30/70 protection.
+       RSI directional confirmation.
     */
 
     const rsiDirectionOK =
@@ -5746,10 +6664,17 @@ function evaluateTradeGate(
               rsi >= 50;
 
 
+    /*
+       RSI 30/70 protection.
+    */
+
     const rsiProtection =
         getEliteRSIProtection(
+
             rsi,
+
             continuationDirection
+
         );
 
 
@@ -5775,7 +6700,7 @@ function evaluateTradeGate(
 
 
     /*
-       New EMA extension protection.
+       EMA extension.
     */
 
     const emaExtension =
@@ -5790,14 +6715,82 @@ function evaluateTradeGate(
 
 
     /*
-       Existing structural risk.
+       =====================================================
+       STRUCTURAL S/R + RISK
+       =====================================================
     */
 
-    const riskPips =
-        10;
+    const sr =
+        calculateSR(
+            h1,
+            price
+        );
+
+
+    const structural =
+        calculateStructuralRisk(
+
+            price,
+
+            continuationDirection,
+
+            sr
+
+        );
+
+
+    let riskPips;
+
+    let sl;
+
+
+    if (structural) {
+
+        riskPips =
+            structural.riskPips;
+
+        sl =
+            structural.sl;
+
+    }
+
+    else {
+
+        /*
+           If structural S/R cannot provide
+           a usable SL, use the 10-pip baseline.
+
+           This is still checked against the
+           3–15 pip risk rule.
+        */
+
+        riskPips =
+            10;
+
+
+        if (
+            continuationDirection ===
+            "SELL"
+        ) {
+
+            sl =
+                price +
+                0.0010;
+
+        }
+
+        else {
+
+            sl =
+                price -
+                0.0010;
+        }
+    }
 
 
     const riskOK =
+
+        Number.isFinite(riskPips) &&
 
         riskPips >= 3 &&
 
@@ -5805,15 +6798,147 @@ function evaluateTradeGate(
 
 
     /*
-       Existing minimum RR.
+       =====================================================
+       TP2 + REAL RR
+       =====================================================
     */
 
-    const rrOK =
-        true;
+    let tp1;
+
+    let tp2;
+
+
+    if (
+        continuationDirection ===
+        "SELL"
+    ) {
+
+        tp1 =
+            price +
+            (
+                sl -
+                price
+            ) *
+            2 *
+            -1;
+
+
+        /*
+           Use explicit distance instead.
+        */
+
+        tp1 =
+            price -
+            riskPips *
+            2 *
+            pipSize();
+
+
+        tp2 =
+            price -
+            riskPips *
+            3 *
+            pipSize();
+
+    }
+
+    else {
+
+        tp1 =
+            price +
+            riskPips *
+            2 *
+            pipSize();
+
+
+        tp2 =
+            price +
+            riskPips *
+            3 *
+            pipSize();
+    }
 
 
     /*
-       Session must be active.
+       S/R target validation.
+
+       For SELL, R levels don't block a target,
+       but support can interfere with the path.
+
+       For BUY, resistance can interfere.
+
+       We therefore verify TP2 has at least
+       a minimal structural room.
+    */
+
+    let srPathOK =
+        true;
+
+
+    if (
+        continuationDirection ===
+        "SELL"
+    ) {
+
+        if (
+            Number.isFinite(sr.s1) &&
+            sr.s1 < price &&
+            sr.s1 > tp1
+        ) {
+
+            srPathOK =
+                false;
+        }
+
+    }
+
+    else {
+
+        if (
+            Number.isFinite(sr.r1) &&
+            sr.r1 > price &&
+            sr.r1 < tp1
+        ) {
+
+            srPathOK =
+                false;
+        }
+    }
+
+
+    /*
+       REAL RR.
+    */
+
+    const rr1 =
+        calculateRR(
+            price,
+            sl,
+            tp1
+        );
+
+
+    const rr2 =
+        calculateRR(
+            price,
+            sl,
+            tp2
+        );
+
+
+    const rrOK =
+
+        rr1 !== null &&
+
+        rr1 >= 2 &&
+
+        rr2 !== null &&
+
+        rr2 >= 2;
+
+
+    /*
+       Session.
     */
 
     const sessionOK =
@@ -5821,9 +6946,14 @@ function evaluateTradeGate(
 
 
     /*
-       =====================================================
-       FINAL CONTINUATION GATE
-       =====================================================
+       NEWS IS INTENTIONALLY NOT INCLUDED.
+
+       There is NO:
+       newsState.blocked
+       isNewsBlocked()
+       news currency check
+
+       inside gateOK.
     */
 
     const gateOK =
@@ -5845,6 +6975,8 @@ function evaluateTradeGate(
         riskOK &&
 
         rrOK &&
+
+        srPathOK &&
 
         sessionOK;
 
@@ -5869,10 +7001,6 @@ function evaluateTradeGate(
         let reason =
             "Confirmation incomplete";
 
-
-        /*
-           Highest-priority blockers first.
-        */
 
         if (!sessionOK) {
 
@@ -5970,7 +7098,14 @@ function evaluateTradeGate(
         else if (!rrOK) {
 
             reason =
-                "Minimum 1:2 Risk / Reward not available";
+                "Real minimum 1:2 Risk / Reward unavailable";
+
+        }
+
+        else if (!srPathOK) {
+
+            reason =
+                "Nearby higher-timeframe S/R blocks TP path";
 
         }
 
@@ -6012,64 +7147,14 @@ function evaluateTradeGate(
 
         sessionInfo.quality +
 
-        " — all Elite Gate confirmations aligned"
+        " — all Elite Gate confirmations aligned — NEWS INFORMATION ONLY"
 
     );
 
 
-    const entry =
-        price;
-
-
-    let sl;
-
-    let tp1;
-
-    let tp2;
-
-
-    if (
-        continuationDirection ===
-        "SELL"
-    ) {
-
-        sl =
-            entry +
-            0.0010;
-
-
-        tp1 =
-            entry -
-            0.0020;
-
-
-        tp2 =
-            entry -
-            0.0030;
-
-    }
-
-    else {
-
-        sl =
-            entry -
-            0.0010;
-
-
-        tp1 =
-            entry +
-            0.0020;
-
-
-        tp2 =
-            entry +
-            0.0030;
-    }
-
-
     setText(
         "gateEntry",
-        formatPrice(entry)
+        formatPrice(price)
     );
 
 
@@ -6093,13 +7178,21 @@ function evaluateTradeGate(
 
     setText(
         "gateRR",
-        "1:2 / 1:3"
+
+        formatRR(rr1) +
+
+        " / " +
+
+        formatRR(rr2)
+
     );
 
 
     setText(
         "gateRisk",
-        riskPips +
+        Number(
+            riskPips.toFixed(1)
+        ) +
         " pips"
     );
 
@@ -6197,7 +7290,9 @@ function displayChecklist(
 
 
     const rsi =
-        calculateRSI(m5);
+        calculateRSI(
+            getCompletedCandles(m5)
+        );
 
 
     const momentum =
@@ -6233,11 +7328,28 @@ function displayChecklist(
             : "--";
 
 
+    /*
+       SESSION
+    */
+
     setText(
+
         "checkSession",
-        sessionInfo.name
+
+        sessionProtection.valid
+
+            ? "✓ " + sessionInfo.name
+
+            : "— " +
+              sessionInfo.name +
+              " — execution blocked"
+
     );
 
+
+    /*
+       HTF
+    */
 
     setText(
 
@@ -6252,6 +7364,10 @@ function displayChecklist(
     );
 
 
+    /*
+       M15
+    */
+
     setText(
 
         "checkM15",
@@ -6265,6 +7381,10 @@ function displayChecklist(
     );
 
 
+    /*
+       M5
+    */
+
     setText(
 
         "checkM5",
@@ -6277,6 +7397,10 @@ function displayChecklist(
 
     );
 
+
+    /*
+       EMA
+    */
 
     setText(
 
@@ -6292,13 +7416,13 @@ function displayChecklist(
 
 
     /*
-       =====================================================
-       RSI 30 / 70 PROTECTION
-       =====================================================
+       RSI
     */
 
     const rsiExtreme =
-        getRSIExtremeType(rsi);
+        getRSIExtremeType(
+            rsi
+        );
 
 
     let rsiText =
@@ -6310,7 +7434,8 @@ function displayChecklist(
     ) {
 
         if (
-            rsiExtreme === "OVERSOLD"
+            rsiExtreme ===
+            "OVERSOLD"
         ) {
 
             rsiText =
@@ -6335,7 +7460,8 @@ function displayChecklist(
     ) {
 
         if (
-            rsiExtreme === "OVERBOUGHT"
+            rsiExtreme ===
+            "OVERBOUGHT"
         ) {
 
             rsiText =
@@ -6363,9 +7489,7 @@ function displayChecklist(
 
 
     /*
-       =====================================================
        MOMENTUM
-       =====================================================
     */
 
     setText(
@@ -6382,9 +7506,7 @@ function displayChecklist(
 
 
     /*
-       =====================================================
        EMA EXTENSION
-       =====================================================
     */
 
     const extension =
@@ -6397,7 +7519,8 @@ function displayChecklist(
 
             : {
 
-                extended: false
+                extended:
+                    false
 
             };
 
@@ -6420,65 +7543,284 @@ function displayChecklist(
 
 
     /*
-       =====================================================
-       SESSION
-       =====================================================
+       RISK + RR
+
+       Calculate actual current structural
+       values for display.
     */
 
+    const sr =
+        calculateSR(
+            h1
+        );
+
+
+    let checkRiskText =
+        "— Structural risk unavailable";
+
+
+    let checkRRText =
+        "— Real RR unavailable";
+
+
+    if (
+        direction !== "--"
+    ) {
+
+        const referencePrice =
+            getMarketPrice(m5);
+
+
+        const structural =
+            calculateStructuralRisk(
+
+                referencePrice,
+
+                direction,
+
+                calculateSR(
+                    h1,
+                    referencePrice
+                )
+
+            );
+
+
+        let riskPips =
+            structural
+                ? structural.riskPips
+                : 10;
+
+
+        checkRiskText =
+
+            Number.isFinite(
+                riskPips
+            ) &&
+
+            riskPips >= 3 &&
+
+            riskPips <= 15
+
+                ? "✓ Risk " +
+                  Number(
+                      riskPips.toFixed(1)
+                  ) +
+                  " pips — 3–15 range"
+
+                : "— Risk outside 3–15 pip range";
+
+
+        let sl;
+
+
+        if (
+            structural
+        ) {
+
+            sl =
+                structural.sl;
+
+        }
+
+        else if (
+            direction === "SELL"
+        ) {
+
+            sl =
+                referencePrice +
+                0.0010;
+
+        }
+
+        else {
+
+            sl =
+                referencePrice -
+                0.0010;
+        }
+
+
+        let tp2;
+
+
+        if (
+            direction === "SELL"
+        ) {
+
+            tp2 =
+                referencePrice -
+                riskPips *
+                3 *
+                pipSize();
+
+        }
+
+        else {
+
+            tp2 =
+                referencePrice +
+                riskPips *
+                3 *
+                pipSize();
+        }
+
+
+        const rr =
+            calculateRR(
+
+                referencePrice,
+
+                sl,
+
+                tp2
+
+            );
+
+
+        checkRRText =
+
+            rr !== null &&
+
+            rr >= 2
+
+                ? "✓ Real RR " +
+                  formatRR(rr)
+
+                : "— Real RR below 1:2";
+    }
+
+
     setText(
-
-        "checkSession",
-
-        sessionProtection.valid
-
-            ? "✓ " + sessionInfo.name
-
-            : "— " + sessionInfo.name + " — execution blocked"
-
-    );
-
-
-    /*
-       =====================================================
-       RISK
-       =====================================================
-    */
-
-    setText(
-
         "checkRisk",
-
-        "✓ 3–15 pip structural risk"
-
+        checkRiskText
     );
 
 
-    /*
-       =====================================================
-       RR
-       =====================================================
-    */
-
     setText(
-
         "checkRR",
-
-        "✓ Minimum 1:2 Risk / Reward"
-
+        checkRRText
     );
 
 
     /*
-       =====================================================
        S/R
-       =====================================================
+    */
+
+    const referencePrice =
+        getMarketPrice(m5);
+
+
+    const currentSR =
+        calculateSR(
+            h1,
+            referencePrice
+        );
+
+
+    let srText =
+        "— S/R unavailable";
+
+
+    if (
+        currentSR
+    ) {
+
+        const parts = [];
+
+
+        if (
+            Number.isFinite(
+                currentSR.s1
+            )
+        ) {
+
+            parts.push(
+                "S1 " +
+                formatPrice(
+                    currentSR.s1
+                )
+            );
+        }
+
+
+        if (
+            Number.isFinite(
+                currentSR.s2
+            )
+        ) {
+
+            parts.push(
+                "S2 " +
+                formatPrice(
+                    currentSR.s2
+                )
+            );
+        }
+
+
+        if (
+            Number.isFinite(
+                currentSR.r1
+            )
+        ) {
+
+            parts.push(
+                "R1 " +
+                formatPrice(
+                    currentSR.r1
+                )
+            );
+        }
+
+
+        if (
+            Number.isFinite(
+                currentSR.r2
+            )
+        ) {
+
+            parts.push(
+                "R2 " +
+                formatPrice(
+                    currentSR.r2
+                )
+            );
+        }
+
+
+        if (
+            parts.length > 0
+        ) {
+
+            srText =
+                "✓ " +
+                parts.join(
+                    " | "
+                );
+        }
+    }
+
+
+    setText(
+        "checkSR",
+        srText
+    );
+
+
+    /*
+       NEWS — INFORMATION ONLY
     */
 
     setText(
 
-        "checkSR",
+        "checkNews",
 
-        "— Higher-timeframe S/R does not block TP2"
+        newsState.available
+
+            ? "✓ NEWS INFORMATION ONLY — NO ENGINE BLOCK"
+
+            : "— News unavailable — no engine block"
 
     );
 }
@@ -6519,19 +7861,27 @@ function displayTechnicalData(
 
 
     const h4RSI =
-        calculateRSI(h4);
+        calculateRSI(
+            getCompletedCandles(h4)
+        );
 
 
     const h1RSI =
-        calculateRSI(h1);
+        calculateRSI(
+            getCompletedCandles(h1)
+        );
 
 
     const m15RSI =
-        calculateRSI(m15);
+        calculateRSI(
+            getCompletedCandles(m15)
+        );
 
 
     const m5RSI =
-        calculateRSI(m5);
+        calculateRSI(
+            getCompletedCandles(m5)
+        );
 
 
     const ema =
@@ -6539,7 +7889,10 @@ function displayTechnicalData(
 
 
     const sr =
-        calculateSR(h1);
+        calculateSR(
+            h1,
+            price
+        );
 
 
     /*
@@ -6553,9 +7906,7 @@ function displayTechnicalData(
 
 
     /*
-       =====================================================
-       MULTI-TIMEFRAME CHART
-       =====================================================
+       CHART
     */
 
     createPriceChartContainer();
@@ -6572,6 +7923,10 @@ function displayTechnicalData(
     );
 
 
+    /*
+       H4 / H1
+    */
+
     setText(
         "h4Bias",
         h4Trend
@@ -6583,6 +7938,10 @@ function displayTechnicalData(
         h1Trend
     );
 
+
+    /*
+       M15 / M5
+    */
 
     setText(
         "m15Structure",
@@ -6620,6 +7979,10 @@ function displayTechnicalData(
     );
 
 
+    /*
+       PRICE-AWARE S/R
+    */
+
     setText(
         "r2",
         formatPrice(
@@ -6651,6 +8014,10 @@ function displayTechnicalData(
         )
     );
 
+
+    /*
+       RSI
+    */
 
     setText(
         "h4Rsi",
@@ -6917,7 +8284,7 @@ async function loadMarketData() {
 
 
         /*
-           Technical display + MULTI-TIMEFRAME CHART
+           TECHNICAL DATA
         */
 
         displayTechnicalData(
@@ -6936,19 +8303,22 @@ async function loadMarketData() {
 
 
         /*
-           News
+           =================================================
+           NEWS
+           =================================================
 
-           NOTE:
-           News is displayed by the dashboard,
-           but NEWS DOES NOT BLOCK ENGINE 3.
+           NEWS IS INFORMATION ONLY.
+
+           It does NOT block any engine.
         */
 
         await loadNews();
 
 
         /*
+           =================================================
            ENGINE 1
-           UNCHANGED
+           =================================================
         */
 
         const sniper =
@@ -6973,8 +8343,9 @@ async function loadMarketData() {
 
 
         /*
+           =================================================
            ENGINE 2
-           UNCHANGED
+           =================================================
         */
 
         const scalp =
@@ -6997,8 +8368,9 @@ async function loadMarketData() {
 
 
         /*
+           =================================================
            ENGINE 3
-           ELITE TRADE GATE
+           =================================================
         */
 
         evaluateTradeGate(
@@ -7142,11 +8514,6 @@ document.addEventListener(
     "DOMContentLoaded",
 
     () => {
-
-        /*
-           Make sure chart container can be
-           created after the page is ready.
-        */
 
         createPriceChartContainer();
 
