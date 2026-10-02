@@ -23,7 +23,7 @@
    API CONFIGURATION
    ========================================================= */
 
-const API_KEY = "REPLACE_WITH_YOUR_NEW_TWELVE_DATA_KEY";
+const API_KEY = "8908432b6c784bc49aad6ccf64845991";
 
 const SYMBOL = "EUR/USD";
 
