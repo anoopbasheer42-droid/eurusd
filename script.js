@@ -4602,7 +4602,8 @@ function displayScalp(
         setup.invalidation
     );
 }
-/* =========================================================
+
+ /* =========================================================
    ENGINE 3
    ELITE TRADE GATE
    ========================================================= */
@@ -4614,7 +4615,10 @@ function displayScalp(
 
 function getEliteRSIProtection(rsi, direction) {
 
-    if (rsi === null || !Number.isFinite(rsi)) {
+    if (
+        rsi === null ||
+        !Number.isFinite(rsi)
+    ) {
 
         return {
 
@@ -4629,15 +4633,15 @@ function getEliteRSIProtection(rsi, direction) {
 
 
     /*
-       HARD PROTECTION
+       HARD 30 / 70 PROTECTION
 
-       BUY:
-       RSI >= 70 = overbought.
-       Do NOT chase BUY.
+       BUY continuation:
+       RSI >= 70 = overbought
+       Do not chase BUY.
 
-       SELL:
-       RSI <= 30 = oversold.
-       Do NOT chase SELL.
+       SELL continuation:
+       RSI <= 30 = oversold
+       Do not chase SELL.
     */
 
     if (
@@ -4721,6 +4725,74 @@ function getRSIExtremeType(rsi) {
 
 
 /* =========================================================
+   ELITE EMA CALCULATION
+   ========================================================= */
+
+function calculateEliteEMA(
+    candles,
+    period
+) {
+
+    if (
+        !candles ||
+        candles.length < period
+    ) {
+
+        return null;
+    }
+
+
+    const closes =
+        candles
+            .map(c => Number(c.close))
+            .filter(Number.isFinite);
+
+
+    if (
+        closes.length < period
+    ) {
+
+        return null;
+    }
+
+
+    let ema =
+        closes
+            .slice(
+                0,
+                period
+            )
+            .reduce(
+                (sum, value) =>
+                    sum + value,
+                0
+            ) / period;
+
+
+    const multiplier =
+        2 / (period + 1);
+
+
+    for (
+        let i = period;
+        i < closes.length;
+        i++
+    ) {
+
+        ema =
+            (
+                closes[i] - ema
+            ) *
+            multiplier +
+            ema;
+    }
+
+
+    return ema;
+}
+
+
+/* =========================================================
    EMA EXTENSION PROTECTION
    ========================================================= */
 
@@ -4749,27 +4821,32 @@ function getEliteEMAExtension(
     }
 
 
-    const price =
+    const last =
         candles[
             candles.length - 1
-        ].close;
+        ];
+
+
+    const price =
+        Number(last.close);
 
 
     const ema20 =
-        calculateEMA(
+        calculateEliteEMA(
             candles,
             20
         );
 
 
     const ema50 =
-        calculateEMA(
+        calculateEliteEMA(
             candles,
             50
         );
 
 
     if (
+        !Number.isFinite(price) ||
         ema20 === null ||
         ema50 === null
     ) {
@@ -4783,16 +4860,17 @@ function getEliteEMAExtension(
             status: "EMA DATA UNAVAILABLE",
 
             reason:
-                "EMA calculation unavailable"
+                "Unable to calculate EMA extension"
 
         };
     }
 
 
     /*
-       EUR/USD:
+       Use EMA20 as the execution reference.
 
-       1 pip = 0.00010
+       EUR/USD:
+       1 pip = 0.0001
     */
 
     const distance =
@@ -4802,101 +4880,59 @@ function getEliteEMAExtension(
 
 
     const distancePips =
-        distance / 0.00010;
+        distance * 10000;
 
 
     /*
-       Elite protection threshold.
+       Elite Gate extension threshold.
 
-       Above 8 pips from EMA20:
-       price is considered extended.
+       > 12 pips = excessive extension.
 
-       This prevents chasing.
+       This prevents chasing a move that has
+       already travelled too far from EMA20.
     */
-
-    const EXTENSION_LIMIT_PIPS = 8;
-
 
     const extended =
-        distancePips >
-        EXTENSION_LIMIT_PIPS;
+        distancePips > 12;
 
 
-    /*
-       Make sure extension is in
-       the direction of the trade.
-    */
+    if (extended) {
 
-    const directionalExtension =
+        return {
 
-        direction === "BUY"
+            extended: true,
 
-            ? price > ema20 &&
-              ema20 > ema50
+            distancePips:
+                Number(
+                    distancePips.toFixed(1)
+                ),
 
-            :
+            status:
+                "EMA OVER-EXTENDED",
 
-        direction === "SELL"
+            reason:
+                "Price is more than 12 pips from EMA20"
 
-            ? price < ema20 &&
-              ema20 < ema50
-
-            : false;
-
-
-    const finalExtended =
-        extended &&
-        directionalExtension;
+        };
+    }
 
 
     return {
 
-        extended:
-            finalExtended,
+        extended: false,
 
-        distancePips,
-
-        ema20,
-
-        ema50,
+        distancePips:
+            Number(
+                distancePips.toFixed(1)
+            ),
 
         status:
-
-            finalExtended
-
-                ? "EMA OVER-EXTENDED"
-
-                : "EMA EXTENSION OK",
+            "EMA EXTENSION SAFE",
 
         reason:
-
-            finalExtended
-
-                ? `Price is ${distancePips.toFixed(1)} pips from EMA20`
-
-                : `EMA distance ${distancePips.toFixed(1)} pips`
+            "Price is within acceptable EMA20 distance"
 
     };
-}
-
-
-/* =========================================================
-   EMA EXTENSION COMPATIBILITY
-   ========================================================= */
-
-function isEliteEMAOverExtended(
-    candles,
-    direction
-) {
-
-    const result =
-        getEliteEMAExtension(
-            candles,
-            direction
-        );
-
-
-    return result.extended;
 }
 
 
@@ -4911,35 +4947,48 @@ function getEliteReversalCandle(
 
     if (
         !candles ||
-        candles.length < 3
+        candles.length < 2
     ) {
 
         return false;
     }
 
 
-    const last =
+    const candle =
         candles[
             candles.length - 1
         ];
 
 
-    const previous =
-        candles[
-            candles.length - 2
-        ];
+    const open =
+        Number(candle.open);
 
 
-    const body =
-        Math.abs(
-            last.close -
-            last.open
-        );
+    const close =
+        Number(candle.close);
+
+
+    const high =
+        Number(candle.high);
+
+
+    const low =
+        Number(candle.low);
+
+
+    if (
+        !Number.isFinite(open) ||
+        !Number.isFinite(close) ||
+        !Number.isFinite(high) ||
+        !Number.isFinite(low)
+    ) {
+
+        return false;
+    }
 
 
     const range =
-        last.high -
-        last.low;
+        high - low;
 
 
     if (
@@ -4950,18 +4999,37 @@ function getEliteReversalCandle(
     }
 
 
+    const body =
+        Math.abs(
+            close - open
+        );
+
+
+    const upperWick =
+        high -
+        Math.max(
+            open,
+            close
+        );
+
+
+    const lowerWick =
+        Math.min(
+            open,
+            close
+        ) -
+        low;
+
+
     const bodyRatio =
         body / range;
 
 
     /*
-       BUY REVERSAL
-
-       Previous candle was bearish
-       and latest candle strongly bullish.
-
-       Latest candle should also reclaim
-       previous candle high.
+       BUY reversal:
+       - bullish candle
+       - meaningful body
+       - lower rejection wick
     */
 
     if (
@@ -4970,29 +5038,22 @@ function getEliteReversalCandle(
 
         return (
 
-            previous.close <
-            previous.open &&
+            close > open &&
 
-            last.close >
-            last.open &&
+            bodyRatio >= 0.35 &&
 
-            last.close >
-            previous.high &&
-
-            bodyRatio >= 0.45
+            lowerWick >=
+                body * 0.8
 
         );
     }
 
 
     /*
-       SELL REVERSAL
-
-       Previous candle was bullish
-       and latest candle strongly bearish.
-
-       Latest candle should reclaim
-       previous candle low.
+       SELL reversal:
+       - bearish candle
+       - meaningful body
+       - upper rejection wick
     */
 
     if (
@@ -5001,16 +5062,12 @@ function getEliteReversalCandle(
 
         return (
 
-            previous.close >
-            previous.open &&
+            close < open &&
 
-            last.close <
-            last.open &&
+            bodyRatio >= 0.35 &&
 
-            last.close <
-            previous.low &&
-
-            bodyRatio >= 0.45
+            upperWick >=
+                body * 0.8
 
         );
     }
@@ -5021,118 +5078,7 @@ function getEliteReversalCandle(
 
 
 /* =========================================================
-   RSI REVERSAL CONFIRMATION
-   ========================================================= */
-
-function getEliteRSIReversal(
-    candles,
-    direction
-) {
-
-    if (
-        !candles ||
-        candles.length < 20
-    ) {
-
-        return false;
-    }
-
-
-    const currentRSI =
-        calculateRSI(
-            candles
-        );
-
-
-    if (
-        currentRSI === null
-    ) {
-
-        return false;
-    }
-
-
-    /*
-       Need previous RSI too.
-    */
-
-    const previousCandles =
-        candles.slice(
-            0,
-            candles.length - 1
-        );
-
-
-    const previousRSI =
-        calculateRSI(
-            previousCandles
-        );
-
-
-    if (
-        previousRSI === null
-    ) {
-
-        return false;
-    }
-
-
-    /*
-       BUY REVERSAL
-
-       RSI was oversold / near oversold
-       and is now recovering.
-
-       Previous RSI <= 35
-       Current RSI > previous RSI
-    */
-
-    if (
-        direction === "BUY"
-    ) {
-
-        return (
-
-            previousRSI <= 35 &&
-
-            currentRSI >
-            previousRSI
-
-        );
-    }
-
-
-    /*
-       SELL REVERSAL
-
-       RSI was overbought / near overbought
-       and is now falling.
-
-       Previous RSI >= 65
-       Current RSI < previous RSI
-    */
-
-    if (
-        direction === "SELL"
-    ) {
-
-        return (
-
-            previousRSI >= 65 &&
-
-            currentRSI <
-            previousRSI
-
-        );
-    }
-
-
-    return false;
-}
-
-
-/* =========================================================
-   REVERSAL STRUCTURE CONFIRMATION
+   REVERSAL STRUCTURE DETECTION
    ========================================================= */
 
 function getEliteReversalStructure(
@@ -5142,96 +5088,41 @@ function getEliteReversalStructure(
 
     if (
         !candles ||
-        candles.length < 30
+        candles.length < 4
     ) {
 
         return false;
     }
 
 
-    const currentStructure =
-        getStructure(
-            candles
-        );
+    const c1 =
+        candles[
+            candles.length - 2
+        ];
 
 
-    /*
-       BUY reversal requires
-       bullish structure confirmation.
-    */
-
-    if (
-        direction === "BUY"
-    ) {
-
-        return (
-            currentStructure ===
-            "BULLISH"
-        );
-    }
-
-
-    /*
-       SELL reversal requires
-       bearish structure confirmation.
-    */
-
-    if (
-        direction === "SELL"
-    ) {
-
-        return (
-            currentStructure ===
-            "BEARISH"
-        );
-    }
-
-
-    return false;
-}
-
-
-/* =========================================================
-   EMA REVERSAL CONFIRMATION
-   ========================================================= */
-
-function getEliteEMAReversal(
-    candles,
-    direction
-) {
-
-    if (
-        !candles ||
-        candles.length < 50
-    ) {
-
-        return false;
-    }
-
-
-    const price =
+    const c2 =
         candles[
             candles.length - 1
-        ].close;
+        ];
 
 
-    const ema20 =
-        calculateEMA(
-            candles,
-            20
-        );
+    const previousHigh =
+        Number(c1.high);
 
 
-    const ema50 =
-        calculateEMA(
-            candles,
-            50
-        );
+    const previousLow =
+        Number(c1.low);
+
+
+    const currentClose =
+        Number(c2.close);
 
 
     if (
-        ema20 === null ||
-        ema50 === null
+        !Number.isFinite(previousHigh) ||
+        !Number.isFinite(previousLow) ||
+        !Number.isFinite(currentClose)
     ) {
 
         return false;
@@ -5240,9 +5131,11 @@ function getEliteEMAReversal(
 
     /*
        BUY reversal:
+       Current candle closes above
+       previous candle high.
 
-       Price has reclaimed EMA20
-       and EMA20 is recovering toward EMA50.
+       This gives us a basic
+       short-term structure shift.
     */
 
     if (
@@ -5250,22 +5143,16 @@ function getEliteEMAReversal(
     ) {
 
         return (
-
-            price >
-            ema20 &&
-
-            ema20 >=
-            ema50
-
+            currentClose >
+            previousHigh
         );
     }
 
 
     /*
        SELL reversal:
-
-       Price has fallen below EMA20
-       and EMA20 is below / recovering toward EMA50.
+       Current candle closes below
+       previous candle low.
     */
 
     if (
@@ -5273,13 +5160,8 @@ function getEliteEMAReversal(
     ) {
 
         return (
-
-            price <
-            ema20 &&
-
-            ema20 <=
-            ema50
-
+            currentClose <
+            previousLow
         );
     }
 
@@ -5293,33 +5175,30 @@ function getEliteEMAReversal(
    ========================================================= */
 
 function evaluateEliteReversal(
-    direction,
+    h4,
+    h1,
     m15,
     m5
 ) {
 
-    if (
-        direction !== "BUY" &&
-        direction !== "SELL"
-    ) {
+    const h4Trend =
+        getTrend(h4);
 
-        return {
 
-            active: false,
+    const h1Trend =
+        getTrend(h1);
 
-            score: 0,
 
-            reason:
-                "No reversal direction"
+    const m15Structure =
+        getStructure(m15);
 
-        };
-    }
+
+    const m5Structure =
+        getStructure(m5);
 
 
     const m5RSI =
-        calculateRSI(
-            m5
-        );
+        calculateRSI(m5);
 
 
     const rsiExtreme =
@@ -5328,130 +5207,198 @@ function evaluateEliteReversal(
         );
 
 
-    const reversalRSI =
-        getEliteRSIReversal(
-            m5,
-            direction
-        );
+    /*
+       =====================================================
+       BUY REVERSAL
+       =====================================================
 
+       We want:
 
-    const reversalCandle =
+       HTF bearish
+       +
+       RSI oversold
+       +
+       M15 begins bullish
+       +
+       M5 bullish structure
+       +
+       bullish reversal candle
+       +
+       bullish structure break
+    */
+
+    const buyReversal =
+        h4Trend === "BEARISH" &&
+
+        h1Trend === "BEARISH" &&
+
+        rsiExtreme === "OVERSOLD" &&
+
+        m15Structure === "BULLISH" &&
+
+        m5Structure === "BULLISH" &&
+
         getEliteReversalCandle(
             m5,
-            direction
-        );
+            "BUY"
+        ) &&
 
-
-    const reversalStructure =
         getEliteReversalStructure(
             m5,
-            direction
+            "BUY"
         );
 
 
-    const reversalEMA =
-        getEliteEMAReversal(
+    /*
+       =====================================================
+       SELL REVERSAL
+       =====================================================
+
+       HTF bullish
+       +
+       RSI overbought
+       +
+       M15 begins bearish
+       +
+       M5 bearish structure
+       +
+       bearish reversal candle
+       +
+       bearish structure break
+    */
+
+    const sellReversal =
+        h4Trend === "BULLISH" &&
+
+        h1Trend === "BULLISH" &&
+
+        rsiExtreme === "OVERBOUGHT" &&
+
+        m15Structure === "BEARISH" &&
+
+        m5Structure === "BEARISH" &&
+
+        getEliteReversalCandle(
             m5,
-            direction
+            "SELL"
+        ) &&
+
+        getEliteReversalStructure(
+            m5,
+            "SELL"
         );
 
 
-    /*
-       Score out of 5.
+    if (buyReversal) {
 
-       RSI extreme/recovery
-       + RSI reversal
-       + reversal candle
-       + structure
-       + EMA reclaim
-    */
+        return {
 
-    let score = 0;
+            valid: true,
 
+            direction: "BUY",
 
-    if (
-        (
-            direction === "BUY" &&
-            rsiExtreme === "OVERSOLD"
-        ) ||
+            type: "A+ REVERSAL",
 
-        (
-            direction === "SELL" &&
-            rsiExtreme === "OVERBOUGHT"
-        )
-    ) {
+            reason:
+                "Oversold RSI + M15/M5 bullish reversal + structure shift"
 
-        score += 1;
+        };
     }
 
 
-    if (reversalRSI) {
+    if (sellReversal) {
 
-        score += 1;
-    }
+        return {
 
+            valid: true,
 
-    if (reversalCandle) {
+            direction: "SELL",
 
-        score += 1;
-    }
+            type: "A+ REVERSAL",
 
+            reason:
+                "Overbought RSI + M15/M5 bearish reversal + structure shift"
 
-    if (reversalStructure) {
-
-        score += 1;
-    }
-
-
-    if (reversalEMA) {
-
-        score += 1;
-    }
-
-
-    /*
-       A+ reversal requires at least 4/5.
-    */
-
-    const active =
-        score >= 4;
-
-
-    let reason =
-        "Reversal confirmation incomplete";
-
-
-    if (active) {
-
-        reason =
-            direction === "BUY"
-
-                ? "A+ bullish reversal confirmed"
-
-                : "A+ bearish reversal confirmed";
+        };
     }
 
 
     return {
 
-        active,
+        valid: false,
 
-        score,
+        direction: "--",
 
-        rsi:
-            m5RSI,
+        type: "NONE",
 
-        rsiExtreme,
+        reason:
+            "A+ reversal confirmation incomplete"
 
-        reversalRSI,
+    };
+}
 
-        reversalCandle,
 
-        reversalStructure,
+/* =========================================================
+   ELITE SESSION PROTECTION
+   ========================================================= */
 
-        reversalEMA,
+function getEliteSessionProtection(
+    sessionInfo
+) {
 
-        reason
+    if (
+        !sessionInfo
+    ) {
+
+        return {
+
+            valid: false,
+
+            reason:
+                "Session information unavailable"
+
+        };
+    }
+
+
+    const sessionName =
+        String(
+            sessionInfo.name ||
+            ""
+        ).toUpperCase();
+
+
+    /*
+       Do not allow trades during
+       OFF SESSION.
+
+       We still display the session
+       information on the dashboard.
+    */
+
+    if (
+        sessionName.includes(
+            "OFF"
+        )
+    ) {
+
+        return {
+
+            valid: false,
+
+            reason:
+                "OFF SESSION — trade execution blocked"
+
+        };
+    }
+
+
+    return {
+
+        valid: true,
+
+        reason:
+            "Active trading session"
 
     };
 }
@@ -5518,13 +5465,17 @@ function evaluateTradeGate(
         calculateRSI(m5);
 
 
+    const rsiExtreme =
+        getRSIExtremeType(rsi);
+
+
     /*
        =====================================================
-       PRIMARY DIRECTION
+       HTF DIRECTION
        =====================================================
     */
 
-    const direction =
+    const continuationDirection =
 
         h4Trend === "BEARISH" &&
 
@@ -5545,19 +5496,184 @@ function evaluateTradeGate(
 
     setText(
         "gateDirection",
-        direction
+        continuationDirection
     );
 
 
     /*
        =====================================================
-       NO HTF ALIGNMENT
+       SESSION PROTECTION
+       =====================================================
+    */
+
+    const sessionProtection =
+        getEliteSessionProtection(
+            sessionInfo
+        );
+
+
+    /*
+       =====================================================
+       A+ REVERSAL CHECK
+       =====================================================
+    */
+
+    const reversal =
+        evaluateEliteReversal(
+
+            h4,
+
+            h1,
+
+            m15,
+
+            m5
+
+        );
+
+
+    /*
+       =====================================================
+       IF NO HTF ALIGNMENT
        =====================================================
     */
 
     if (
-        direction === "--"
+        continuationDirection === "--"
     ) {
+
+        /*
+           Reversal can still be displayed
+           only if the dedicated reversal
+           engine confirms it.
+        */
+
+        if (
+            reversal.valid &&
+            sessionProtection.valid
+        ) {
+
+            startGateSetup();
+
+
+            setText(
+                "gateDirection",
+                reversal.direction
+            );
+
+
+            setText(
+                "eliteTradeGate",
+                "A+ REVERSAL READY"
+            );
+
+
+            setText(
+                "gateReason",
+                reversal.reason
+            );
+
+
+            const entry =
+                price;
+
+
+            const riskPips =
+                10;
+
+
+            let sl;
+
+            let tp1;
+
+            let tp2;
+
+
+            if (
+                reversal.direction ===
+                "BUY"
+            ) {
+
+                sl =
+                    entry -
+                    0.0010;
+
+
+                tp1 =
+                    entry +
+                    0.0020;
+
+
+                tp2 =
+                    entry +
+                    0.0030;
+
+            }
+
+            else {
+
+                sl =
+                    entry +
+                    0.0010;
+
+
+                tp1 =
+                    entry -
+                    0.0020;
+
+
+                tp2 =
+                    entry -
+                    0.0030;
+            }
+
+
+            setText(
+                "gateEntry",
+                formatPrice(entry)
+            );
+
+
+            setText(
+                "gateSL",
+                formatPrice(sl)
+            );
+
+
+            setText(
+                "gateTP1",
+                formatPrice(tp1)
+            );
+
+
+            setText(
+                "gateTP2",
+                formatPrice(tp2)
+            );
+
+
+            setText(
+                "gateRR",
+                "1:2 / 1:3"
+            );
+
+
+            setText(
+                "gateRisk",
+                riskPips +
+                " pips"
+            );
+
+
+            setText(
+                "gateSetupTime",
+                gateSetupTime
+            );
+
+
+            return;
+        }
+
 
         invalidateGateSetup();
 
@@ -5570,7 +5686,7 @@ function evaluateTradeGate(
 
         setText(
             "gateReason",
-            "H4 + H1 directional alignment missing"
+            reversal.reason
         );
 
 
@@ -5583,13 +5699,13 @@ function evaluateTradeGate(
 
     /*
        =====================================================
-       BASIC CONTINUATION CONDITIONS
+       NORMAL CONTINUATION GATE
        =====================================================
     */
 
     const m15OK =
 
-        direction === "SELL"
+        continuationDirection === "SELL"
 
             ? m15Structure === "BEARISH"
 
@@ -5598,7 +5714,7 @@ function evaluateTradeGate(
 
     const m5OK =
 
-        direction === "SELL"
+        continuationDirection === "SELL"
 
             ? m5Structure === "BEARISH"
 
@@ -5607,16 +5723,21 @@ function evaluateTradeGate(
 
     const emaOK =
 
-        direction === "SELL"
+        continuationDirection === "SELL"
 
             ? ema === "BEARISH"
 
             : ema === "BULLISH";
 
 
-    const rsiOK =
+    /*
+       Existing RSI 50 confirmation
+       PLUS new 30/70 protection.
+    */
 
-        direction === "SELL"
+    const rsiDirectionOK =
+
+        continuationDirection === "SELL"
 
             ? rsi !== null &&
               rsi < 50
@@ -5625,9 +5746,21 @@ function evaluateTradeGate(
               rsi >= 50;
 
 
+    const rsiProtection =
+        getEliteRSIProtection(
+            rsi,
+            continuationDirection
+        );
+
+
+    const rsiOK =
+        rsiDirectionOK &&
+        rsiProtection.valid;
+
+
     const momentumOK =
 
-        direction === "SELL"
+        continuationDirection === "SELL"
 
             ? momentum === "BEARISH"
 
@@ -5637,33 +5770,18 @@ function evaluateTradeGate(
     const candleOK =
         getCandleQuality(
             m5,
-            direction
+            continuationDirection
         );
 
 
     /*
-       =====================================================
-       RSI 30 / 70 PROTECTION
-       =====================================================
-    */
-
-    const rsiProtection =
-        getEliteRSIProtection(
-            rsi,
-            direction
-        );
-
-
-    /*
-       =====================================================
-       EMA EXTENSION PROTECTION
-       =====================================================
+       New EMA extension protection.
     */
 
     const emaExtension =
         getEliteEMAExtension(
             m5,
-            direction
+            continuationDirection
         );
 
 
@@ -5672,23 +5790,7 @@ function evaluateTradeGate(
 
 
     /*
-       =====================================================
-       A+ REVERSAL ENGINE
-       =====================================================
-    */
-
-    const reversal =
-        evaluateEliteReversal(
-            direction,
-            m15,
-            m5
-        );
-
-
-    /*
-       =====================================================
-       RISK
-       =====================================================
+       Existing structural risk.
     */
 
     const riskPips =
@@ -5703,24 +5805,28 @@ function evaluateTradeGate(
 
 
     /*
-       Minimum RR remains 1:2.
+       Existing minimum RR.
     */
 
     const rrOK =
         true;
 
 
-    const sessionContext =
-        sessionInfo.quality;
+    /*
+       Session must be active.
+    */
+
+    const sessionOK =
+        sessionProtection.valid;
 
 
     /*
        =====================================================
-       CONTINUATION SETUP
+       FINAL CONTINUATION GATE
        =====================================================
     */
 
-    const continuationOK =
+    const gateOK =
 
         m15OK &&
 
@@ -5734,53 +5840,18 @@ function evaluateTradeGate(
 
         candleOK &&
 
-        rsiProtection.valid &&
-
         extensionOK &&
 
         riskOK &&
 
-        rrOK;
+        rrOK &&
+
+        sessionOK;
 
 
     /*
        =====================================================
-       A+ REVERSAL SETUP
-       =====================================================
-
-       A reversal can bypass normal trend continuation
-       requirements ONLY when the reversal engine itself
-       confirms strongly.
-
-       This prevents RSI extremes from automatically
-       creating a trade.
-    */
-
-    const reversalOK =
-
-        reversal.active &&
-
-        riskOK &&
-
-        rrOK;
-
-
-    /*
-       =====================================================
-       FINAL GATE
-       =====================================================
-    */
-
-    const gateOK =
-
-        continuationOK ||
-
-        reversalOK;
-
-
-    /*
-       =====================================================
-       GATE BLOCKED
+       REJECTION LOGIC
        =====================================================
     */
 
@@ -5796,24 +5867,47 @@ function evaluateTradeGate(
 
 
         let reason =
-            "Elite Trade Gate confirmation incomplete";
+            "Confirmation incomplete";
 
 
         /*
-           Priority of reasons.
+           Highest-priority blockers first.
         */
 
-        if (!rsiProtection.valid) {
+        if (!sessionOK) {
 
             reason =
-                rsiProtection.reason;
+                sessionProtection.reason;
 
         }
 
-        else if (!extensionOK) {
+        else if (
+            rsi === null ||
+            !Number.isFinite(rsi)
+        ) {
 
             reason =
-                `EMA extension protection — ${emaExtension.reason}`;
+                "RSI data unavailable";
+
+        }
+
+        else if (
+            continuationDirection === "BUY" &&
+            rsi >= 70
+        ) {
+
+            reason =
+                "BUY blocked — RSI overbought (70+)";
+
+        }
+
+        else if (
+            continuationDirection === "SELL" &&
+            rsi <= 30
+        ) {
+
+            reason =
+                "SELL blocked — RSI oversold (30-)";
 
         }
 
@@ -5838,7 +5932,7 @@ function evaluateTradeGate(
 
         }
 
-        else if (!rsiOK) {
+        else if (!rsiDirectionOK) {
 
             reason =
                 "M5 RSI directional confirmation missing";
@@ -5859,6 +5953,13 @@ function evaluateTradeGate(
 
         }
 
+        else if (!extensionOK) {
+
+            reason =
+                "Price excessively extended from EMA20";
+
+        }
+
         else if (!riskOK) {
 
             reason =
@@ -5866,10 +5967,10 @@ function evaluateTradeGate(
 
         }
 
-        else {
+        else if (!rrOK) {
 
             reason =
-                `No A+ continuation or reversal setup — reversal score ${reversal.score}/5`;
+                "Minimum 1:2 Risk / Reward not available";
 
         }
 
@@ -5889,86 +5990,32 @@ function evaluateTradeGate(
 
     /*
        =====================================================
-       DETERMINE SETUP TYPE
+       A+ CONTINUATION READY
        =====================================================
     */
-
-    const setupType =
-        reversalOK
-            ? "A+ REVERSAL"
-            : "A+ CONTINUATION";
-
 
     startGateSetup();
 
 
-    /*
-       =====================================================
-       GATE STATUS
-       =====================================================
-    */
-
     setText(
         "eliteTradeGate",
-        setupType + " READY"
+        "A+ TRADE READY"
     );
 
 
-    /*
-       =====================================================
-       GATE REASON
-       =====================================================
-    */
+    setText(
+        "gateReason",
 
-    if (reversalOK) {
+        session +
 
-        setText(
+        " — " +
 
-            "gateReason",
+        sessionInfo.quality +
 
-            session +
+        " — all Elite Gate confirmations aligned"
 
-            " — " +
+    );
 
-            sessionContext +
-
-            " — " +
-
-            reversal.reason +
-
-            " — score " +
-
-            reversal.score +
-
-            "/5"
-
-        );
-
-    }
-
-    else {
-
-        setText(
-
-            "gateReason",
-
-            session +
-
-            " — " +
-
-            sessionContext +
-
-            " — all continuation confirmations aligned"
-
-        );
-    }
-
-
-    /*
-       =====================================================
-       ENTRY / SL / TP
-       =====================================================
-    */
 
     const entry =
         price;
@@ -5982,7 +6029,8 @@ function evaluateTradeGate(
 
 
     if (
-        direction === "SELL"
+        continuationDirection ===
+        "SELL"
     ) {
 
         sl =
@@ -6018,12 +6066,6 @@ function evaluateTradeGate(
             0.0030;
     }
 
-
-    /*
-       =====================================================
-       DISPLAY TRADE
-       =====================================================
-    */
 
     setText(
         "gateEntry",
@@ -6057,7 +6099,8 @@ function evaluateTradeGate(
 
     setText(
         "gateRisk",
-        riskPips + " pips"
+        riskPips +
+        " pips"
     );
 
 
@@ -6118,7 +6161,7 @@ function clearGateTradeValues() {
 
 
 /* =========================================================
-   CHECKLIST
+   ENGINE 3 CHECKLIST
    ========================================================= */
 
 function displayChecklist(
@@ -6165,6 +6208,12 @@ function displayChecklist(
         getSessionInfo();
 
 
+    const sessionProtection =
+        getEliteSessionProtection(
+            sessionInfo
+        );
+
+
     const direction =
 
         h4Trend === "BULLISH" &&
@@ -6182,77 +6231,6 @@ function displayChecklist(
             ? "BEARISH"
 
             : "--";
-
-
-    /*
-       RSI protection
-    */
-
-    const rsiProtection =
-
-        direction === "BUY"
-
-            ? rsi !== null &&
-              rsi < 70
-
-            :
-
-        direction === "BEARISH"
-
-            ? rsi !== null &&
-              rsi > 30
-
-            :
-
-              false;
-
-
-    /*
-       EMA extension
-    */
-
-    const extensionOK =
-
-        direction !== "--" &&
-
-        !isEliteEMAOverExtended(
-            m5,
-            direction === "BULLISH"
-                ? "BUY"
-                : "SELL"
-        );
-
-
-    /*
-       Reversal engine
-    */
-
-    const reversalDirection =
-
-        direction === "BULLISH"
-
-            ? "BUY"
-
-            :
-
-        direction === "BEARISH"
-
-            ? "SELL"
-
-            : "--";
-
-
-    const reversal =
-
-        evaluateEliteReversal(
-
-            reversalDirection,
-
-            m15,
-
-            m5
-
-        );
 
 
     setText(
@@ -6278,13 +6256,7 @@ function displayChecklist(
 
         "checkM15",
 
-        (
-            direction === "BULLISH"
-                ? m15Structure === "BULLISH"
-                : direction === "BEARISH"
-                    ? m15Structure === "BEARISH"
-                    : false
-        )
+        m15Structure === direction
 
             ? "✓ M15 confirmation"
 
@@ -6297,13 +6269,7 @@ function displayChecklist(
 
         "checkM5",
 
-        (
-            direction === "BULLISH"
-                ? m5Structure === "BULLISH"
-                : direction === "BEARISH"
-                    ? m5Structure === "BEARISH"
-                    : false
-        )
+        m5Structure === direction
 
             ? "✓ M5 confirmation"
 
@@ -6316,17 +6282,7 @@ function displayChecklist(
 
         "checkEMA",
 
-        (
-            (
-                direction === "BULLISH" &&
-                ema === "BULLISH"
-            ) ||
-
-            (
-                direction === "BEARISH" &&
-                ema === "BEARISH"
-            )
-        )
+        ema === direction
 
             ? "✓ M5 EMA20 / EMA50 alignment"
 
@@ -6336,70 +6292,87 @@ function displayChecklist(
 
 
     /*
-       RSI 30 / 70 protection
-    */
-
-    setText(
-
-        "checkRSI",
-
-        rsiProtection
-
-            ? "✓ RSI 30/70 protection"
-
-            : "⚠ RSI 30/70 protection BLOCKED"
-
-    );
-
-
-    /*
-       RSI extreme status
+       =====================================================
+       RSI 30 / 70 PROTECTION
+       =====================================================
     */
 
     const rsiExtreme =
-        getRSIExtremeType(
-            rsi
-        );
+        getRSIExtremeType(rsi);
+
+
+    let rsiText =
+        "— RSI confirmation";
+
+
+    if (
+        direction === "BEARISH"
+    ) {
+
+        if (
+            rsiExtreme === "OVERSOLD"
+        ) {
+
+            rsiText =
+                "⚠ RSI OVERSOLD — SELL PROTECTED";
+
+        }
+
+        else if (
+            rsi !== null &&
+            rsi < 50
+        ) {
+
+            rsiText =
+                "✓ RSI bearish + safe zone";
+
+        }
+
+    }
+
+    else if (
+        direction === "BULLISH"
+    ) {
+
+        if (
+            rsiExtreme === "OVERBOUGHT"
+        ) {
+
+            rsiText =
+                "⚠ RSI OVERBOUGHT — BUY PROTECTED";
+
+        }
+
+        else if (
+            rsi !== null &&
+            rsi >= 50
+        ) {
+
+            rsiText =
+                "✓ RSI bullish + safe zone";
+
+        }
+
+    }
 
 
     setText(
-
-        "checkRSIExtreme",
-
-        rsiExtreme === "OVERBOUGHT"
-
-            ? "⚠ RSI OVERBOUGHT"
-
-            :
-
-        rsiExtreme === "OVERSOLD"
-
-            ? "⚠ RSI OVERSOLD"
-
-            : "✓ RSI not extreme"
-
+        "checkRSI",
+        rsiText
     );
 
 
     /*
-       Momentum
+       =====================================================
+       MOMENTUM
+       =====================================================
     */
 
     setText(
 
         "checkMomentum",
 
-        (
-            (
-                direction === "BULLISH" &&
-                momentum === "BULLISH"
-            ) ||
-
-            (
-                direction === "BEARISH" &&
-                momentum === "BEARISH"
-            )
-        )
+        momentum === direction
 
             ? "✓ Completed M5 momentum candle"
 
@@ -6409,8 +6382,29 @@ function displayChecklist(
 
 
     /*
-       EMA extension
+       =====================================================
+       EMA EXTENSION
+       =====================================================
     */
+
+    const extension =
+        direction !== "--"
+
+            ? getEliteEMAExtension(
+                m5,
+                direction
+            )
+
+            : {
+
+                extended: false
+
+            };
+
+
+    const extensionOK =
+        !extension.extended;
+
 
     setText(
 
@@ -6418,32 +6412,36 @@ function displayChecklist(
 
         extensionOK
 
-            ? "✓ No excessive EMA extension"
+            ? "✓ EMA extension safe"
 
-            : "⚠ EMA extension protection BLOCKED"
+            : "— EMA excessively extended"
 
     );
 
 
     /*
-       Reversal
+       =====================================================
+       SESSION
+       =====================================================
     */
 
     setText(
 
-        "checkReversal",
+        "checkSession",
 
-        reversal.active
+        sessionProtection.valid
 
-            ? `✓ ${reversalDirection} A+ REVERSAL ${reversal.score}/5`
+            ? "✓ " + sessionInfo.name
 
-            : `— A+ reversal ${reversal.score}/5`
+            : "— " + sessionInfo.name + " — execution blocked"
 
     );
 
 
     /*
-       Risk
+       =====================================================
+       RISK
+       =====================================================
     */
 
     setText(
@@ -6456,7 +6454,9 @@ function displayChecklist(
 
 
     /*
-       Risk / Reward
+       =====================================================
+       RR
+       =====================================================
     */
 
     setText(
@@ -6469,7 +6469,9 @@ function displayChecklist(
 
 
     /*
-       Higher-timeframe S/R
+       =====================================================
+       S/R
+       =====================================================
     */
 
     setText(
@@ -6935,6 +6937,10 @@ async function loadMarketData() {
 
         /*
            News
+
+           NOTE:
+           News is displayed by the dashboard,
+           but NEWS DOES NOT BLOCK ENGINE 3.
         */
 
         await loadNews();
@@ -6942,6 +6948,7 @@ async function loadMarketData() {
 
         /*
            ENGINE 1
+           UNCHANGED
         */
 
         const sniper =
@@ -6967,6 +6974,7 @@ async function loadMarketData() {
 
         /*
            ENGINE 2
+           UNCHANGED
         */
 
         const scalp =
@@ -7146,6 +7154,4 @@ document.addEventListener(
 
     }
 
-);
-
-/* =========================================================
+);  
