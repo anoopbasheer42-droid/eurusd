@@ -1,6 +1,5 @@
 /* =========================================================
    SWING COMMANDER — DATA ENGINE (JavaScript Port)
-   Faithful port of ~/eurusd-swing/ Python logic
    ========================================================= */
 
 "use strict";
@@ -80,7 +79,6 @@ function ema(values, period) {
   for (let i = 1; i < values.length; i++) out[i] = values[i] * k + out[i-1] * (1 - k);
   return out;
 }
-
 function emaWilder(values, period) {
   if (!values || values.length < 1) return [];
   const a = 1 / period;
@@ -89,7 +87,6 @@ function emaWilder(values, period) {
   for (let i = 1; i < values.length; i++) out[i] = values[i] * a + out[i-1] * (1 - a);
   return out;
 }
-
 function rsi(closes, period = 14) {
   const n = closes.length;
   const out = new Array(n).fill(50);
@@ -109,7 +106,6 @@ function rsi(closes, period = 14) {
   }
   return out;
 }
-
 function atrSeries(candles, period = 14) {
   const n = candles.length;
   const tr = new Array(n).fill(0);
@@ -119,7 +115,6 @@ function atrSeries(candles, period = 14) {
   }
   return emaWilder(tr, period);
 }
-
 function adxSeries(candles, period = 14) {
   const n = candles.length;
   const plusDM = new Array(n).fill(0);
@@ -142,7 +137,6 @@ function adxSeries(candles, period = 14) {
   });
   return emaWilder(dx, period);
 }
-
 function addIndicators(candles) {
   if (!candles || candles.length < 1) return candles;
   const closes = candles.map(c => c.close);
@@ -181,7 +175,6 @@ function findSwings(candles, lookback = 5) {
   swings.sort((a, b) => a.idx - b.idx);
   return swings;
 }
-
 function classifySwings(swings) {
   const out = [];
   let lastH = null, lastL = null;
@@ -198,7 +191,6 @@ function classifySwings(swings) {
   }
   return out;
 }
-
 function structureState(labeled) {
   const tags = labeled.filter(x => x.tag).map(x => x.tag);
   const recent = tags.slice(-6);
@@ -212,7 +204,6 @@ function structureState(labeled) {
   else if (bear > bull + 1) bias = "BEARISH";
   return { bias, recent, hh, hl, lh, ll };
 }
-
 function detectBosChoch(candles, labeled) {
   if (!labeled.length) return { bos: null, choch: null };
   const lastClose = candles[candles.length - 1].close;
@@ -222,23 +213,22 @@ function detectBosChoch(candles, labeled) {
     if (labeled[i].type === "L" && lastL === null) lastL = labeled[i];
     if (lastH && lastL) break;
   }
-  const state = structureState(labeled);
+  const state_ = structureState(labeled);
   let bos = null, choch = null;
   if (lastH && lastClose > lastH.price) {
-    if (state.bias === "BULLISH") bos = { type: "BOS_UP", level: lastH.price };
+    if (state_.bias === "BULLISH") bos = { type: "BOS_UP", level: lastH.price };
     else choch = { type: "CHOCH_UP", level: lastH.price };
   }
   if (lastL && lastClose < lastL.price) {
-    if (state.bias === "BEARISH") bos = { type: "BOS_DOWN", level: lastL.price };
+    if (state_.bias === "BEARISH") bos = { type: "BOS_DOWN", level: lastL.price };
     else choch = { type: "CHOCH_DOWN", level: lastL.price };
   }
   return { bos, choch };
 }
-
 function structureSnapshot(candles) {
   const swings = findSwings(candles);
   const labeled = classifySwings(swings);
-  const state = structureState(labeled);
+  const st = structureState(labeled);
   const events = detectBosChoch(candles, labeled);
   let lastH = null, lastL = null;
   for (let i = labeled.length - 1; i >= 0; i--) {
@@ -247,7 +237,7 @@ function structureSnapshot(candles) {
     if (lastH && lastL) break;
   }
   return {
-    bias: state.bias, recent: state.recent,
+    bias: st.bias, recent: st.recent,
     last_high: lastH ? lastH.price : null,
     last_low: lastL ? lastL.price : null,
     bos: events.bos, choch: events.choch,
@@ -258,32 +248,6 @@ function structureSnapshot(candles) {
 /* =========================================================
    LIQUIDITY
    ========================================================= */
-function findEqualLevels(swings, tolPips = 8) {
-  const tol = tolPips * Config.PIP_SIZE;
-  const highs = swings.filter(s => s.type === "H");
-  const lows  = swings.filter(s => s.type === "L");
-  function group(items) {
-    if (!items.length) return [];
-    const sorted = [...items].sort((a,b) => a.price - b.price);
-    const groups = [];
-    let cur = [sorted[0]];
-    for (let i = 1; i < sorted.length; i++) {
-      if (Math.abs(sorted[i].price - cur[cur.length-1].price) <= tol) cur.push(sorted[i]);
-      else { groups.push(cur); cur = [sorted[i]]; }
-    }
-    groups.push(cur);
-    const out = [];
-    for (const g of groups) {
-      if (g.length >= 2) {
-        const avg = g.reduce((s,x) => s + x.price, 0) / g.length;
-        out.push({ price: avg, touches: g.length });
-      }
-    }
-    return out;
-  }
-  return { above: group(highs), below: group(lows) };
-}
-
 function detectSweep(candles, lookback = 10, wickRatio = 0.5) {
   if (candles.length < lookback + 3) return { side: null, level: null };
   const swings = findSwings(candles);
@@ -326,7 +290,6 @@ function volatilityState(candles) {
   if (ratio <= Config.LOW_VOL_ATR_MULT) return "LOW_VOL";
   return "NORMAL_VOL";
 }
-
 function directionalState(candles) {
   if (!candles || candles.length < 30) return "UNKNOWN";
   const last = candles[candles.length - 1];
@@ -342,7 +305,6 @@ function directionalState(candles) {
   if (s.bias === "BEARISH" && close < e50) return "TREND_DOWN";
   return "TRANSITION";
 }
-
 function classifyRegime(candles) {
   const vol = volatilityState(candles);
   const dir = directionalState(candles);
@@ -352,7 +314,6 @@ function classifyRegime(candles) {
   else primary = dir;
   return { primary, direction: dir, volatility: vol };
 }
-
 function multiTfRegime(dfs) {
   const per = {};
   for (const tf of ["D1","H4","H1"]) {
@@ -388,7 +349,6 @@ function collectSwings(dfDict) {
   }
   return levels;
 }
-
 function clusterLevels(levels, tolPips = 15) {
   if (!levels.length) return [];
   const tol = tolPips * Config.PIP_SIZE;
@@ -416,7 +376,6 @@ function clusterLevels(levels, tolPips = 15) {
   }
   return out;
 }
-
 function getLevels(dfDict, currentPrice, tolPips = 15, maxLevels = 8) {
   const raw = collectSwings(dfDict);
   const clusters = clusterLevels(raw, tolPips);
@@ -435,7 +394,6 @@ function structuralSL(dfH1, dfH4, side, entry) {
   const sl = side === "BUY" ? entry - distance : entry + distance;
   return [sl, `fixed ${Config.SL_FIXED_PIPS}p SL`];
 }
-
 function computeTargets(side, entry, sl, sr) {
   const risk = Math.abs(entry - sl);
   if (risk <= 0) return null;
@@ -455,7 +413,6 @@ function computeTargets(side, entry, sl, sr) {
     tp3, rr_tp3: Math.abs(tp3 - entry) / risk
   };
 }
-
 function computePositionSize(entry, sl) {
   const riskMoney = Config.ACCOUNT_SIZE_USD * (Config.RISK_PER_TRADE_PCT / 100);
   const slPips = Math.abs(entry - sl) / Config.PIP_SIZE;
@@ -483,7 +440,7 @@ function closest(levels, price, maxDistPips) {
   return best;
 }
 
-/* -------- PULLBACK -------- */
+/* PULLBACK */
 function pullbackScoreBull(d1, h4, h1, sr) {
   let score = 0; const confs = []; const notes = [];
   const lastH1 = h1[h1.length - 1];
@@ -510,15 +467,14 @@ function pullbackScoreBull(d1, h4, h1, sr) {
   if (lastH1.close > lastH1.high - 0.3*(lastH1.high - lastH1.low)) { score += 4; confs.push("strong close"); }
   if (price > lastH1.ema20 && lastH1.ema20 > lastH1.ema50) { score += 5; confs.push("EMA aligned"); }
   else if (lastH1.ema20 > lastH1.ema50) score += 3;
-  const rsi = lastH1.rsi;
-  if (rsi >= 40 && rsi <= 65) { score += 5; confs.push(`RSI ${rsi.toFixed(1)}`); }
-  else if (rsi < 30) score += 3;
+  const r = lastH1.rsi;
+  if (r >= 40 && r <= 65) { score += 5; confs.push(`RSI ${r.toFixed(1)}`); }
+  else if (r < 30) score += 3;
   const adx = lastH1.adx;
   if (adx >= 25) { score += 5; confs.push(`ADX ${adx.toFixed(1)}`); }
   else if (adx >= 20) score += 3;
   return { score: Math.min(score, 100), confs, notes };
 }
-
 function pullbackScoreBear(d1, h4, h1, sr) {
   let score = 0; const confs = []; const notes = [];
   const lastH1 = h1[h1.length - 1];
@@ -545,15 +501,14 @@ function pullbackScoreBear(d1, h4, h1, sr) {
   if (lastH1.close < lastH1.low + 0.3*(lastH1.high - lastH1.low)) { score += 4; confs.push("weak close"); }
   if (price < lastH1.ema20 && lastH1.ema20 < lastH1.ema50) { score += 5; confs.push("EMA aligned"); }
   else if (lastH1.ema20 < lastH1.ema50) score += 3;
-  const rsi = lastH1.rsi;
-  if (rsi >= 35 && rsi <= 60) { score += 5; confs.push(`RSI ${rsi.toFixed(1)}`); }
-  else if (rsi > 70) score += 3;
+  const r = lastH1.rsi;
+  if (r >= 35 && r <= 60) { score += 5; confs.push(`RSI ${r.toFixed(1)}`); }
+  else if (r > 70) score += 3;
   const adx = lastH1.adx;
   if (adx >= 25) { score += 5; confs.push(`ADX ${adx.toFixed(1)}`); }
   else if (adx >= 20) score += 3;
   return { score: Math.min(score, 100), confs, notes };
 }
-
 const pullbackEngine = {
   run(d1, h4, h1, sr, regime) {
     const bull = pullbackScoreBull(d1, h4, h1, sr);
@@ -566,7 +521,7 @@ const pullbackEngine = {
   }
 };
 
-/* -------- BREAKOUT -------- */
+/* BREAKOUT */
 function breakoutScoreBull(d1, h4, h1, sr) {
   let score = 0; const confs = []; const notes = [];
   const lastH1 = h1[h1.length - 1];
@@ -575,9 +530,7 @@ function breakoutScoreBull(d1, h4, h1, sr) {
   if (sH4.bias === "BULLISH") { score += 15; confs.push("H4 bullish"); }
   else if (sH4.bias === "MIXED") score += 5;
   let aboveRes = null;
-  for (const r of sr.resistance) {
-    if (r.price < price - 5*Config.PIP_SIZE) { aboveRes = r; break; }
-  }
+  for (const r of sr.resistance) { if (r.price < price - 5*Config.PIP_SIZE) { aboveRes = r; break; } }
   if (!aboveRes) return { score: 0, confs, notes: ["no broken resistance below price"] };
   score += 20; confs.push(`broken ${aboveRes.label}`);
   const last3 = h1.slice(-3);
@@ -594,10 +547,9 @@ function breakoutScoreBull(d1, h4, h1, sr) {
   else if (lastH1.adx >= 20) score += 5;
   if (lastH1.rsi >= 45 && lastH1.rsi <= 70) { score += 10; confs.push(`RSI ${lastH1.rsi.toFixed(1)}`); }
   const dist = price - aboveRes.price;
-  if (dist > 30 * Config.PIP_SIZE) notes.push(`${Math.round(dist/Config.PIP_SIZE)}p above break - LATE`);
+  if (dist > 30 * Config.PIP_SIZE) notes.push(`${Math.round(dist/Config.PIP_SIZE)}p above break`);
   return { score: Math.min(score, 100), confs, notes };
 }
-
 function breakoutScoreBear(d1, h4, h1, sr) {
   let score = 0; const confs = []; const notes = [];
   const lastH1 = h1[h1.length - 1];
@@ -623,10 +575,9 @@ function breakoutScoreBear(d1, h4, h1, sr) {
   else if (lastH1.adx >= 20) score += 5;
   if (lastH1.rsi >= 30 && lastH1.rsi <= 55) { score += 10; confs.push(`RSI ${lastH1.rsi.toFixed(1)}`); }
   const dist = belowSup.price - price;
-  if (dist > 30 * Config.PIP_SIZE) notes.push(`${Math.round(dist/Config.PIP_SIZE)}p below break - LATE`);
+  if (dist > 30 * Config.PIP_SIZE) notes.push(`${Math.round(dist/Config.PIP_SIZE)}p below break`);
   return { score: Math.min(score, 100), confs, notes };
 }
-
 const breakoutEngine = {
   run(d1, h4, h1, sr, regime) {
     const bull = breakoutScoreBull(d1, h4, h1, sr);
@@ -639,7 +590,7 @@ const breakoutEngine = {
   }
 };
 
-/* -------- LIQUIDITY (SWEEP) -------- */
+/* LIQUIDITY */
 function liquidityScore(d1, h4, h1, sr, wanted) {
   let score = 0; const confs = []; const notes = [];
   const lastH1 = h1[h1.length - 1];
@@ -669,17 +620,16 @@ function liquidityScore(d1, h4, h1, sr, wanted) {
     if (uw >= 0.4 * body && c < o) { score += 15; confs.push("bear wick"); }
   }
   if (lastH1.adx >= 20) { score += 10; confs.push(`ADX ${lastH1.adx.toFixed(1)}`); }
-  const rsi = lastH1.rsi;
+  const r = lastH1.rsi;
   if (wanted === "BUY") {
-    if (rsi < 35) { score += 10; confs.push(`RSI ${rsi.toFixed(1)}`); }
-    else if (rsi <= 55) score += 5;
+    if (r < 35) { score += 10; confs.push(`RSI ${r.toFixed(1)}`); }
+    else if (r <= 55) score += 5;
   } else {
-    if (rsi > 65) { score += 10; confs.push(`RSI ${rsi.toFixed(1)}`); }
-    else if (rsi >= 45) score += 5;
+    if (r > 65) { score += 10; confs.push(`RSI ${r.toFixed(1)}`); }
+    else if (r >= 45) score += 5;
   }
   return { score: Math.min(score, 100), confs, notes };
 }
-
 const liquidityEngine = {
   run(d1, h4, h1, sr, regime) {
     const bull = liquidityScore(d1, h4, h1, sr, "BUY");
@@ -692,7 +642,7 @@ const liquidityEngine = {
   }
 };
 
-/* -------- RANGE -------- */
+/* RANGE */
 function rangeBounds(h4, lookback = 30) {
   if (h4.length < lookback) return null;
   const w = h4.slice(-lookback);
@@ -700,12 +650,10 @@ function rangeBounds(h4, lookback = 30) {
   const lo = Math.min(...w.map(c => c.low));
   return { high: hi, low: lo, mid: (hi + lo) / 2 };
 }
-
 function isRanging(h4) {
   if (!h4 || !h4.length) return false;
   return h4[h4.length - 1].adx <= 25;
 }
-
 function rangeScore(h4, h1, sr, wanted) {
   let score = 0; const confs = []; const notes = [];
   if (!isRanging(h4)) return { score: 0, confs, notes: ["not ranging"] };
@@ -721,12 +669,12 @@ function rangeScore(h4, h1, sr, wanted) {
     if (pos > 0.35) return { score: 0, confs, notes: ["BUY only near low"] };
     score += 20; confs.push(`lower ${(pos*100).toFixed(0)}%`);
     const distHigh = rng.high - price;
-    if (distHigh >= 2 * (price - rng.low)) { score += 15; confs.push("room to high > 2x"); }
+    if (distHigh >= 2 * (price - rng.low)) { score += 15; confs.push("room to high"); }
   } else {
     if (pos < 0.65) return { score: 0, confs, notes: ["SELL only near high"] };
     score += 20; confs.push(`upper ${(pos*100).toFixed(0)}%`);
     const distLow = price - rng.low;
-    if (distLow >= 2 * (rng.high - price)) { score += 15; confs.push("room to low > 2x"); }
+    if (distLow >= 2 * (rng.high - price)) { score += 15; confs.push("room to low"); }
   }
   if (wanted === "BUY") {
     for (const lv of sr.support.slice(0,3)) { if (Math.abs(lv.price - price) < 15*Config.PIP_SIZE) { score += 15; confs.push(`sup ${lv.label}`); break; } }
@@ -742,15 +690,14 @@ function rangeScore(h4, h1, sr, wanted) {
     const wick = h - Math.max(o, c);
     if (wick >= 0.4 * body && c < o) { score += 15; confs.push("bear rejection"); }
   }
-  const rsi = lastH1.rsi;
-  if (wanted === "BUY" && rsi < 40) { score += 15; confs.push(`RSI ${rsi.toFixed(1)}`); }
-  else if (wanted === "SELL" && rsi > 60) { score += 15; confs.push(`RSI ${rsi.toFixed(1)}`); }
+  const r = lastH1.rsi;
+  if (wanted === "BUY" && r < 40) { score += 15; confs.push(`RSI ${r.toFixed(1)}`); }
+  else if (wanted === "SELL" && r > 60) { score += 15; confs.push(`RSI ${r.toFixed(1)}`); }
   const adx = lastH1.adx;
   if (adx < 20) { score += 20; confs.push(`ADX ${adx.toFixed(1)}`); }
   else if (adx < 25) score += 10;
   return { score: Math.min(score, 100), confs, notes };
 }
-
 const rangeEngine = {
   run(d1, h4, h1, sr, regime) {
     if (regime !== "RANGE") return { engine: "RANGE", side: "WAIT", score: 0, confirmations: [], notes: [`regime=${regime}`] };
@@ -764,7 +711,7 @@ const rangeEngine = {
   }
 };
 
-/* -------- MOMENTUM -------- */
+/* MOMENTUM */
 function momentumScore(d1, h4, h1, sr, wanted) {
   let score = 0; const confs = []; const notes = [];
   const lastH1 = h1[h1.length - 1];
@@ -792,10 +739,10 @@ function momentumScore(d1, h4, h1, sr, wanted) {
     const ext = dist / atrH1;
     if (wanted === "BUY" && price > ema20) {
       if (ext <= 2.0) { score += 20; confs.push(`ext ${ext.toFixed(1)}`); }
-      else return { score: 0, confs, notes: [`too extended ${ext.toFixed(1)}`] };
+      else return { score: 0, confs, notes: [`too extended`] };
     } else if (wanted === "SELL" && price < ema20) {
       if (ext <= 2.0) { score += 20; confs.push(`ext ${ext.toFixed(1)}`); }
-      else return { score: 0, confs, notes: [`too extended ${ext.toFixed(1)}`] };
+      else return { score: 0, confs, notes: [`too extended`] };
     }
   }
   if (wanted === "BUY") {
@@ -804,7 +751,6 @@ function momentumScore(d1, h4, h1, sr, wanted) {
       const dp = (nearestR.price - price) / Config.PIP_SIZE;
       if (dp >= 40) { score += 20; confs.push(`${Math.round(dp)}p room`); }
       else if (dp >= 25) score += 10;
-      else notes.push(`only ${Math.round(dp)}p room`);
     }
   } else {
     const nearestS = sr.support[0];
@@ -812,18 +758,16 @@ function momentumScore(d1, h4, h1, sr, wanted) {
       const dp = (price - nearestS.price) / Config.PIP_SIZE;
       if (dp >= 40) { score += 20; confs.push(`${Math.round(dp)}p room`); }
       else if (dp >= 25) score += 10;
-      else notes.push(`only ${Math.round(dp)}p room`);
     }
   }
-  const rsi = lastH1.rsi;
+  const r = lastH1.rsi;
   if (wanted === "BUY") {
-    if (rsi >= 45 && rsi <= 70) { score += 15; confs.push(`RSI ${rsi.toFixed(1)}`); }
+    if (r >= 45 && r <= 70) { score += 15; confs.push(`RSI ${r.toFixed(1)}`); }
   } else {
-    if (rsi >= 30 && rsi <= 55) { score += 15; confs.push(`RSI ${rsi.toFixed(1)}`); }
+    if (r >= 30 && r <= 55) { score += 15; confs.push(`RSI ${r.toFixed(1)}`); }
   }
   return { score: Math.min(score, 100), confs, notes };
 }
-
 const momentumEngine = {
   run(d1, h4, h1, sr, regime) {
     if (regime !== "TREND_UP" && regime !== "TREND_DOWN") {
@@ -849,7 +793,6 @@ const ENGINES = [
   ["RANGE",     rangeEngine],
   ["MOMENTUM",  momentumEngine]
 ];
-
 function unavailableResult(mode, reason) {
   return {
     price: null, regime: { master: "UNKNOWN" }, signals: {},
@@ -859,7 +802,6 @@ function unavailableResult(mode, reason) {
     final: "WAIT", blockers: [], warnings: [reason], data_available: false
   };
 }
-
 function evaluateMode(mode, dfs) {
   const d1 = dfs.D1, h4 = dfs.H4, h1 = dfs.H1;
   if (!d1 || !h4 || !h1 || !d1.length || !h4.length || !h1.length) {
@@ -872,13 +814,11 @@ function evaluateMode(mode, dfs) {
     support:    levels.support.map(s => ({ label: s.label, price: s.price, strength: s.strength, touches: s.touches, sources: s.sources }))
   };
   const reg = multiTfRegime({ D1: d1, H4: h4, H1: h1 });
-
   const signals = {};
   for (const [name, eng] of ENGINES) signals[name] = eng.run(d1, h4, h1, sr, reg.master);
 
   const buyVotes = Object.entries(signals).filter(([_,s]) => s.side === "BUY").map(([n]) => n);
   const sellVotes = Object.entries(signals).filter(([_,s]) => s.side === "SELL").map(([n]) => n);
-
   let buyScoreRaw = 0, sellScoreRaw = 0, buyW = 0, sellW = 0;
   for (const [name, sig] of Object.entries(signals)) {
     const w = Config.ENGINE_WEIGHTS[name] || 0.2;
@@ -887,16 +827,13 @@ function evaluateMode(mode, dfs) {
   }
   const buyScore = buyW > 0 ? buyScoreRaw / buyW : 0;
   const sellScore = sellW > 0 ? sellScoreRaw / sellW : 0;
-
   let bias, biasScore, conflicts;
   if (buyVotes.length > sellVotes.length) { bias = "BUY"; biasScore = buyScore; conflicts = sellVotes; }
   else if (sellVotes.length > buyVotes.length) { bias = "SELL"; biasScore = sellScore; conflicts = buyVotes; }
   else { bias = "WAIT"; biasScore = 0; conflicts = []; }
-
   const nAgree = bias === "BUY" ? buyVotes.length : sellVotes.length;
   if (nAgree >= 3) biasScore = Math.min(biasScore + 8, 100);
   else if (nAgree === 2) biasScore = Math.min(biasScore + 3, 100);
-
   let conflict = "NONE";
   if (conflicts.length === 1) conflict = "LOW";
   else if (conflicts.length === 2) conflict = "MODERATE";
@@ -909,7 +846,6 @@ function evaluateMode(mode, dfs) {
     entry: null, sl: null, sl_reason: null, tp: null, pos: null,
     final: "WAIT", blockers: [], warnings: [], data_available: true
   };
-
   if (bias === "WAIT") return result;
 
   const entry = price;
@@ -928,9 +864,7 @@ function evaluateMode(mode, dfs) {
   const ema20H1 = h1[h1.length - 1].ema20;
   if (atrH1 > 0) {
     const ext = Math.abs(entry - ema20H1) / atrH1;
-    if (ext > Config.BLOCK_EXTENDED_ENTRY_ATR) {
-      blockers.push(`entry ${ext.toFixed(2)} ATR from EMA20`);
-    }
+    if (ext > Config.BLOCK_EXTENDED_ENTRY_ATR) blockers.push(`entry ${ext.toFixed(2)} ATR from EMA20`);
   }
   result.blockers = blockers;
 
@@ -947,7 +881,6 @@ function evaluateMode(mode, dfs) {
   if (blockers.length) result.final = "NO_TRADE";
   else if (gateFail.length) { result.final = "WAIT"; result.warnings = gateFail; }
   else result.final = bias;
-
   return result;
 }
 
@@ -955,7 +888,6 @@ function evaluateMode(mode, dfs) {
    STATE MANAGER
    ========================================================= */
 function nowIST() { return new Date(); }
-
 function resetDailyIfNeeded(mode) {
   const today = new Date().toISOString().slice(0,10);
   if (state[mode].today.date !== today) {
@@ -963,15 +895,12 @@ function resetDailyIfNeeded(mode) {
     state[mode].cooldown_until = null;
   }
 }
-
 function isInCooldown(mode) {
   const cu = state[mode].cooldown_until;
   if (!cu) return false;
   return new Date() < new Date(cu);
 }
-
 function dailyLossesReached(mode) { return state[mode].today.losses >= 3; }
-
 function freezeNewTrade(mode, aggResult, enginesFiring) {
   const trade = {
     side: aggResult.final,
@@ -991,7 +920,6 @@ function freezeNewTrade(mode, aggResult, enginesFiring) {
   saveState();
   return trade;
 }
-
 function closeTrade(mode, result, closePrice, closeReason) {
   const t = state[mode].open_trade;
   if (!t) return;
@@ -1005,7 +933,6 @@ function closeTrade(mode, result, closePrice, closeReason) {
   state[mode].cooldown_until = cdTs.toISOString();
   saveState();
 }
-
 function checkAndUpdateLifecycle(mode, candleHigh, candleLow) {
   if (candleHigh == null || candleLow == null) return [];
   const t = state[mode].open_trade;
@@ -1039,7 +966,6 @@ function checkAndUpdateLifecycle(mode, candleHigh, candleLow) {
   }
   return events;
 }
-
 function modeStats(mode) {
   resetDailyIfNeeded(mode);
   const w = state[mode].today.wins;
@@ -1057,7 +983,6 @@ function processModes(dfs) {
   const rawResults = {};
   const signalsFired = [];
   const lifecycleEvents = [];
-
   const rHO = evaluateMode("HIGH_OPPORTUNITY", dfs);
   rawResults.HIGH_OPPORTUNITY = rHO;
   const currentPrice = rHO.price;
@@ -1067,16 +992,13 @@ function processModes(dfs) {
     const high = currentPrice, low = currentPrice;
     const events = checkAndUpdateLifecycle(mode, high, low);
     events.forEach(e => lifecycleEvents.push(mode + ":" + e));
-
     let r;
     if (mode === "HIGH_OPPORTUNITY") r = rHO;
     else { r = evaluateMode(mode, dfs); rawResults[mode] = r; }
-
     resetDailyIfNeeded(mode);
     const inCd = isInCooldown(mode);
     const lossesMaxed = dailyLossesReached(mode);
     const hasOpen = state[mode].open_trade !== null;
-
     if (!hasOpen && !inCd && !lossesMaxed && (r.final === "BUY" || r.final === "SELL")) {
       const enginesFiring = Object.entries(r.signals).filter(([_,s]) => s.side === r.final).map(([n]) => n);
       freezeNewTrade(mode, r, enginesFiring);
@@ -1084,7 +1006,6 @@ function processModes(dfs) {
     }
   }
   saveState();
-
   return {
     price: currentPrice,
     market: {
@@ -1110,10 +1031,7 @@ function trackApiCall() {
   if (day !== today) { count = 0; day = today; localStorage.setItem("swing_api_day", day); }
   count++;
   localStorage.setItem("swing_api_count", String(count));
-  const el = document.getElementById("apiCalls");
-  if (el) el.textContent = count + " / 800";
 }
-
 async function fetchTwelve(interval, outputsize) {
   trackApiCall();
   const url = new URL("https://api.twelvedata.com/time_series");
@@ -1135,9 +1053,7 @@ async function fetchTwelve(interval, outputsize) {
     volume: Number(v.volume || 0)
   })).filter(c => Number.isFinite(c.open) && Number.isFinite(c.close));
 }
-
 function isFresh(entry, ttl) { return (Date.now() - entry.ts) < ttl; }
-
 async function loadCandlesCached(tf, interval, size, ttl) {
   if (cache[tf].data && isFresh(cache[tf], ttl)) return cache[tf].data;
   const raw = await fetchTwelve(interval, size);
@@ -1145,11 +1061,10 @@ async function loadCandlesCached(tf, interval, size, ttl) {
   cache[tf] = { data: withInd, ts: Date.now() };
   return withInd;
 }
-
 async function loadAll() {
-  const D1 = await loadCandlesCached("D1", "1day", 600, CACHE_TTL.D1);
-  const H4 = await loadCandlesCached("H4", "4h", 600, CACHE_TTL.H4);
-  const H1 = await loadCandlesCached("H1", "1h", 1500, CACHE_TTL.H1);
+  const D1 = await loadCandlesCached("D1", "1day", 300, CACHE_TTL.D1);
+  const H4 = await loadCandlesCached("H4", "4h", 300, CACHE_TTL.H4);
+  const H1 = await loadCandlesCached("H1", "1h", 500, CACHE_TTL.H1);
   return { D1, H4, H1 };
 }
 
@@ -1183,8 +1098,8 @@ function serialise(processResult) {
     sig[name] = { side: s.side, score: s.score };
   }
   const sr = {};
-  (r.market.sr?.resistance || []).forEach(x => sr[x.label] = { price: x.price, strength: x.strength });
-  (r.market.sr?.support || []).forEach(x => sr[x.label] = { price: x.price, strength: x.strength });
+  (r.market.sr?.resistance || []).forEach(x => sr[x.label] = { price: x.price, strength: x.strength, sources: x.sources || [] });
+  (r.market.sr?.support || []).forEach(x => sr[x.label] = { price: x.price, strength: x.strength, sources: x.sources || [] });
   return {
     price: r.price,
     regime: r.market.regime,
@@ -1202,92 +1117,135 @@ function serialise(processResult) {
 function render(d) {
   const root = document.getElementById("root");
   if (!root) return;
+  const clockEl = document.getElementById("clock");
+  if (clockEl) clockEl.textContent = d.server_time || "--:--:--";
+  if (d.error) {
+    root.innerHTML = '<div class="err">' + d.error + '</div>';
+    return;
+  }
   const price = d.price;
   const regime = d.regime || "UNKNOWN";
+  const bias = d.bias || "WAIT";
+  const conflict = d.conflict || "NONE";
   let html = "";
-  html += '<div class="row"><div class="card" style="flex:1;">'
-       +  '<div class="price-box">'
-       +  '<div class="price">' + (price != null ? price.toFixed(5) : "—") + '</div>'
-       +  '<div class="regime ' + regime + '">' + regime + '</div>'
-       +  '<div class="bias ' + (d.bias || "WAIT") + '">BIAS ' + (d.bias || "WAIT") + '</div>'
-       +  '</div>'
-       +  '<div style="font-size:11px;color:#666;margin-top:4px;">'
-       +  'conflict: ' + (d.conflict || "NONE")
-       +  (d.signals_fired && d.signals_fired.length ? ' · fired: ' + d.signals_fired.join(", ") : '')
-       +  ' · API: <span id="apiCalls">' + (localStorage.getItem("swing_api_count") || "0") + ' / 800</span>'
-       +  '</div></div></div>';
-  html += '<div class="section-title">engines</div><div class="engines">';
-  const order = ["MOMENTUM","PULLBACK","BREAKOUT","LIQUIDITY","RANGE"];
+
+  html += '<div class="sec-title">MARKET</div>';
+  html += '<div class="market">';
+  html += '<div class="market-row">';
+  html += '<span><span class="mk">price:</span> <span class="mv">' + (price != null ? price.toFixed(5) : "—") + '</span></span>';
+  html += '<span><span class="mk">regime:</span> <span class="mv regime-' + regime + '">' + regime + '</span></span>';
+  html += '</div>';
+  html += '<div class="market-row">';
+  html += '<span><span class="mk">bias:</span> <span class="mv bias-' + bias + '">' + bias + '</span></span>';
+  html += '<span><span class="mk">conflict:</span> <span class="mv">' + conflict + '</span></span>';
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="two-col">';
+  html += '<div>';
+  html += '<div class="sec-title">ENGINES</div>';
+  html += '<table class="engines-table">';
+  html += '<tr><th>ENGINE</th><th>SIDE</th><th style="text-align:right;">SCORE</th></tr>';
+  const order = ["PULLBACK","BREAKOUT","LIQUIDITY","RANGE","MOMENTUM"];
   for (const name of order) {
     const s = (d.signals && d.signals[name]) || { side: "WAIT", score: 0 };
-    const cls = (s.side || "WAIT").toLowerCase();
-    html += '<div class="eng ' + cls + '">'
-         +  '<div class="name">' + name.slice(0,4) + '</div>'
-         +  '<div class="score">' + (s.score != null ? Math.round(s.score) : 0) + '</div>'
-         +  '<div class="side">' + (s.side || "WAIT") + '</div>'
-         +  '</div>';
+    const side = s.side || "WAIT";
+    const score = s.score != null ? Math.round(s.score) : 0;
+    html += '<tr>';
+    html += '<td class="name">' + name + '</td>';
+    html += '<td class="side-' + side + '">' + side + '</td>';
+    html += '<td class="score">' + score + '</td>';
+    html += '</tr>';
   }
+  html += '</table>';
   html += '</div>';
-  html += '<div class="section-title">modes</div><div class="mode-grid">';
+
+  html += '<div>';
+  html += '<div class="sec-title">S/R</div>';
+  html += '<table class="sr-table">';
+  html += '<tr><th>LEVEL</th><th style="text-align:right;">PRICE</th><th>STR</th><th>SRC</th></tr>';
+  const sr = d.sr || {};
+  const rLabels = Object.keys(sr).filter(k => k.startsWith("R")).sort((a,b) => parseInt(b.slice(1)) - parseInt(a.slice(1)));
+  for (const label of rLabels) {
+    const v = sr[label];
+    if (!v || v.price == null) continue;
+    html += '<tr>';
+    html += '<td class="level">' + label + '</td>';
+    html += '<td class="price">' + v.price.toFixed(5) + '</td>';
+    html += '<td class="str-' + (v.strength||"") + '">' + (v.strength||"") + '</td>';
+    html += '<td class="src">' + ((v.sources||[]).join(",")) + '</td>';
+    html += '</tr>';
+  }
+  html += '<tr class="price-row"><td colspan="4">--- price ' + (price != null ? price.toFixed(5) : "—") + ' ---</td></tr>';
+  const sLabels = Object.keys(sr).filter(k => k.startsWith("S")).sort((a,b) => parseInt(a.slice(1)) - parseInt(b.slice(1)));
+  for (const label of sLabels) {
+    const v = sr[label];
+    if (!v || v.price == null) continue;
+    html += '<tr>';
+    html += '<td class="level">' + label + '</td>';
+    html += '<td class="price">' + v.price.toFixed(5) + '</td>';
+    html += '<td class="str-' + (v.strength||"") + '">' + (v.strength||"") + '</td>';
+    html += '<td class="src">' + ((v.sources||[]).join(",")) + '</td>';
+    html += '</tr>';
+  }
+  html += '</table>';
+  html += '</div>';
+  html += '</div>';
+
+  html += '<div class="mode-section">';
+  html += '<div class="sec-title">MODE COMPARISON</div>';
+  html += '<table class="mode-table">';
+  html += '<tr><th>MODE</th><th>STATE</th><th>BIAS</th><th>SCORE</th><th>OPEN TRADE</th><th>TODAY</th><th>REASON</th></tr>';
   for (const mode of ["HIGH_OPPORTUNITY","BALANCED","SNIPER"]) {
     const m = (d.modes && d.modes[mode]) || {};
     const t = m.open_trade;
-    let statusCls = "status-wait", statusTxt = "WAITING";
-    if (t) { statusCls = "status-open"; statusTxt = t.side + " OPEN"; }
-    else if (m.in_cooldown) { statusCls = "status-cooldown"; statusTxt = "COOLDOWN"; }
-    const cardCls = t ? ("open" + (t.side === "SELL" ? " sell" : "")) : "";
-    html += '<div class="mode-card ' + cardCls + '">'
-         +  '<div class="mode-name">' + mode + '</div>'
-         +  '<div class="mode-status ' + statusCls + '">' + statusTxt + '</div>';
-    if (t) {
-      html += '<div class="trade-line"><span class="k">entry</span><span class="v">' + (t.entry != null ? t.entry.toFixed(5) : "—") + '</span></div>';
-      html += '<div class="trade-line"><span class="k">SL</span><span class="v">' + (t.sl != null ? t.sl.toFixed(5) : "—") + '</span></div>';
-      html += '<div class="trade-line"><span class="k">TP1</span><span class="v">' + (t.tp1 != null ? t.tp1.toFixed(5) : "—") + '</span></div>';
-      html += '<div class="trade-line"><span class="k">TP2</span><span class="v">' + (t.tp2 != null ? t.tp2.toFixed(5) : "—") + '</span></div>';
-      html += '<div class="trade-line"><span class="k">TP1 hit</span><span class="v">' + (t.tp1_hit ? "yes" : "no") + '</span></div>';
-    } else {
-      html += '<div class="trade-line"><span class="k">score</span><span class="v">' + (m.bias_score != null ? m.bias_score : "—") + '</span></div>';
-      html += '<div class="trade-line"><span class="k">final</span><span class="v">' + (m.final || "WAIT") + '</span></div>';
-      if (m.warnings && m.warnings.length) {
-        html += '<div style="font-size:11px;color:#666;margin-top:6px;">' + m.warnings.join(" · ") + '</div>';
+    let stateTxt = "WAITING", stateCls = "state";
+    if (t) { stateTxt = "OPEN"; stateCls = "state state-open"; }
+    else if (m.in_cooldown) { stateTxt = "COOLDOWN"; stateCls = "state state-cooldown"; }
+    const biasTxt = m.final || "WAIT";
+    const score = m.bias_score != null ? m.bias_score.toFixed(1) : "0.0";
+    const tradeTxt = t ? (t.side + " @" + t.entry.toFixed(5)) : "—";
+    const todayTxt = "W" + (m.wins || 0) + " L" + (m.losses || 0);
+    const reasonTxt = (m.warnings && m.warnings.length) ? m.warnings[0] : "";
+    html += '<tr>';
+    html += '<td class="mode">' + mode + '</td>';
+    html += '<td class="' + stateCls + '">' + stateTxt + '</td>';
+    html += '<td class="bias-' + biasTxt + '">' + biasTxt + '</td>';
+    html += '<td class="score">' + score + '</td>';
+    html += '<td class="trade">' + tradeTxt + '</td>';
+    html += '<td class="today">' + todayTxt + '</td>';
+    html += '<td class="reason">' + reasonTxt + '</td>';
+    html += '</tr>';
+  }
+  html += '</table>';
+  html += '</div>';
+
+  const anyOpen = Object.values(d.modes || {}).some(m => m.open_trade);
+  html += '<div class="setups">';
+  if (anyOpen) {
+    html += '<span class="active">● trade active</span>';
+    for (const mode of ["HIGH_OPPORTUNITY","BALANCED","SNIPER"]) {
+      const m = d.modes[mode];
+      if (m && m.open_trade) {
+        const t = m.open_trade;
+        html += '<br>' + mode + ': ' + t.side + ' entry ' + t.entry.toFixed(5)
+             + ' SL ' + t.sl.toFixed(5)
+             + ' TP1 ' + t.tp1.toFixed(5)
+             + ' TP2 ' + t.tp2.toFixed(5);
       }
     }
-    html += '<div class="wl">today: <span class="w">' + (m.wins || 0) + 'W</span> / <span class="l">' + (m.losses || 0) + 'L</span> · ' + ((m.wr || 0).toFixed(0)) + '%</div>';
-    html += '</div>';
+  } else {
+    html += 'no active trade - waiting for signal';
   }
   html += '</div>';
-  const sr = d.sr || {};
-  const srKeys = Object.keys(sr);
-  if (srKeys.length) {
-    html += '<div class="section-title">s/r levels</div><div class="sr-list">';
-    for (const k of srKeys) {
-      const v = sr[k];
-      if (!v || v.price == null) continue;
-      const cls = k.toUpperCase().startsWith("R") ? "res" : "sup";
-      html += '<div class="sr-item ' + cls + '">'
-           +  '<span class="lbl">' + k + '</span>'
-           +  '<span class="val">' + Number(v.price).toFixed(5) + '</span>'
-           +  '<span class="lbl">' + (v.strength || "") + '</span>'
-           +  '</div>';
-    }
-    html += '</div>';
-  }
-  if (d.lifecycle_events && d.lifecycle_events.length) {
-    html += '<div class="card" style="margin-top:12px;">'
-         +  '<div class="section-title" style="margin-top:0;">lifecycle events</div>'
-         +  '<div class="events">' + d.lifecycle_events.join("<br>") + '</div>'
-         +  '</div>';
-  }
+
   root.innerHTML = html;
-  const timeEl = document.getElementById("time");
-  if (timeEl) timeEl.textContent = d.server_time || "—";
 }
 
 /* =========================================================
    BOOTSTRAP
    ========================================================= */
 let loading = false;
-
 async function tick() {
   if (loading) return;
   loading = true;
@@ -1299,24 +1257,21 @@ async function tick() {
   } catch (e) {
     console.error("Tick error:", e);
     const root = document.getElementById("root");
-    if (root) root.innerHTML = '<div class="err">' + e.message + '</div>';
+    if (root) root.innerHTML = '<div class="err">Error: ' + e.message + '</div>';
   } finally {
     loading = false;
   }
 }
-
 async function start() {
   loadState();
   await tick();
   setInterval(tick, REFRESH_INTERVAL);
 }
-
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", start);
 } else {
   start();
 }
-
 window.Swing = {
   state, cache,
   refresh: tick,
