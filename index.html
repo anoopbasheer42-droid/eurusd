@@ -5,11 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Swing Commander</title>
 <style>
-  * { box-sizing: border-box; }
-  body { margin: 0; padding: 12px; background: #0a0e14; color: #d4d4d4;
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    padding: 12px;
+    background: #0a0e14;
+    color: #d4d4d4;
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 14px; line-height: 1.4; }
-  .header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #1e2530; padding-bottom: 8px; margin-bottom: 12px; }
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid #1e2530;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
   .pair { font-size: 16px; font-weight: 700; color: #5fb3ff; letter-spacing: 1px; }
   .time { font-size: 11px; color: #666; }
   .row { display: flex; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
@@ -54,19 +66,12 @@
   .sr-item .val { color: #fff; font-weight: 600; }
   .sr-item.res .val { color: #ff7b7b; }
   .sr-item.sup .val { color: #6dff8a; }
+  .sr-item .src { color: #444; margin-left: 4px; font-size: 10px; }
   .events { font-size: 12px; color: #ffc966; }
   .err { color: #ff7b7b; padding: 8px; border: 1px solid #5c2d2d; border-radius: 4px; }
-  .nav { margin-bottom: 10px; font-size: 12px; }
-  .nav a { color: #5fb3ff; text-decoration: none; padding: 4px 10px; border: 1px solid #1e2530; border-radius: 4px; margin-right: 6px; }
-  .nav a.active { background: #16351f; color: #6dff8a; border-color: #2d5c3a; }
 </style>
 </head>
 <body>
-
-<div class="nav">
-  <a href="swing.html" class="active">SWING COMMANDER</a>
-  <a href="index.html">TWO-SIDED SCALPER</a>
-</div>
 
 <div class="header">
   <div class="pair">EUR/USD · SWING COMMANDER</div>
